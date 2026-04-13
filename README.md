@@ -8,7 +8,7 @@ Prova is a privacy-first, on-chain trade credit insurance protocol built explici
 
 Our dual-plugin architecture separates the privacy-preserving actuarial math from the host chain's execution layer:
 
-![Prova Architecture Diagram](./frontend/public/Prova_architecture.png)
+![Prova Architecture Diagram](./app/public/Prova_architecture.png)
 
 ### The Dual-Layer Tech Stack
 1. **ReineiraOS (Settlement Engine):** Operates on Arbitrum Sepolia. Prova utilizes the `@reineira-os/sdk` to hook directly into the `ConfidentialCoverageManager` to pool insurance liquidity (USDC) and the `ConfidentialEscrow` contracts to enforce automated payouts.
