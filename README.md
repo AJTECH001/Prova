@@ -15,7 +15,6 @@ Our dual-plugin architecture separates the privacy-preserving actuarial math fro
 2. **Fhenix Operations (Privacy Engine):**
    * **Frontend (`@cofhe/react`):** Exporters input their invoice amounts and confidential buyer credit scores in our React dashboard. The client-side hook encrypts this data entirely in the browser memory before it touches the blockchain.
    * **Backend (`@fhenixprotocol/cofhe-contracts`):** Our custom `ProvaUnderwriterPolicy` smart contract prices the risk premium dynamically using FHE math (`FHE.mul(invoiceAmount, riskMultiplier)`). This ensures the underlying datasets are mathematically processed securely on Fhenix’s coprocessor without ever returning plaintext.
-3. **zkTLS (Reclaim Protocol):** Off-chain fiat settlements are verified trustlessly via our `ProvaPaymentResolver`, fulfilling insurance release conditions mathematically instead of relying on slow, manual claims adjusters.
 
 ---
 

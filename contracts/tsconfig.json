@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "module": "commonjs",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "types": [
+      "@nomicfoundation/hardhat-toolbox-viem",
+      "@nomicfoundation/hardhat-ethers",
+      "@nomicfoundation/hardhat-chai-matchers"
+    ]
+  },
+  "include": ["./scripts", "./test", "./hardhat.config.ts"],
+  "files": ["./hardhat.config.ts"]
+}

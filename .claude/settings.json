@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"systemMessage\":\"If you did strategic work this session, update .claude/docs/execution/SPRINT_LOG.md with what was done and what was learned.\"}'",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

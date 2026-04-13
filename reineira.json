@@ -1,0 +1,18 @@
+{
+  "name": "reineira-atlas",
+  "version": "0.1.0",
+  "platform": "0.1",
+  "description": "Startup operating system for ventures building on ReineiraOS",
+  "type": "atlas",
+  "repository": "https://github.com/ReineiraOS/reineira-atlas",
+  "compatibility": {
+    "sdk": "^0.1.0",
+    "contracts": "0.1"
+  },
+  "ecosystem": {
+    "code": "https://github.com/ReineiraOS/reineira-code",
+    "modules": "https://github.com/ReineiraOS/platform-modules",
+    "docs": "https://reineira.xyz/docs",
+    "sdk": "https://www.npmjs.com/package/@reineira-os/sdk"
+  }
+}

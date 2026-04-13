@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prova — System Architecture</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      background: #0f1117;
+      color: #e2e8f0;
+      padding: 32px;
+      min-width: 1400px;
+    }
+
+    h1 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #f8fafc;
+      margin-bottom: 6px;
+      letter-spacing: 0.05em;
+    }
+
+    .subtitle {
+      font-size: 11px;
+      color: #64748b;
+      margin-bottom: 28px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    /* ── Legend ─────────────────────────────── */
+    .legend {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10px;
+      color: #94a3b8;
+    }
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+    }
+
+    /* ── Main grid ───────────────────────────── */
+    .grid {
+      display: grid;
+      grid-template-columns: 170px 220px 1fr 240px;
+      grid-template-rows: auto auto;
+      gap: 16px;
+      align-items: start;
+    }
+
+    /* ── Column headers ──────────────────────── */
+    .col-header {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #475569;
+      padding: 6px 10px;
+      border-bottom: 1px solid #1e293b;
+      margin-bottom: 12px;
+    }
+
+    /* ── Panel base ──────────────────────────── */
+    .panel {
+      border-radius: 8px;
+      padding: 14px;
+      border: 1px solid;
+    }
+
+    .panel-title {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+
+    /* ── Colour themes ───────────────────────── */
+    .theme-app    { background: #0f1f2e; border-color: #1e3a52; }
+    .theme-app    .panel-title { color: #38bdf8; }
+
+    .theme-backend { background: #1a1a2e; border-color: #2d2d5e; }
+    .theme-backend .panel-title { color: #818cf8; }
+
+    .theme-core   { background: #0f1f18; border-color: #1a3a28; }
+    .theme-core   .panel-title { color: #34d399; }
+
+    .theme-plugin { background: #1f1a0f; border-color: #3a2e1a; }
+    .theme-plugin .panel-title { color: #fbbf24; }
+
+    .theme-fhe    { background: #1a0f1f; border-color: #3a1a52; }
+    .theme-fhe    .panel-title { color: #c084fc; }
+
+    /* ── Actor cards ─────────────────────────── */
+    .actor {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 6px;
+      padding: 8px 10px;
+      margin-bottom: 8px;
+    }
+    .actor:last-child { margin-bottom: 0; }
+    .actor-icon { font-size: 16px; }
+    .actor-name { font-size: 11px; font-weight: 600; color: #f1f5f9; }
+    .actor-role { font-size: 9px; color: #64748b; margin-top: 1px; }
+
+    /* ── Contract boxes ──────────────────────── */
+    .contract {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+    }
+    .contract:last-child { margin-bottom: 0; }
+    .contract-name {
+      font-size: 11px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .contract-name.green  { color: #34d399; }
+    .contract-name.yellow { color: #fbbf24; }
+    .contract-name.purple { color: #c084fc; }
+    .contract-name.blue   { color: #60a5fa; }
+
+    .fn-list { list-style: none; }
+    .fn-list li {
+      font-size: 10px;
+      color: #94a3b8;
+      padding: 2px 0;
+      padding-left: 10px;
+      position: relative;
+    }
+    .fn-list li::before {
+      content: '→';
+      position: absolute;
+      left: 0;
+      color: #475569;
+    }
+    .fn-list li span.highlight { color: #e2e8f0; }
+    .fn-list li span.tag {
+      font-size: 8px;
+      padding: 1px 5px;
+      border-radius: 3px;
+      margin-left: 4px;
+      vertical-align: middle;
+    }
+    .tag-fhe  { background: #3b1a52; color: #c084fc; }
+    .tag-new  { background: #1a3b1a; color: #34d399; }
+    .tag-ext  { background: #2d1f00; color: #fbbf24; }
+
+    /* ── Backend service boxes ───────────────── */
+    .service {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 6px;
+      padding: 8px 10px;
+      margin-bottom: 8px;
+    }
+    .service:last-child { margin-bottom: 0; }
+    .service-name {
+      font-size: 10px;
+      font-weight: 700;
+      color: #a5b4fc;
+      margin-bottom: 4px;
+    }
+    .service-detail {
+      font-size: 9px;
+      color: #64748b;
+      line-height: 1.5;
+    }
+
+    /* ── Flow number badges ──────────────────── */
+    .flow-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      font-size: 8px;
+      font-weight: 700;
+      margin-right: 4px;
+      flex-shrink: 0;
+    }
+    .fb-blue   { background: #1e40af; color: #bfdbfe; }
+    .fb-green  { background: #14532d; color: #86efac; }
+    .fb-yellow { background: #78350f; color: #fde68a; }
+    .fb-purple { background: #4c1d95; color: #ddd6fe; }
+    .fb-red    { background: #7f1d1d; color: #fecaca; }
+
+    /* ── Arrow SVG canvas ────────────────────── */
+    .arrow-canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      overflow: visible;
+    }
+
+    /* ── FHE bottom row ──────────────────────── */
+    .fhe-row {
+      grid-column: 1 / -1;
+      margin-top: 4px;
+    }
+
+    .fhe-inner {
+      display: flex;
+      gap: 0;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 0;
+    }
+
+    .fhe-node {
+      background: rgba(192,132,252,0.08);
+      border: 1px solid #3a1a52;
+      border-radius: 6px;
+      padding: 10px 18px;
+      text-align: center;
+      min-width: 130px;
+    }
+    .fhe-node-title { font-size: 10px; font-weight: 700; color: #c084fc; margin-bottom: 3px; }
+    .fhe-node-sub   { font-size: 9px; color: #7c3aed; }
+
+    .fhe-arrow {
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      color: #4c1d95;
+      font-size: 16px;
+    }
+
+    /* ── Scenario flow strip ─────────────────── */
+    .flow-strip {
+      grid-column: 1 / -1;
+      background: #0d1117;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 4px;
+    }
+    .flow-strip-title {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #475569;
+      margin-bottom: 10px;
+    }
+    .flow-steps {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .flow-step {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 5px;
+      padding: 5px 10px;
+      font-size: 10px;
+      color: #94a3b8;
+    }
+    .flow-step .caller { color: #f1f5f9; font-weight: 600; }
+    .flow-step .fn     { color: #60a5fa; }
+    .flow-step .arrow  { color: #334155; }
+    .flow-step .target { color: #34d399; }
+  </style>
+</head>
+<body>
+
+<h1>Prova — System Architecture</h1>
+<p class="subtitle">Dual-plugin architecture · Arbitrum Sepolia · CoFHE privacy layer</p>
+
+<!-- Legend -->
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#34d399"></div> Core Protocol Contracts</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#fbbf24"></div> Prova Plugin Contracts</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#c084fc"></div> FHE Operations (CoFHE)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#818cf8"></div> Backend (Node.js API)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#38bdf8"></div> Application / Users</div>
+</div>
+
+<!-- Scenario flow strip -->
+<div class="flow-strip">
+  <div class="flow-strip-title">Transaction Flow — Adebayo × TechMart Lagos</div>
+  <div class="flow-steps">
+    <div class="flow-step">
+      <span class="flow-badge fb-blue">1</span>
+      <span class="caller">Chioma</span><span class="arrow">→</span>
+      <span class="target">PremiumPool</span><span class="fn">.provideLiquidity()</span>
+    </div>
+    <div class="flow-step">
+      <span class="flow-badge fb-blue">2</span>
+      <span class="caller">Adebayo</span><span class="arrow">→</span>
+      <span class="target">ConfidentialEscrow</span><span class="fn">.createEscrow()</span>
+      <span class="arrow">→</span><span class="target">PaymentResolver</span><span class="fn">.onConditionSet()</span>
+    </div>
+    <div class="flow-step">
+      <span class="flow-badge fb-green">3</span>
+      <span class="caller">Adebayo</span><span class="arrow">→</span>
+      <span class="target">CoverageManager</span><span class="fn">.createCoverage()</span>
+      <span class="arrow">→</span><span class="target">UnderwriterPolicy</span><span class="fn">.onPolicySet()</span>
+    </div>
+    <div class="flow-step">
+      <span class="flow-badge fb-purple">4</span>
+      <span class="caller">Backend</span><span class="arrow">→</span>
+      <span class="fn">ComputeCreditScore(925)</span>
+      <span class="arrow">→</span><span class="target">FheService</span><span class="fn">.encryptCreditScore()</span>
+      <span class="arrow">→</span><span class="fn">riskProof bytes</span>
+    </div>
+    <div class="flow-step">
+      <span class="flow-badge fb-green">5</span>
+      <span class="caller">Adebayo</span><span class="arrow">→</span>
+      <span class="target">CoverageManager</span><span class="fn">.payPremium(riskProof)</span>
+      <span class="arrow">→</span><span class="target">UnderwriterPolicy</span><span class="fn">.evaluateRisk()</span>
+      <span class="arrow">→</span><span class="target">PremiumPool</span><span class="fn">.depositPremium()</span>
+    </div>
+    <div class="flow-step">
+      <span class="flow-badge fb-yellow">6</span>
+      <span class="caller">TechMart</span><span class="arrow">→</span>
+      <span class="target">ConfidentialEscrow</span><span class="fn">.settleDebt($10k)</span>
+    </div>
+    <div class="flow-step">
+      <span class="flow-badge fb-yellow">7</span>
+      <span class="caller">Anyone</span><span class="arrow">→</span>
+      <span class="target">ConfidentialEscrow</span><span class="fn">.settleEscrow()</span>
+      <span class="arrow">→</span><span class="target">PaymentResolver</span><span class="fn">.isConditionMet()</span>
+      <span class="arrow">→</span><span class="fn">funds → Adebayo</span>
+    </div>
+    <div class="flow-step">
+      <span class="flow-badge fb-purple">8</span>
+      <span class="caller">QuickNode</span><span class="arrow">→</span>
+      <span class="target">Backend webhook</span>
+      <span class="arrow">→</span><span class="fn">markAsSettled() + recomputeScore()</span>
+    </div>
+    <div class="flow-step">
+      <span class="flow-badge fb-red">9</span>
+      <span class="caller">Adebayo</span><span class="arrow">→</span>
+      <span class="target">CoverageManager</span><span class="fn">.fileClaim()</span>
+      <span class="arrow">→</span><span class="target">UnderwriterPolicy</span><span class="fn">.judge()</span>
+      <span class="arrow">→</span><span class="target">PremiumPool</span><span class="fn">.withdrawPayout($10k)</span>
+    </div>
+  </div>
+</div>
+
+<!-- Main grid -->
+<div class="grid">
+
+  <!-- ── Col 1: Application ── -->
+  <div>
+    <div class="col-header">Application</div>
+    <div class="panel theme-app">
+      <div class="panel-title">Users</div>
+
+      <div class="actor">
+        <div class="actor-icon">🏭</div>
+        <div>
+          <div class="actor-name">Adebayo</div>
+          <div class="actor-role">Seller / Supplier</div>
+        </div>
+      </div>
+
+      <div class="actor">
+        <div class="actor-icon">🛒</div>
+        <div>
+          <div class="actor-name">TechMart Lagos</div>
+          <div class="actor-role">Buyer / Debtor</div>
+        </div>
+      </div>
+
+      <div class="actor">
+        <div class="actor-icon">💰</div>
+        <div>
+          <div class="actor-name">Chioma</div>
+          <div class="actor-role">Liquidity Provider</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel theme-app" style="margin-top:12px">
+      <div class="panel-title">Inputs</div>
+      <div class="fn-list" style="list-style:none; padding:0;">
+        <div style="font-size:10px; color:#64748b; padding:3px 0; border-bottom:1px solid #1e293b;">Invoice amount</div>
+        <div style="font-size:10px; color:#64748b; padding:3px 0; border-bottom:1px solid #1e293b;">Invoice due date</div>
+        <div style="font-size:10px; color:#64748b; padding:3px 0; border-bottom:1px solid #1e293b;">Buyer wallet address</div>
+        <div style="font-size:10px; color:#38bdf8; padding:3px 0;">Buyer Credit Score <span class="tag tag-new">computed</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Col 2: Backend ── -->
+  <div>
+    <div class="col-header">Backend — Node.js API</div>
+    <div class="panel theme-backend">
+      <div class="panel-title">Credit Score Pipeline</div>
+
+      <div class="service">
+        <div class="service-name">ComputeCreditScoreUseCase <span class="tag tag-new">new</span></div>
+        <div class="service-detail">
+          Queries settled escrows<br/>
+          5-signal formula → 0–1000<br/>
+          payment rate · DSO · volume<br/>
+          default rate · tenure
+        </div>
+      </div>
+
+      <div class="service">
+        <div class="service-name">FheService.encryptCreditScore() <span class="tag tag-new">new</span></div>
+        <div class="service-detail">
+          score → euint64 ciphertext<br/>
+          FHE Worker @ :3001<br/>
+          returns EncryptedValue<br/>
+          → ABI-encoded riskProof bytes
+        </div>
+      </div>
+    </div>
+
+    <div class="panel theme-backend" style="margin-top:12px">
+      <div class="panel-title">Webhook &amp; Events</div>
+
+      <div class="service">
+        <div class="service-name">ProcessEscrowEventUseCase</div>
+        <div class="service-detail">
+          EscrowCreated → markAsOnChain()<br/>
+          EscrowSettled → markAsSettled()<br/>
+          &nbsp;&nbsp;records settledAt timestamp<br/>
+          &nbsp;&nbsp;→ triggers recomputeScore()
+        </div>
+      </div>
+
+      <div class="service">
+        <div class="service-name">QuickNode Webhook</div>
+        <div class="service-detail">
+          Listens: EscrowCreated<br/>
+          Listens: EscrowSettled<br/>
+          Verifies x-qn-signature<br/>
+          Fires on every block event
+        </div>
+      </div>
+    </div>
+
+    <div class="panel theme-backend" style="margin-top:12px">
+      <div class="panel-title">Storage</div>
+      <div class="service">
+        <div class="service-name">PostgreSQL (Drizzle ORM)</div>
+        <div class="service-detail">
+          escrows: amount, deadline,<br/>
+          status, settledAt <span class="tag tag-new">new</span><br/>
+          users, businessProfiles<br/>
+          escrowEvents, withdrawals
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Col 3: Core Contracts ── -->
+  <div>
+    <div class="col-header">Host Chain — Arbitrum Sepolia · Core Protocol Contracts</div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+
+      <!-- ConfidentialEscrow -->
+      <div class="panel theme-core">
+        <div class="panel-title">Escrow Layer</div>
+        <div class="contract">
+          <div class="contract-name green">ConfidentialEscrow</div>
+          <ul class="fn-list">
+            <li><span class="highlight">createEscrow()</span> <span class="tag tag-ext">→ Resolver</span></li>
+            <li>settleDebt() <span style="font-size:9px;color:#475569;">buyer pays</span></li>
+            <li><span class="highlight">settleEscrow()</span> <span class="tag tag-ext">→ Resolver</span></li>
+            <li>cancelEscrow()</li>
+          </ul>
+          <div style="margin-top:8px; font-size:9px; color:#475569; border-top:1px solid rgba(255,255,255,0.05); padding-top:6px;">
+            Trade credit model:<br/>no upfront seller deposit<br/>buyer funds at settlement
+          </div>
+        </div>
+      </div>
+
+      <!-- PremiumPool -->
+      <div class="panel theme-core">
+        <div class="panel-title">Liquidity Layer</div>
+        <div class="contract">
+          <div class="contract-name blue">PremiumPool</div>
+          <ul class="fn-list">
+            <li>provideLiquidity()</li>
+            <li>removeLiquidity() <span style="font-size:9px;color:#475569;">48h lock</span></li>
+            <li>depositPremium() <span style="font-size:9px;color:#475569;">5% fee</span></li>
+            <li><span class="highlight">withdrawPayout()</span></li>
+            <li>viewEarnings()</li>
+          </ul>
+          <div style="margin-top:8px; font-size:9px; color:#475569; border-top:1px solid rgba(255,255,255,0.05); padding-top:6px;">
+            Share-based LP vault<br/>premiums increase share value<br/>claims reduce pool balance
+          </div>
+        </div>
+      </div>
+
+      <!-- ConfidentialCoverageManager — spans both cols -->
+      <div class="panel theme-core" style="grid-column: 1 / -1;">
+        <div class="panel-title">Insurance Layer</div>
+        <div class="contract">
+          <div class="contract-name green">ConfidentialCoverageManager</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+            <ul class="fn-list">
+              <li>createCoverage() <span class="tag tag-ext">→ Policy</span></li>
+              <li><span class="highlight">payPremium(riskProof)</span> <span class="tag tag-new">updated</span></li>
+            </ul>
+            <ul class="fn-list">
+              <li>fileClaim() <span class="tag tag-ext">→ Policy</span></li>
+              <li>transferPoolOwnership()</li>
+            </ul>
+          </div>
+          <div style="margin-top:8px; font-size:9px; color:#475569; border-top:1px solid rgba(255,255,255,0.05); padding-top:6px;">
+            payPremium() now calls evaluateRisk(escrowId, riskProof) to derive premium from encrypted credit score
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Col 4: Plugin Contracts ── -->
+  <div>
+    <div class="col-header">Prova Plugin Contracts</div>
+
+    <!-- IConditionResolver plugin -->
+    <div class="panel theme-plugin">
+      <div class="panel-title">IConditionResolver</div>
+      <div class="contract">
+        <div class="contract-name yellow">ProvaPaymentResolver</div>
+        <ul class="fn-list">
+          <li><span class="highlight">onConditionSet()</span></li>
+          <li style="color:#64748b; font-size:9px; padding-left:14px;">decodes (buyer, amount, dueDate)</li>
+          <li style="color:#64748b; font-size:9px; padding-left:14px;">validates + stores config</li>
+          <li><span class="highlight">isConditionMet()</span> <span style="font-size:9px;color:#475569;">view</span></li>
+          <li style="color:#64748b; font-size:9px; padding-left:14px;">block.timestamp ≥ dueDate</li>
+          <li>supportsInterface() <span class="tag tag-ext">ERC-165</span></li>
+        </ul>
+        <div style="margin-top:8px; font-size:9px; color:#475569; border-top:1px solid rgba(255,255,255,0.05); padding-top:6px;">
+          Replay protection via set flag<br/>
+          ReentrancyGuard on write<br/>
+          Gas &lt;50k on isConditionMet
+        </div>
+      </div>
+    </div>
+
+    <!-- IUnderwriterPolicy plugin -->
+    <div class="panel theme-plugin" style="margin-top:12px">
+      <div class="panel-title">IUnderwriterPolicy</div>
+      <div class="contract">
+        <div class="contract-name yellow">ProvaUnderwriterPolicy</div>
+        <ul class="fn-list">
+          <li><span class="highlight">onPolicySet()</span></li>
+          <li style="color:#64748b; font-size:9px; padding-left:14px;">stores basePremiumBps, minScore</li>
+          <li><span class="highlight">evaluateRisk(riskProof)</span> <span class="tag tag-fhe">FHE</span></li>
+          <li style="color:#64748b; font-size:9px; padding-left:14px;">decodes InEuint32 credit score</li>
+          <li style="color:#64748b; font-size:9px; padding-left:14px;">FHE.gte(score, 700)</li>
+          <li style="color:#64748b; font-size:9px; padding-left:14px;">FHE.select → multiplier 1× or 2×</li>
+          <li style="color:#64748b; font-size:9px; padding-left:14px;">returns encrypted riskScore bps</li>
+          <li><span class="highlight">judge(disputeProof)</span></li>
+          <li style="color:#64748b; font-size:9px; padding-left:14px;">validates claim → ebool verdict</li>
+          <li>supportsInterface() <span class="tag tag-ext">ERC-165</span></li>
+        </ul>
+        <div style="margin-top:8px; font-size:9px; color:#475569; border-top:1px solid rgba(255,255,255,0.05); padding-top:6px;">
+          Score never revealed on-chain<br/>
+          925 ≥ 700 → 200 bps (2%)<br/>
+          420 &lt; 700 → 400 bps (4%)
+        </div>
+      </div>
+    </div>
+
+    <!-- MockERC20 -->
+    <div class="panel theme-plugin" style="margin-top:12px; opacity:0.6;">
+      <div class="panel-title">Testing Only</div>
+      <div class="contract">
+        <div class="contract-name" style="color:#94a3b8;">MockERC20</div>
+        <ul class="fn-list">
+          <li>mint(address, amount)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── FHE Row ── -->
+  <div class="fhe-row">
+    <div class="col-header" style="margin-bottom:10px;">FHE Layer — CoFHE (Fhenix)</div>
+    <div class="panel theme-fhe">
+      <div style="display:flex; align-items:stretch; gap:0; justify-content:center; flex-wrap:wrap;">
+
+        <div class="fhe-node">
+          <div class="fhe-node-title">FHE Worker</div>
+          <div class="fhe-node-sub">:3001 — encryptBatch()<br/>euint64 · eaddress · ebool</div>
+        </div>
+        <div class="fhe-arrow">→</div>
+
+        <div class="fhe-node">
+          <div class="fhe-node-title">Verifier</div>
+          <div class="fhe-node-sub">Validates inputProof<br/>on encrypted inputs</div>
+        </div>
+        <div class="fhe-arrow">→</div>
+
+        <div class="fhe-node">
+          <div class="fhe-node-title">Coordinator</div>
+          <div class="fhe-node-sub">Dispatches ciphertext<br/>to permitted recipients</div>
+        </div>
+        <div class="fhe-arrow">→</div>
+
+        <div class="fhe-node">
+          <div class="fhe-node-title">Preprocessor</div>
+          <div class="fhe-node-sub">FHE.allowThis()<br/>FHE.allow(value, caller)</div>
+        </div>
+        <div class="fhe-arrow">→</div>
+
+        <div class="fhe-node">
+          <div class="fhe-node-title">Threshold Network</div>
+          <div class="fhe-node-sub">Distributed key-holders<br/>async decryption only</div>
+        </div>
+
+      </div>
+
+      <div style="margin-top:12px; display:grid; grid-template-columns:repeat(3,1fr); gap:8px; border-top:1px solid rgba(192,132,252,0.15); padding-top:12px;">
+        <div style="font-size:9px; color:#7c3aed; text-align:center;">
+          <div style="color:#c084fc; font-weight:700; margin-bottom:3px;">Credit Score Input</div>
+          rawScore 925 (bigint)<br/>→ euint64 ciphertext<br/>→ riskProof bytes
+        </div>
+        <div style="font-size:9px; color:#7c3aed; text-align:center;">
+          <div style="color:#c084fc; font-weight:700; margin-bottom:3px;">Homomorphic Ops</div>
+          FHE.gte(score, 700)<br/>FHE.select(isLow, 1, 2)<br/>FHE.mul(base, multiplier)
+        </div>
+        <div style="font-size:9px; color:#7c3aed; text-align:center;">
+          <div style="color:#c084fc; font-weight:700; margin-bottom:3px;">Escrow Data</div>
+          amount → euint64<br/>owner → eaddress<br/>never plaintext on-chain
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

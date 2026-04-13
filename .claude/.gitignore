@@ -1,0 +1,18 @@
+# Local tool permissions -- personal, never share
+settings.local.json
+
+# Generated weekly plan outputs -- commit only if you want history
+# Remove the next line to start tracking weekly plans
+weekly-plans/
+
+# Generated PDF exports -- large binary files, don't commit
+exports/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+*.swp
+*.swo
+.idea/

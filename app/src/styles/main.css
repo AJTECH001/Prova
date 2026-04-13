@@ -1,0 +1,170 @@
+@import "tailwindcss";
+
+html {
+  scroll-behavior: smooth;
+}
+
+:root {
+  /* =========================================
+     PROVA DESIGN TOKENS (STRUCTURAL)
+     ========================================= */
+
+  /* Blur Effects */
+  --blur-sm: 6px;
+  --blur-md: 12px;
+  --blur-lg: 20px;
+  --blur-xl: 24px;
+  --glass-blur: var(--blur-xl);
+
+  /* Radii */
+  --radius-minimal: 4px;
+  --radius-subtle: 8px;
+  --radius-button: 10px;
+  --radius-input: 10px;
+  --radius-block: 16px;
+  --radius-lg: 20px;
+  --radius-full: 9999px;
+
+  /* Animation Easing */
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+  --duration-slow: 300ms;
+
+  /* Layout */
+  --header-height: 72px;
+  --content-max-width: 1280px;
+
+  /* Z-Index */
+  --z-base: 0;
+  --z-sticky: 10;
+  --z-header: 50;
+  --z-modal: 100;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+}
+
+:root, .dark {
+  /* ── Backgrounds (Light Theme Switch) ── */
+  --bg-page: 0 0% 100%;                /* Pure White */
+  --bg-glass-white: 0 0% 100% / 0.7;      /* More opaque white for light glass */
+  --bg-surface: 0 0% 100% / 0.8;          /* Bright white surfaces */
+  --bg-surface-alt: 210 40% 96%;
+  --bg-sidebar: 210 40% 97%;
+  --bg-code: 210 40% 94%;
+  --bg-code-header: 214 32% 91% / 0.4;
+  --bg-hover: 214 32% 91% / 0.6;
+  --bg-active: 221 83% 53% / 0.1;
+
+  /* ── Brand (Prioritized Colors - Adjusted for Light Contrast) ── */
+  /* 1. Deep Blue — Primary (Trust & Actions) */
+  --brand-primary: 221 83% 53%;          /* #2563eb */
+  --brand-primary-hover: 221 83% 45%;    
+  --brand-primary-light: 221 83% 53% / 0.1;
+  --brand-primary-ring: 221 83% 53% / 0.2;
+
+  /* 2. Emerald Green — State (Success & Money) */
+  --brand-emerald: 160 84% 35%;          /* Slightly deeper for light mode */
+  --brand-emerald-hover: 160 84% 30%;
+  --brand-emerald-light: 160 84% 35% / 0.1;
+  --brand-emerald-ring: 160 84% 35% / 0.2;
+
+  /* 3. Purple — Differentiation (Privacy / ZK layer) */
+  --brand-purple: 271 91% 60%;           /* Slightly deeper */
+  --brand-purple-hover: 271 91% 55%;
+  --brand-purple-light: 271 91% 60% / 0.1;
+  --brand-purple-ring: 271 91% 60% / 0.2;
+
+  /* Accent Steel */
+  --brand-steel: 215 16% 47%;           
+  --brand-steel-light: 215 16% 47% / 0.1;
+
+  /* ── Text (Light Mode Hierarchy) ── */
+  --text-primary: 222 47% 11%;          /* Deep Slate #0f172a */
+  --text-secondary: 215 16% 30%;        /* #334155 */
+  --text-muted: 215 16% 47%;            /* #64748b */
+  --text-faint: 215 16% 47% / 0.6;
+  --text-on-brand: 0 0% 100%;
+
+  /* ── Borders (Light Mode) ── */
+  --border-default: 214 32% 91%;         /* #e2e8f0 */
+  --border-subtle: 214 32% 91% / 0.5;
+  --border-strong: 203 23% 82%;          /* #cbd5e1 */
+
+  /* ── Semantic — Callouts (Adjusted for white bg) ── */
+  --info-bg: 221 83% 53% / 0.05;
+  --info-border: 221 83% 53% / 0.3;
+  --info-text: 221 83% 45%;
+
+  --warning-bg: 38 92% 50% / 0.05;
+  --warning-border: 38 92% 50% / 0.3;
+  --warning-text: 38 92% 40%;
+
+  --tip-bg: 160 84% 35% / 0.05;
+  --tip-border: 160 84% 35% / 0.3;
+  --tip-text: 160 84% 30%;
+
+  --danger-bg: 0 84% 60% / 0.05;
+  --danger-border: 0 84% 60% / 0.3;
+  --danger-text: 0 84% 50%;
+
+  /* ── Shadows (Softer for light mode) ── */
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.1);
+
+  /* ── Semantic Aliases ── */
+  --background: hsl(var(--bg-page));
+  --background-secondary: hsl(var(--bg-surface-alt));
+  --foreground: hsl(var(--text-primary));
+  --border-dark: hsl(var(--border-default));
+  
+  --accent-blue: hsl(var(--brand-primary));
+  --accent-blue-hover: hsl(var(--brand-primary-hover));
+  --accent-blue-bg: hsl(var(--brand-primary-light));
+  
+  --status-success: hsl(var(--brand-emerald));
+  --status-error: hsl(var(--danger-text));
+  --status-warning: hsl(var(--warning-text));
+}
+
+body {
+  background-color: hsl(var(--bg-page));
+  color: hsl(var(--text-primary));
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+::-webkit-calendar-picker-indicator {
+  filter: invert(0.7);
+  cursor: pointer;
+}
+
+input[type="date"] {
+  color-scheme: dark;
+}

@@ -1,0 +1,49 @@
+{
+  // .claude/ markdown style rules
+  // Docs: https://github.com/DavidAnson/markdownlint/blob/main/doc/Rules.md
+
+  "default": true,
+
+  // Tables without leading/trailing pipes are fine
+  "MD055": false,
+  "MD056": false,
+
+  // Table pipe alignment -- off: cosmetic, editor handles this
+  "MD060": false,
+
+  // Allow long lines -- strategy docs have tables that exceed 80 chars
+  "MD013": false,
+
+  // Allow multiple headings with the same text (personas, sections repeat names)
+  "MD024": false,
+
+  // Allow raw HTML (used in brief.md and some skill files)
+  "MD033": false,
+
+  // First line doesn't have to be H1 (agent files start with frontmatter)
+  "MD041": false,
+
+  // Allow emphasis inside headings
+  "MD036": false,
+
+  // Inline HTML allowed in tables
+  "MD049": false,
+
+  // Ordered list item prefixes -- use "ordered" (1. 2. 3.) not "one" (1. 1. 1.)
+  "MD029": { "style": "ordered" },
+
+  // Code blocks language -- off: docs/agent files use unlabelled blocks for templates
+  "MD040": false,
+
+  // No trailing spaces (except markdown line breaks)
+  "MD009": { "br_spaces": 2 },
+
+  // Blank lines around headings
+  "MD022": true,
+
+  // Blank lines around lists -- off: agent files use compact lists intentionally
+  "MD032": false,
+
+  // No bare URLs -- use [text](url) format
+  "MD034": true
+}
