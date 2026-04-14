@@ -47,34 +47,36 @@ export function TransactionList({ transactions, loading, hasMore, onLoadMore, on
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead>
-            <tr className="border-b border-[var(--border-dark)] text-[var(--text-secondary)]">
-              <th className="pb-3 pr-4 font-medium">Reference</th>
-              <th className="pb-3 pr-4 font-medium">Counterparty</th>
-              <th className="pb-3 pr-4 font-medium">Amount</th>
-              <th className="pb-3 pr-4 font-medium">Due Date</th>
-              <th className="pb-3 pr-4 font-medium">Status</th>
-              <th className="pb-3 font-medium">Created</th>
+            <tr className="border-b border-[var(--border-dark)]">
+              <th className="pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Reference</th>
+              <th className="pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Counterparty</th>
+              <th className="pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Amount</th>
+              <th className="pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Due Date</th>
+              <th className="pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Status</th>
+              <th className="pb-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Created</th>
             </tr>
           </thead>
           <tbody>
             {transactions.map((transaction) => (
               <tr
                 key={transaction.public_id}
-                className="border-b border-[var(--border-dark)] last:border-0 cursor-pointer hover:bg-[var(--background-secondary)] transition-colors"
+                className="border-b border-[var(--border-dark)] last:border-0 cursor-pointer hover:bg-[hsl(var(--bg-hover))] transition-colors"
                 onClick={() => onSelect?.(transaction)}
               >
-                <td className="py-3 pr-4 font-medium text-[var(--text-primary)]">
+                <td className="py-3 pr-4 text-sm font-medium text-[var(--text-primary)]">
                   {transaction.external_reference || '—'}
                 </td>
-                <td className="py-3 pr-4 text-[var(--text-secondary)]">{transaction.counterparty}</td>
-                <td className="py-3 pr-4 font-medium text-[var(--text-primary)]">
-                  {formatAmount(transaction.amount)} USDC
+                <td className="py-3 pr-4 text-sm text-[var(--text-secondary)]">
+                  <span className="font-mono text-xs">{`${transaction.counterparty.slice(0, 6)}...${transaction.counterparty.slice(-4)}`}</span>
                 </td>
-                <td className="py-3 pr-4 text-[var(--text-secondary)]">{formatDate(transaction.deadline)}</td>
+                <td className="py-3 pr-4 text-sm font-semibold text-[var(--text-primary)]">
+                  {formatAmount(transaction.amount)} <span className="text-xs font-normal text-[var(--text-muted)]">USDC</span>
+                </td>
+                <td className="py-3 pr-4 text-sm text-[var(--text-secondary)]">{formatDate(transaction.deadline)}</td>
                 <td className="py-3 pr-4">
                   <Badge variant={statusVariant(transaction.status)}>{transaction.status}</Badge>
                 </td>
-                <td className="py-3 text-[var(--text-secondary)]">{formatDate(transaction.created_at)}</td>
+                <td className="py-3 text-sm text-[var(--text-secondary)]">{formatDate(transaction.created_at)}</td>
               </tr>
             ))}
           </tbody>

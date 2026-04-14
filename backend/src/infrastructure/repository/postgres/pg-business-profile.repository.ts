@@ -3,6 +3,7 @@ import type { IBusinessProfileRepository } from '../../../domain/business-profil
 import {
   BusinessProfile,
   type BusinessType,
+  type KybStatus,
 } from '../../../domain/business-profile/model/business-profile.js';
 import { businessProfiles } from './schema.js';
 import type { Db } from './db.js';
@@ -29,6 +30,9 @@ export class PgBusinessProfileRepository
         businessType: profile.businessType,
         businessAddress: profile.businessAddress,
         taxId: profile.taxId,
+        country: profile.country ?? null,
+        registrationNumber: profile.registrationNumber ?? null,
+        kybStatus: profile.kybStatus,
       })
       .onConflictDoUpdate({
         target: businessProfiles.userId,
@@ -37,6 +41,8 @@ export class PgBusinessProfileRepository
           businessType: profile.businessType,
           businessAddress: profile.businessAddress,
           taxId: profile.taxId,
+          country: profile.country ?? null,
+          registrationNumber: profile.registrationNumber ?? null,
         },
       });
   }
@@ -51,6 +57,9 @@ export class PgBusinessProfileRepository
       businessType: row.businessType as BusinessType,
       businessAddress: row.businessAddress ?? undefined,
       taxId: row.taxId ?? undefined,
+      country: row.country ?? undefined,
+      registrationNumber: row.registrationNumber ?? undefined,
+      kybStatus: row.kybStatus as KybStatus,
     });
   }
 }

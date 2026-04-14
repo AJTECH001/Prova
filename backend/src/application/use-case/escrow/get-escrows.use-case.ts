@@ -18,6 +18,10 @@ function toEscrowResponse(escrow: Escrow): EscrowResponse {
     tx_hash: escrow.txHash,
     metadata: escrow.metadata,
     created_at: escrow.createdAt.toISOString(),
+    resolver_address: escrow.resolverAddress,
+    pool_address: escrow.poolAddress,
+    policy_address: escrow.policyAddress,
+    coverage_id: escrow.coverageId,
   };
 }
 

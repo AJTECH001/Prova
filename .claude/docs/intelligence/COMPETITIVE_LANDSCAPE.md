@@ -2,36 +2,46 @@
 role: intelligence
 depends-on: []
 triggers: [new competitor, market shift]
-last-reviewed: 2026-03-20
+last-reviewed: 2026-04-14
 ---
 
-# Competitive Landscape — {venture_name}
+# Competitive Landscape — PROVA
 
 ## Direct Competitors
 
-| Competitor   | What They Do  | Weakness   | Our Advantage     |
-| ------------ | ------------- | ---------- | ----------------- |
-| {from brief} | {description} | {weakness} | {FHE/escrow edge} |
+| Competitor      | What They Do                             | Weakness                        | Our Advantage                         |
+| --------------- | ---------------------------------------- | ------------------------------- | ------------------------------------- |
+| Euler Finance   | On-chain credit / lending                | No trade-specific insurance     | FHE credit scoring, invoice-native    |
+| Credix          | Emerging market credit pools             | Custodial, not FHE-encrypted    | Non-custodial, confidential amounts   |
+| Coface / Euler  | Traditional trade credit insurance       | Slow, expensive, offline        | On-chain settlement in minutes        |
+| Atradius        | Traditional TCI for large exporters      | Min deal size $1M+, manual UW   | SME-first, automated FHE risk pricing |
 
 ## Indirect Competitors / Workarounds
 
-{from brief — what do people currently do instead?}
+What SME exporters currently do instead:
+- Letter of Credit (LC) via banks — expensive, slow (weeks), paper-based
+- Pay upfront / partial deposit — leaves exporter capital exposed
+- Factor invoices (sell receivables) — expensive haircut (3-8%)
+- Go uninsured — accept buyer default risk
 
 ## FHE Advantage
 
-| Feature             | {venture_name} | Traditional | Other DeFi |
-| ------------------- | -------------- | ----------- | ---------- |
-| Confidential escrow | Yes            | No          | No         |
-| Encrypted risk eval | Yes            | No          | No         |
-| Non-custodial       | Yes            | No          | Partial    |
-| Cross-chain (CCTP)  | Yes            | No          | Partial    |
-| Pluggable policies  | Yes            | No          | No         |
+| Feature                     | PROVA | Traditional TCI | Other DeFi |
+| --------------------------- | ----- | --------------- | ---------- |
+| Confidential invoice amounts| Yes   | No              | No         |
+| Encrypted risk evaluation   | Yes   | No              | No         |
+| Non-custodial settlement    | Yes   | No              | Partial    |
+| Cross-chain (CCTP)          | Yes   | No              | Partial    |
+| Pluggable underwriting      | Yes   | No              | No         |
+| On-chain in minutes         | Yes   | No (weeks)      | Yes        |
+| SME-accessible (AA wallet)  | Yes   | No              | No         |
 
 ## Positioning
 
-{One sentence — from brief's unfair advantage}
+PROVA is the first trade credit insurance platform where invoice amounts are provably private on-chain, settlement is automated, and risk pricing is computed via FHE — not disclosed to underwriters.
 
 ## Threats to Watch
 
-1. {potential threat}
-2. {potential threat}
+1. **Euler Finance or Aave** entering trade finance with larger liquidity pools
+2. **Traditional insurers (Coface, Atradius)** launching tokenized insurance products
+3. **Competitor FHE chains** (e.g., Zama) enabling similar products on other EVM chains

@@ -1,22 +1,35 @@
-import { ethers } from "hardhat";
-import { Encryptable } from "@cofhe/sdk";
-import { createCofheConfig, createCofheClient } from "@cofhe/sdk/node";
-import { arbSepolia } from "@cofhe/sdk/chains";
+/**
+ * PROVA — End-to-end integration script
+ *
+ * Flow:
+ *   1. Create an insurance pool (Reineira PoolFactory)
+ *   2. Add ProvaUnderwriterPolicy to the pool
+ *   3. Stake liquidity into the pool
+ *   4. Create an escrow with ProvaPaymentResolver + pool insurance
+ *   5. Fund the escrow
+ *   6. Wait for resolver condition → redeem
+ *
+ * Prerequisites:
+ *   - ProvaPaymentResolver and ProvaUnderwriterPolicy already deployed
+ *   - PRIVATE_KEY and ARBITRUM_SEPOLIA_RPC_URL set in .env
+ */
 
-// ─── Deployed addresses (arbitrumSepolia 2026-04-12) ─────────────────────────
-const ADDR = {
-  token:    "0xAB002F6021394E977D77b8bA3Cc2661264683C93",
-  pool:     "0xe3194E9bCeF8f881fC6afcAa4508409C03DA2417",
-  manager:  "0xA00aF5437621784b328e8F1113E50711336f0040",
-  resolver: "0x165d343b55e8490d544d0CeB8fb05A30DEd39E2d",
-  policy:   "0x3575E70503B508E59Cb0Ead6A97bfF090F34779a",
-  escrow:   "0x0a30F0Fa8539d6F97B77567bD13573290F43b7b1",
+import { ReineiraSDK } from "@reineira-os/sdk";
+import { ethers } from "hardhat";
+import * as dotenv from "dotenv";
+dotenv.config();
+
+// ── Your deployed plugin contracts ────────────────────────────────────────────
+// Fill these in after running: npx hardhat run scripts/deploy.ts --network arbitrumSepolia
+const DEPLOYED = {
+  resolver: process.env.RESOLVER_ADDRESS ?? "",
+  policy:   process.env.POLICY_ADDRESS   ?? "",
 };
 
-// ─── Logging helpers ──────────────────────────────────────────────────────────
-const pass = (label: string, detail = "") =>
+// ── Logging helpers ───────────────────────────────────────────────────────────
+const pass    = (label: string, detail = "") =>
   console.log(`  ✅  ${label}${detail ? "  →  " + detail : ""}`);
-const fail = (label: string, err: any) =>
+const fail    = (label: string, err: any) =>
   console.log(`  ❌  ${label}  →  ${err?.reason ?? err?.message ?? err}`);
 const section = (title: string) => {
   console.log(`\n${"─".repeat(64)}`);
@@ -24,281 +37,152 @@ const section = (title: string) => {
   console.log("─".repeat(64));
 };
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// ── Main ──────────────────────────────────────────────────────────────────────
 async function main() {
+  if (!DEPLOYED.resolver || !DEPLOYED.policy) {
+    console.error(
+      "Set RESOLVER_ADDRESS and POLICY_ADDRESS in .env (run deploy.ts first)"
+    );
+    process.exit(1);
+  }
+
   const [wallet] = await ethers.getSigners();
   console.log("\n🔑  Wallet  :", wallet.address);
   console.log("🌐  Network :", (await ethers.provider.getNetwork()).name);
 
-  const token    = await ethers.getContractAt("MockERC20",                   ADDR.token,    wallet);
-  const pool     = await ethers.getContractAt("PremiumPool",                 ADDR.pool,     wallet);
-  const manager  = await ethers.getContractAt("ConfidentialCoverageManager", ADDR.manager,  wallet);
-  const resolver = await ethers.getContractAt("ProvaPaymentResolver",        ADDR.resolver, wallet);
-  const policy   = await ethers.getContractAt("ProvaUnderwriterPolicy",      ADDR.policy,   wallet);
-  const escrow   = await ethers.getContractAt("ConfidentialEscrow",          ADDR.escrow,   wallet);
+  // ── Initialize Reineira SDK ───────────────────────────────────────────────
+  const sdk = ReineiraSDK.create({
+    network: "testnet",
+    rpcUrl: process.env.ARBITRUM_SEPOLIA_RPC_URL!,
+    privateKey: process.env.PRIVATE_KEY!,
+  });
+  await sdk.initialize();
+  pass("SDK initialized");
 
   // ══════════════════════════════════════════════════════════════════════════
-  section("1 · TOKEN  —  mint & read");
+  section("1 · Create Insurance Pool");
   // ══════════════════════════════════════════════════════════════════════════
+  // Creates a new pool via Reineira's PoolFactory.
+  // cUSDC (confidential USDC) is the payment token on Arbitrum Sepolia.
+
+  let pool: any;
+  try {
+    pool = await sdk.insurance.createPool({
+      paymentToken: sdk.addresses.confidentialUSDC,
+    });
+    pass("createPool", `id=${pool.id}  address=${pool.address}`);
+  } catch (e) { fail("createPool", e); process.exit(1); }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  section("2 · Add ProvaUnderwriterPolicy to pool");
+  // ══════════════════════════════════════════════════════════════════════════
+  // The pool must whitelist the policy before any coverage can be purchased.
 
   try {
-    const [name, symbol] = await Promise.all([token.name(), token.symbol()]);
-    pass("Identity", `${name} (${symbol})`);
-  } catch (e) { fail("Identity", e); }
+    await pool.addPolicy(DEPLOYED.policy);
+    pass("addPolicy", DEPLOYED.policy);
+  } catch (e) { fail("addPolicy", e); }
 
+  // ══════════════════════════════════════════════════════════════════════════
+  section("3 · Stake liquidity into the pool");
+  // ══════════════════════════════════════════════════════════════════════════
+  // Staked liquidity backs the coverage sold by this pool.
+  // Premiums accumulate in the pool as coverage is purchased.
+
+  let stakeId: any;
+  const STAKE_AMOUNT = sdk.usdc(5000);
   try {
-    await (await token.mint(wallet.address, ethers.parseUnits("10000", 18))).wait();
-    const bal = await token.balanceOf(wallet.address);
-    pass("Mint 10,000 PROVA", `balance = ${ethers.formatUnits(bal, 18)} PROVA`);
-  } catch (e) { fail("Mint", e); }
+    const { stakeId: id } = await pool.stake(STAKE_AMOUNT, { autoApprove: true });
+    stakeId = id;
+    pass("stake", `stakeId=${stakeId}  amount=5000 USDC`);
+  } catch (e) { fail("stake", e); }
 
   // ══════════════════════════════════════════════════════════════════════════
-  section("2 · ESCROW  —  create");
+  section("4 · Build resolver data for ProvaPaymentResolver");
   // ══════════════════════════════════════════════════════════════════════════
+  // ProvaPaymentResolver.onConditionSet(escrowId, data) expects:
+  //   abi.encode(address buyer, uint256 amount, uint256 dueDate)
 
-  const INVOICE   = ethers.parseUnits("1000", 18);
-  const DUE_DATE  = Math.floor(Date.now() / 1000) + 120; // 2 min from now
+  const INVOICE_AMOUNT = sdk.usdc(1000);
+  const DUE_DATE       = Math.floor(Date.now() / 1000) + 86400; // 24 h from now
+  const COVERAGE_EXPIRY = Math.floor(Date.now() / 1000) + 86400 * 30; // 30 days
 
   const resolverData = ethers.AbiCoder.defaultAbiCoder().encode(
     ["address", "uint256", "uint256"],
-    [wallet.address, INVOICE, DUE_DATE]
+    [wallet.address, INVOICE_AMOUNT, DUE_DATE]
   );
-
-  let escrowId = 0n;
-  try {
-    const tx  = await escrow.createEscrow(wallet.address, ADDR.token, INVOICE, ADDR.resolver, resolverData);
-    const rec = await tx.wait();
-    const ev  = rec?.logs
-      .map((l: any) => { try { return escrow.interface.parseLog(l); } catch { return null; } })
-      .find((e: any) => e?.name === "EscrowCreated");
-    escrowId = ev?.args?.escrowId ?? 0n;
-    pass("createEscrow", `id=${escrowId}  due=${new Date(DUE_DATE * 1000).toLocaleTimeString()}`);
-  } catch (e) { fail("createEscrow", e); }
+  pass("resolverData encoded", `buyer=${wallet.address}  dueDate=${new Date(DUE_DATE * 1000).toISOString()}`);
 
   // ══════════════════════════════════════════════════════════════════════════
-  section("3 · RESOLVER  —  condition config & ERC-165");
+  section("5 · Create Escrow with resolver + insurance");
   // ══════════════════════════════════════════════════════════════════════════
+  // Full create: sets ProvaPaymentResolver as condition, attaches pool coverage.
 
+  let escrow: any;
   try {
-    const c = await resolver.conditions(escrowId);
-    pass("Condition stored", `buyer=${c.buyer}  amount=${ethers.formatUnits(c.amount, 18)}`);
-  } catch (e) { fail("conditions()", e); }
-
-  try {
-    const met = await resolver.isConditionMet(escrowId);
-    pass("isConditionMet  (before due date)", `= ${met}  — expected false`);
-  } catch (e) { fail("isConditionMet", e); }
-
-  try {
-    const ok = await resolver.supportsInterface("0x01ffc9a7");
-    pass("ERC-165  IConditionResolver", `= ${ok}`);
-  } catch (e) { fail("ERC-165", e); }
-
-  // ══════════════════════════════════════════════════════════════════════════
-  section("4 · COVERAGE MANAGER  —  create coverage");
-  // ══════════════════════════════════════════════════════════════════════════
-
-  const policyData = ethers.AbiCoder.defaultAbiCoder().encode(
-    ["uint256", "uint256"],
-    [500n, 700n]   // basePremiumBps=500 (5%), minCreditScore=700
-  );
-
-  let coverageId = 0n;
-  try {
-    const tx  = await manager.createCoverage(
-      escrowId, ADDR.policy, wallet.address, ADDR.token, INVOICE, policyData
-    );
-    const rec = await tx.wait();
-    const ev  = rec?.logs
-      .map((l: any) => { try { return manager.interface.parseLog(l); } catch { return null; } })
-      .find((e: any) => e?.name === "CoverageCreated");
-    coverageId = ev?.args?.coverageId ?? 0n;
-    pass("createCoverage", `id=${coverageId}`);
-  } catch (e) { fail("createCoverage", e); }
+    escrow = await sdk.escrow.create({
+      amount:       INVOICE_AMOUNT,
+      owner:        wallet.address,
+      resolver:     DEPLOYED.resolver,
+      resolverData: resolverData,
+      insurance: {
+        pool:           pool.address,
+        policy:         DEPLOYED.policy,
+        coverageAmount: INVOICE_AMOUNT,
+        expiry:         COVERAGE_EXPIRY,
+      },
+    });
+    pass("createEscrow", `id=${escrow.id}`);
+    pass("coverage",     `id=${escrow.coverage?.id}`);
+  } catch (e) { fail("createEscrow", e); process.exit(1); }
 
   // ══════════════════════════════════════════════════════════════════════════
-  section("5 · POLICY  —  stored config, judge, ERC-165");
+  section("6 · Fund escrow");
   // ══════════════════════════════════════════════════════════════════════════
 
   try {
-    const p = await policy.policies(coverageId);
-    pass("Policy stored", `basePremiumBps=${p.basePremiumBps}  minCreditScore=${p.minCreditScore}`);
-  } catch (e) { fail("policies()", e); }
-
-  try {
-    const proof   = ethers.AbiCoder.defaultAbiCoder().encode(["uint256"], [1]);
-    const verdict = await policy.judge.staticCall(coverageId, proof);
-    pass("judge()  static call", `verdict = ${verdict}`);
-  } catch (e) { fail("judge()", e); }
-
-  try {
-    const ok = await policy.supportsInterface("0x80bcb11e");
-    pass("ERC-165  IUnderwriterPolicy", `= ${ok}`);
-  } catch (e) { fail("ERC-165", e); }
-
-  try {
-    const [threshold, low, high] = await Promise.all([
-      policy.CREDIT_SCORE_THRESHOLD(),
-      policy.LOW_RISK_MULTIPLIER(),
-      policy.HIGH_RISK_MULTIPLIER(),
-    ]);
-    pass("Risk constants", `threshold=${threshold}  low=${low}x  high=${high}x`);
-  } catch (e) { fail("Risk constants", e); }
+    await escrow.fund(INVOICE_AMOUNT, { autoApprove: true });
+    const funded = await escrow.isFunded();
+    pass("fund", `isFunded=${funded}`);
+  } catch (e) { fail("fund", e); }
 
   // ══════════════════════════════════════════════════════════════════════════
-  section("6 · PREMIUM POOL  —  provide liquidity & view earnings");
+  section("7 · Poll resolver → redeem when condition met");
   // ══════════════════════════════════════════════════════════════════════════
-
-  const LP = ethers.parseUnits("2000", 18);
-  try {
-    await (await token.mint(wallet.address, LP)).wait();
-    await (await token.approve(ADDR.pool, LP)).wait();
-    await (await pool.provideLiquidity(ADDR.token, LP)).wait();
-    const bal = await pool.poolBalances(ADDR.token);
-    pass("provideLiquidity", `pool balance = ${ethers.formatUnits(bal, 18)} PROVA`);
-  } catch (e) { fail("provideLiquidity", e); }
+  // isConditionMet() returns true once block.timestamp >= dueDate.
+  // In production this would be called after the 24 h due date passes.
+  // For a quick smoke-test, check the current state and report.
 
   try {
-    const [value, shares] = await pool.viewEarnings(ADDR.token, wallet.address);
-    pass("viewEarnings", `value=${ethers.formatUnits(value, 18)}  shares=${ethers.formatUnits(shares, 18)}`);
-  } catch (e) { fail("viewEarnings", e); }
+    const conditionMet = await escrow.isConditionMet();
+    const redeemable   = await escrow.isRedeemable();
+    pass("isConditionMet", `= ${conditionMet}  (due date: ${new Date(DUE_DATE * 1000).toISOString()})`);
+    pass("isRedeemable",   `= ${redeemable}`);
 
-  // ══════════════════════════════════════════════════════════════════════════
-  section("7 · ESCROW  —  settleDebt (buyer pays invoice)");
-  // ══════════════════════════════════════════════════════════════════════════
-
-  try {
-    await (await token.mint(wallet.address, INVOICE)).wait();
-    await (await token.approve(ADDR.escrow, INVOICE)).wait();
-    await (await escrow.settleDebt(escrowId, INVOICE)).wait();
-    const funded = await escrow.escrowBalances(escrowId);
-    pass("settleDebt", `escrowBalance = ${ethers.formatUnits(funded, 18)} PROVA`);
-  } catch (e) { fail("settleDebt", e); }
-
-  // ══════════════════════════════════════════════════════════════════════════
-  section("8 · ESCROW  —  wait for due date → settleEscrow");
-  // ══════════════════════════════════════════════════════════════════════════
-
-  console.log("  ⏳  Due date is 2 minutes from escrow creation — polling...\n");
-
-  const SETTLE_AFTER = DUE_DATE + 10;
-  while (true) {
-    const block = await ethers.provider.getBlock("latest");
-    const now   = block!.timestamp;
-    const left  = SETTLE_AFTER - now;
-
-    if (left <= 0) {
-      try {
-        const met = await resolver.isConditionMet(escrowId);
-        if (!met) { fail("settleEscrow", "isConditionMet still false — try again shortly"); break; }
-        await (await escrow.settleEscrow(escrowId)).wait();
-        pass("settleEscrow", "invoice amount released to seller");
-      } catch (e) { fail("settleEscrow", e); }
-      break;
+    if (redeemable) {
+      await escrow.redeem();
+      pass("redeem", "funds released to owner");
+    } else {
+      console.log("  ℹ️   Condition not yet met — call escrow.redeem() after due date passes.");
+      console.log(`  ℹ️   Escrow ID: ${escrow.id}`);
     }
-    process.stdout.write(`\r  ⏳  ${left}s remaining...`);
-    await new Promise(r => setTimeout(r, 12_000));
-  }
-  console.log();
+  } catch (e) { fail("redeem check", e); }
 
   // ══════════════════════════════════════════════════════════════════════════
-  section("9 · ESCROW  —  cancel flow (separate escrow, unfunded)");
-  // ══════════════════════════════════════════════════════════════════════════
-
-  try {
-    const data = ethers.AbiCoder.defaultAbiCoder().encode(
-      ["address", "uint256", "uint256"],
-      [wallet.address, INVOICE, Math.floor(Date.now() / 1000) + 3600]
-    );
-    const tx     = await escrow.createEscrow(wallet.address, ADDR.token, INVOICE, ADDR.resolver, data);
-    const rec    = await tx.wait();
-    const ev     = rec?.logs
-      .map((l: any) => { try { return escrow.interface.parseLog(l); } catch { return null; } })
-      .find((e: any) => e?.name === "EscrowCreated");
-    const cancelId = ev?.args?.escrowId ?? 1n;
-    await (await escrow.cancelEscrow(cancelId)).wait();
-    pass("cancelEscrow  (unfunded)", `escrowId=${cancelId}  no refund needed`);
-  } catch (e) { fail("cancelEscrow", e); }
-
-  // ══════════════════════════════════════════════════════════════════════════
-  section("10 · FHE  —  payPremium via evaluateRisk");
-  // ══════════════════════════════════════════════════════════════════════════
-
-  console.log("  ℹ️   Encrypts credit score via CoFHE SDK (arb-sepolia) and submits to policy.");
-  console.log("  ℹ️   Expects PremiumPending event — settlePremium() completes after CoFHE decrypts.\n");
-
-  try {
-    // ── 1. Build a CoFHE client connected to arb-sepolia ──────────────────
-    const cofheConfig = createCofheConfig({
-      environment: "node",
-      supportedChains: [arbSepolia],
-    });
-    const cofheClient = createCofheClient(cofheConfig);
-
-    // Connect using ethers signer → viem wallet/public clients
-    const { createWalletClient, createPublicClient, http, custom } = await import("viem");
-    const { arbitrumSepolia: arbSepoliaViem } = await import("viem/chains");
-
-    const publicClient = createPublicClient({
-      chain: arbSepoliaViem,
-      transport: http(process.env.ARBITRUM_SEPOLIA_RPC_URL || "https://sepolia-rollup.arbitrum.io/rpc"),
-    });
-    const walletClient = createWalletClient({
-      chain: arbSepoliaViem,
-      transport: custom((wallet.provider as any)),
-      account: wallet.address as `0x${string}`,
-    });
-    await cofheClient.connect(publicClient, walletClient);
-
-    // ── 2. Encrypt credit score 800 as euint32 ────────────────────────────
-    const [encResult] = await cofheClient
-      .encryptInputs([Encryptable.uint32(800n)])
-      .execute();
-
-    // encResult: { ctHash: bigint, utype: number, securityZone: number, signature: Uint8Array }
-    const riskProof = ethers.AbiCoder.defaultAbiCoder().encode(
-      ["tuple(uint256,uint8,uint8,bytes)"],
-      [[encResult.ctHash, encResult.securityZone, encResult.utype, encResult.signature]]
-    );
-    pass("CoFHE encrypt", `ctHash=${encResult.ctHash}  utype=${encResult.utype}`);
-
-    // ── 3. Create fresh coverage and pay premium ───────────────────────────
-    const fhePD = ethers.AbiCoder.defaultAbiCoder().encode(["uint256", "uint256"], [500n, 700n]);
-    const cvTx  = await manager.createCoverage(
-      escrowId, ADDR.policy, wallet.address, ADDR.token, INVOICE, fhePD
-    );
-    const cvRec = await cvTx.wait();
-    const cvEv  = cvRec?.logs
-      .map((l: any) => { try { return manager.interface.parseLog(l); } catch { return null; } })
-      .find((e: any) => e?.name === "CoverageCreated");
-    const fheCovId = cvEv?.args?.coverageId ?? 1n;
-
-    // Pre-approve max coverage amount (exact premium unknown until CoFHE decrypts)
-    await (await token.approve(ADDR.manager, INVOICE)).wait();
-    const pmTx  = await manager.payPremium(fheCovId, riskProof, ADDR.token);
-    const pmRec = await pmTx.wait();
-
-    const paid    = pmRec?.logs.map((l: any) => { try { return manager.interface.parseLog(l); } catch { return null; } }).find((e: any) => e?.name === "PremiumPaid");
-    const pending = pmRec?.logs.map((l: any) => { try { return manager.interface.parseLog(l); } catch { return null; } }).find((e: any) => e?.name === "PremiumPending");
-
-    if (paid)    pass("payPremium  (sync path)", `premium = ${ethers.formatUnits(paid.args.amount, 18)} PROVA`);
-    if (pending) pass("payPremium  (FHE async)", `PremiumPending emitted — call settlePremium(${fheCovId}) after CoFHE decrypts`);
-    if (!paid && !pending) fail("payPremium", "no PremiumPaid or PremiumPending event found");
-  } catch (e) {
-    fail("payPremium / evaluateRisk", e);
-    console.log("  ℹ️   Check CoFHE network availability at https://testnet-cofhe.fhenix.zone");
-  }
-
-  // ══════════════════════════════════════════════════════════════════════════
-  section("COMPLETE");
+  section("SUMMARY");
   // ══════════════════════════════════════════════════════════════════════════
   console.log(`
-  ProvaToken (PROVA)          ${ADDR.token}
-  PremiumPool                 ${ADDR.pool}
-  ConfidentialCoverageManager ${ADDR.manager}
-  ProvaPaymentResolver        ${ADDR.resolver}
-  ProvaUnderwriterPolicy      ${ADDR.policy}
-  ConfidentialEscrow          ${ADDR.escrow}
+  ProvaPaymentResolver    ${DEPLOYED.resolver}
+  ProvaUnderwriterPolicy  ${DEPLOYED.policy}
+  Pool                    ${pool?.address}
+  Escrow ID               ${escrow?.id}
+  Coverage ID             ${escrow?.coverage?.id}
+
+  Reineira platform (pre-deployed):
+    ConfidentialEscrow          0xC4333F84F5034D8691CB95f068def2e3B6DC60Fa
+    ConfidentialCoverageManager 0x766e9508BD41BCE0e788F16Da86B3615386Ff6f6
+    PoolFactory                 0x03bAc36d45fA6f5aD8661b95D73452b3BedcaBFD
+    PolicyRegistry              0xf421363B642315BD3555dE2d9BD566b7f9213c8E
   `);
 }
 

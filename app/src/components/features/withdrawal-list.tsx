@@ -48,28 +48,28 @@ export function WithdrawalList({ withdrawals, loading, hasMore, onLoadMore }: Wi
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead>
-            <tr className="border-b border-[var(--border-dark)] text-[var(--text-secondary)]">
-              <th className="pb-3 pr-4 font-medium">Amount</th>
-              <th className="pb-3 pr-4 font-medium">Chain</th>
-              <th className="pb-3 pr-4 font-medium">Recipient</th>
-              <th className="pb-3 pr-4 font-medium">Status</th>
-              <th className="pb-3 font-medium">Created</th>
+            <tr className="border-b border-[var(--border-dark)]">
+              <th className="pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Amount</th>
+              <th className="pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Chain</th>
+              <th className="pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Recipient</th>
+              <th className="pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Status</th>
+              <th className="pb-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Created</th>
             </tr>
           </thead>
           <tbody>
             {withdrawals.map((w) => (
-              <tr key={w.public_id} className="border-b border-[var(--border-dark)] last:border-0">
-                <td className="py-3 pr-4 font-medium text-[var(--text-primary)]">
-                  {formatAmount(w.actual_amount ?? w.estimated_amount)} USDC
+              <tr key={w.public_id} className="border-b border-[var(--border-dark)] last:border-0 hover:bg-[hsl(var(--bg-hover))] transition-colors">
+                <td className="py-3 pr-4 text-sm font-semibold text-[var(--text-primary)]">
+                  {formatAmount(w.actual_amount ?? w.estimated_amount)} <span className="text-xs font-normal text-[var(--text-muted)]">USDC</span>
                 </td>
-                <td className="py-3 pr-4 text-[var(--text-secondary)] capitalize">{w.destination_chain}</td>
-                <td className="py-3 pr-4 font-mono text-sm text-[var(--text-secondary)]">
+                <td className="py-3 pr-4 text-sm capitalize text-[var(--text-secondary)]">{w.destination_chain}</td>
+                <td className="py-3 pr-4 font-mono text-xs text-[var(--text-secondary)]">
                   {truncateAddress(w.recipient_address)}
                 </td>
                 <td className="py-3 pr-4">
                   <Badge variant={statusVariant(w.status)}>{w.status}</Badge>
                 </td>
-                <td className="py-3 text-[var(--text-secondary)]">{formatDate(w.created_at)}</td>
+                <td className="py-3 text-sm text-[var(--text-secondary)]">{formatDate(w.created_at)}</td>
               </tr>
             ))}
           </tbody>

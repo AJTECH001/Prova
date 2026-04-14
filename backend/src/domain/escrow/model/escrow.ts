@@ -18,6 +18,10 @@ export interface EscrowParams {
   txHash?: string;
   createdAt: Date;
   settledAt?: Date;
+  resolverAddress?: string;
+  poolAddress?: string;
+  policyAddress?: string;
+  coverageId?: string;
 }
 
 export class Escrow {
@@ -37,6 +41,10 @@ export class Escrow {
   txHash?: string;
   readonly createdAt: Date;
   settledAt?: Date;
+  readonly resolverAddress?: string;
+  readonly poolAddress?: string;
+  readonly policyAddress?: string;
+  coverageId?: string;
 
   constructor(params: EscrowParams) {
     this.id = params.id;
@@ -55,6 +63,10 @@ export class Escrow {
     this.txHash = params.txHash;
     this.createdAt = params.createdAt;
     this.settledAt = params.settledAt;
+    this.resolverAddress = params.resolverAddress;
+    this.poolAddress = params.poolAddress;
+    this.policyAddress = params.policyAddress;
+    this.coverageId = params.coverageId;
   }
 
   markAsOnChain(): this {
@@ -75,6 +87,11 @@ export class Escrow {
 
   markAsExpired(): this {
     this.status = EscrowStatus.EXPIRED;
+    return this;
+  }
+
+  markAsFunded(): this {
+    this.status = EscrowStatus.FUNDED;
     return this;
   }
 

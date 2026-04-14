@@ -2556,6 +2556,219 @@
         }
       }
     },
+    "/pool": {
+      "get": {
+        "operationId": "getPoolStatus",
+        "tags": ["Pool"],
+        "summary": "Get pool status and staking metrics",
+        "responses": {
+          "200": {
+            "description": "Pool status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "pool_address": { "type": "string" },
+                        "policy_address": { "type": "string" },
+                        "total_staked": { "type": "string" },
+                        "premiums_earned": { "type": "string" },
+                        "active_stakers": { "type": "integer" },
+                        "chain_id": { "type": "integer" }
+                      },
+                      "required": ["pool_address", "policy_address", "total_staked", "premiums_earned", "active_stakers", "chain_id"]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pool/create": {
+      "post": {
+        "operationId": "createPool",
+        "tags": ["Pool"],
+        "summary": "Get contract call data to create an insurance pool",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "policy_address": {
+                    "type": "string",
+                    "description": "Address of the underwriter policy contract"
+                  },
+                  "initial_liquidity": {
+                    "type": "number",
+                    "description": "Optional initial liquidity amount"
+                  }
+                },
+                "required": ["policy_address"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract call data for pool creation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "call": {
+                          "$ref": "#/components/schemas/ContractCall"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pool/stake": {
+      "post": {
+        "operationId": "stake",
+        "tags": ["Pool"],
+        "summary": "Get contract call data to stake into the pool",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "number",
+                    "description": "Amount to stake in USDC"
+                  },
+                  "pool_address": {
+                    "type": "string",
+                    "description": "Pool contract address (overrides env default)"
+                  }
+                },
+                "required": ["amount"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contract call data for staking",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "public_id": { "type": "string" },
+                        "call": { "$ref": "#/components/schemas/ContractCall" },
+                        "amount": { "type": "number" },
+                        "pool_address": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pool/unstake/{stakeId}": {
+      "post": {
+        "operationId": "unstake",
+        "tags": ["Pool"],
+        "summary": "Get contract call data to unstake from the pool",
+        "parameters": [
+          {
+            "name": "stakeId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Public ID of the stake to withdraw"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract call data for unstaking",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "public_id": { "type": "string" },
+                        "call": { "$ref": "#/components/schemas/ContractCall" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Stake not found"
+          },
+          "422": {
+            "description": "Stake is not active"
+          }
+        }
+      }
+    },
+    "/pool/policy/{address}": {
+      "post": {
+        "operationId": "addPolicy",
+        "tags": ["Pool"],
+        "summary": "Get contract call data to attach a policy to the pool",
+        "parameters": [
+          {
+            "name": "address",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Policy contract address to attach"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract call data for adding a policy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "call": { "$ref": "#/components/schemas/ContractCall" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/webhooks/quicknode": {
       "post": {
         "operationId": "quicknodeWebhook",
@@ -2588,6 +2801,17 @@
     }
   },
   "components": {
+    "schemas": {
+      "ContractCall": {
+        "type": "object",
+        "properties": {
+          "contract_address": { "type": "string" },
+          "abi_function_signature": { "type": "string" },
+          "abi_parameters": { "type": "object" }
+        },
+        "required": ["contract_address", "abi_function_signature", "abi_parameters"]
+      }
+    },
     "securitySchemes": {
       "bearerAuth": {
         "type": "http",

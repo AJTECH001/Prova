@@ -2,47 +2,51 @@
 role: strategy
 depends-on: [BUSINESS_MODEL.md]
 triggers: [incentive change, fee structure change, new economy role]
-last-reviewed: 2026-03-20
+last-reviewed: 2026-04-14
 ---
 
-# Tokenomics & Incentive Design — {venture_name}
+# Tokenomics & Incentive Design — PROVA
 
 ## Open Economy Role
 
-{from brief — which role(s) does this venture play?}
+PROVA plays two roles in the ReineiraOS open economy:
 
-| Role             | Description                     | Revenue Mechanism          |
-| ---------------- | ------------------------------- | -------------------------- |
-| Policy Builder   | Write insurance policies        | Premium revenue share      |
-| Pool Underwriter | Create pools, provide liquidity | Net premiums - claims      |
-| LP Staker        | Deposit into pools              | Proportional premium share |
-| Operator         | Relay CCTP transactions         | 0.5% of bridged volume     |
+| Role              | Description                               | Revenue Mechanism                    |
+| ----------------- | ----------------------------------------- | ------------------------------------ |
+| Policy Builder    | `ProvaUnderwriterPolicy` — FHE risk model | Share of net premiums from pools     |
+| Pool Underwriter  | Create + manage insurance pools           | Net premiums minus claims            |
+
+LPs are third parties who stake USDC into the PROVA pool and earn proportional premium yield.
 
 ## Flywheel
 
 ```
-Better risk model → More pools adopt policy →
-More coverage sold → More premium flows →
-More LP yield → More liquidity enters →
-More capacity → More coverage sold → ...
+Better FHE risk model → More accurate pricing →
+More exporters buy coverage → More premiums flow to pool →
+More LP yield → More liquidity → More coverage capacity →
+More exporters covered → Better payment data → Better risk model → ...
 ```
 
 ## Fee Structure
 
-| Fee          | Rate   | Who Pays | Who Earns |
-| ------------ | ------ | -------- | --------- |
-| {from brief} | {rate} | {payer}  | {earner}  |
+| Fee                   | Rate                | Who Pays            | Who Earns          |
+| --------------------- | ------------------- | ------------------- | ------------------ |
+| Escrow creation       | 0.3%                | Exporter            | PROVA              |
+| Insurance premium     | 1-3% of invoice     | Exporter (coverage) | Pool LPs + PROVA   |
+| LP yield              | Net premiums - claims | PROVA pool        | LP stakers         |
+| Claim payout          | Up to 100% invoice  | Pool (insurance)    | Exporter (on default) |
 
 ## Sustainability Analysis
 
-- **Break-even:** {volume needed at current fee rates}
-- **Subsidy-free:** Can the flywheel sustain without token incentives?
-- **Risk:** What if claims exceed premiums?
+- **Break-even**: ~$5M annual insured volume at 2% avg premium and 60% claim ratio
+- **Subsidy-free**: Yes — premium income > operational costs once pool reaches $500K TVL
+- **Risk**: If claim ratio > 70% in early pools, LP yield collapses; requires careful whitelist at launch
 
 ## Token Design
 
-{Most early ventures should NOT launch a token. Consider only when:}
+**No token at this stage.** Token launches are deferred until:
+- Network effects require coordination incentives beyond LP yield
+- Governance is genuinely distributed across 1000+ stakeholders
+- Clear non-speculative utility can be demonstrated
 
-- Network effects require coordination incentives
-- Governance is genuinely distributed
-- Token utility is clear and non-speculative
+Revenue-sharing via premium distribution is sufficient for Phase 1-2.

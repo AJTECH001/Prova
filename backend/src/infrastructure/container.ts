@@ -7,6 +7,7 @@ import {
   MemoryBusinessProfileRepository,
   MemoryApiCredentialRepository,
   MemoryEscrowEventRepository,
+  MemoryPoolStakeRepository,
 } from './repository/memory/index.js';
 import {
   PgNonceRepository,
@@ -17,6 +18,7 @@ import {
   PgBusinessProfileRepository,
   PgApiCredentialRepository,
   PgEscrowEventRepository,
+  PgPoolStakeRepository,
 } from './repository/postgres/index.js';
 import { getDb } from './repository/postgres/db.js';
 import { JwtService } from './auth/jwt.service.js';
@@ -34,6 +36,7 @@ import type { IWithdrawalRepository } from '../domain/withdrawal/repository/with
 import type { IBusinessProfileRepository } from '../domain/business-profile/repository/business-profile.repository.js';
 import type { IApiCredentialRepository } from '../domain/api-credential/repository/api-credential.repository.js';
 import type { IEscrowEventRepository } from '../domain/escrow/events/repository/escrow-event.repository.js';
+import type { IPoolStakeRepository } from '../domain/pool/repository/pool-stake.repository.js';
 
 interface Repositories {
   nonceRepo: INonceRepository;
@@ -44,6 +47,7 @@ interface Repositories {
   businessProfileRepo: IBusinessProfileRepository;
   apiCredentialRepo: IApiCredentialRepository;
   escrowEventRepo: IEscrowEventRepository;
+  poolStakeRepo: IPoolStakeRepository;
 }
 
 function createMemoryRepos(): Repositories {
@@ -56,6 +60,7 @@ function createMemoryRepos(): Repositories {
     businessProfileRepo: new MemoryBusinessProfileRepository(),
     apiCredentialRepo: new MemoryApiCredentialRepository(),
     escrowEventRepo: new MemoryEscrowEventRepository(),
+    poolStakeRepo: new MemoryPoolStakeRepository(),
   };
 }
 
@@ -70,6 +75,7 @@ function createPostgresRepos(): Repositories {
     businessProfileRepo: new PgBusinessProfileRepository(db),
     apiCredentialRepo: new PgApiCredentialRepository(db),
     escrowEventRepo: new PgEscrowEventRepository(db),
+    poolStakeRepo: new PgPoolStakeRepository(db),
   };
 }
 
@@ -120,6 +126,9 @@ export const container = {
   },
   get escrowEventRepo() {
     return getRepos().escrowEventRepo;
+  },
+  get poolStakeRepo() {
+    return getRepos().poolStakeRepo;
   },
   get nonceService() {
     return new NonceService(getRepos().nonceRepo);

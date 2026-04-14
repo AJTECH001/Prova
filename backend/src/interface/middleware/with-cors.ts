@@ -22,7 +22,7 @@ function resolveOrigin(requestOrigin: string | undefined): string {
     return requestOrigin;
   }
 
-  return allowed[0] ?? '*';
+  return '*';
 }
 
 function setCorsHeaders(res: VercelResponse, origin: string): void {

@@ -14,8 +14,15 @@ const EnvSchema = z.object({
   PORT: z.coerce.number().default(3000),
   QUICKNODE_WEBHOOK_SECRET: z.string().optional(),
   RELAY_WEBHOOK_SECRET: z.string().optional(),
+  PRIVATE_KEY: z.string().optional(),
+  JWT_REFRESH_SECRET: z.string().optional(),
   ESCROW_CONTRACT_ADDRESS: z.string().optional(),
   PUSDC_WRAPPER_ADDRESS: z.string().optional(),
+  RESOLVER_ADDRESS: z.string().optional(),
+  POLICY_ADDRESS: z.string().optional(),
+  POOL_ADDRESS: z.string().optional(),
+  POOL_FACTORY_ADDRESS: z.string().optional(),
+  USDC_ADDRESS: z.string().optional(),
   FHE_WORKER_URL: z.string().default('http://localhost:3001'),
 });
 

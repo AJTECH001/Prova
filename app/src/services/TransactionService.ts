@@ -67,7 +67,7 @@ export class TransactionService {
     entityId: string,
   ): Promise<{ entity_id: string; tx_hash: string; status: string }> {
     const { data } = await httpClient.post<{ entity_id: string; tx_hash: string; status: string }>(
-      '/v1/escrows/transactions',
+      '/v1/transactions/escrows/report',
       { tx_hash: txHash, entity_id: entityId },
     );
     return data;

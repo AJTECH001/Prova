@@ -3,121 +3,168 @@ pragma solidity ^0.8.24;
 
 import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import {IUnderwriterPolicy} from "../interfaces/IUnderwriterPolicy.sol";
-import {FHE, euint16, euint32, InEuint32, ebool} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import {FHE, euint64, euint32, InEuint32, ebool} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 
-/// @title ProvaUnderwriterPolicy
-/// @notice FHE-based underwriter policy for PROVA.
-/// @dev Best practices followed:
-///      - FHE.allowThis() called on every encrypted value after creation (including intermediates)
-///      - Encrypted constants pre-computed once in constructor and reused (not re-encrypted per call)
-///      - Minimum bit-width: euint16 used for all values that fit within 0–65535
-///      - No branching on encrypted data — FHE.select() used for conditional logic
+
+
+/// @title  ProvaUnderwriterPolicy
+/// @notice FHE-based underwriter policy for PROVA trade credit insurance.
+///         Evaluates buyer risk using an encrypted credit score and judges disputes
+///         against a per-coverage credit limit.
 contract ProvaUnderwriterPolicy is IUnderwriterPolicy, ERC165 {
+
+    // ─── Errors ──────────────────────────────────────────────────────────────
+
+    error PolicyAlreadySet(uint256 coverageId);
+    error PolicyNotSet(uint256 coverageId);
+    error InvalidCreditLimit();
+    error InvalidCoveragePercentage();
+    error InvalidBasePremium();
+
+    // ─── Storage ─────────────────────────────────────────────────────────────
+
+    /// @notice Policy parameters set by the seller when purchasing coverage.
     struct Policy {
-        uint256 basePremiumBps;
-        uint256 minCreditScore;
-        bool set;
+        uint256 buyerCreditLimit;      // max payout the pool will ever pay for this buyer
+        uint16  coveragePercentageBps; // share of invoice covered (e.g. 9000 = 90%)
+        uint16  basePremiumBps;        // base cost of coverage (e.g. 200 = 2%)
+        uint16  countryRiskBps;        // add-on for buyer's country risk
+        uint16  industryRiskBps;       // add-on for buyer's sector risk
+        bool    set;
     }
 
     mapping(uint256 => Policy) public policies;
 
-    uint256 public constant CREDIT_SCORE_THRESHOLD = 700;
-    uint256 public constant HIGH_RISK_MULTIPLIER   = 2;
-    uint256 public constant LOW_RISK_MULTIPLIER    = 1;
+    // ─── FHE constants ───────────────────────────────────────────────────────
 
-    /// @dev Pre-encrypted constants — initialised once in constructor and reused.
-    ///      Re-encrypting on every call wastes gas; encrypt once, FHE.allowThis(), reuse.
-    euint16 private _encThreshold;  // encrypted 700
-    euint16 private _encLowMult;    // encrypted 1
-    euint16 private _encHighMult;   // encrypted 2
+    // Encrypted as euint32 — minimum bit-width for values that never exceed 10000.
+    // Pre-encrypted once in constructor and reused across all evaluateRisk calls.
+    euint32 private _encThreshold; // credit score threshold: 600
+    euint32 private _encLowMult;   // multiplier for low-risk buyers: 1
+    euint32 private _encHighMult;  // multiplier for high-risk buyers: 2
 
-    event PolicySet(uint256 indexed coverageId, uint256 basePremiumBps, uint256 minCreditScore);
+    // ─── Events ──────────────────────────────────────────────────────────────
 
+    /// @notice Emitted when a policy is registered. Terms are intentionally omitted
+    ///         to avoid leaking credit limit and premium data on-chain.
+    event PolicySet(uint256 indexed coverageId);
+
+    // ─── Constructor ─────────────────────────────────────────────────────────
+
+    /// @notice Pre-encrypts FHE constants used in risk evaluation.
     constructor() {
-        // Encrypt the three constants once at deployment.
-        // Minimum bit-width: all values fit in uint16 (max 65535).
-        _encThreshold = FHE.asEuint16(uint16(CREDIT_SCORE_THRESHOLD));
+        _encThreshold = FHE.asEuint32(600);
         FHE.allowThis(_encThreshold);
 
-        _encLowMult = FHE.asEuint16(uint16(LOW_RISK_MULTIPLIER));
+        _encLowMult = FHE.asEuint32(1);
         FHE.allowThis(_encLowMult);
 
-        _encHighMult = FHE.asEuint16(uint16(HIGH_RISK_MULTIPLIER));
+        _encHighMult = FHE.asEuint32(2);
         FHE.allowThis(_encHighMult);
     }
 
-    function onPolicySet(uint256 coverageId, bytes calldata data) external override {
-        require(!policies[coverageId].set, "Policy already set");
+    // ─── IUnderwriterPolicy ──────────────────────────────────────────────────
 
-        (uint256 basePremiumBps, uint256 minCreditScore) = abi.decode(data, (uint256, uint256));
-        require(basePremiumBps > 0 && basePremiumBps <= 10000, "Invalid base premium");
-        require(minCreditScore > 0, "Invalid min credit score");
+    /// @notice Stores coverage policy parameters when a seller purchases insurance.
+    /// @dev    data = abi.encode(uint256 buyerCreditLimit, uint16 coveragePercentageBps,
+    ///                           uint16 basePremiumBps, uint16 countryRiskBps, uint16 industryRiskBps)
+    function onPolicySet(uint256 coverageId, bytes calldata data) external override {
+        if (policies[coverageId].set) revert PolicyAlreadySet(coverageId);
+
+        (
+            uint256 buyerCreditLimit,
+            uint16  coveragePercentageBps,
+            uint16  basePremiumBps,
+            uint16  countryRiskBps,
+            uint16  industryRiskBps
+        ) = abi.decode(data, (uint256, uint16, uint16, uint16, uint16));
+
+        if (buyerCreditLimit == 0)                           revert InvalidCreditLimit();
+        if (coveragePercentageBps == 0 ||
+            coveragePercentageBps > 10000)                   revert InvalidCoveragePercentage();
+        if (basePremiumBps == 0 || basePremiumBps > 2000)    revert InvalidBasePremium();
 
         policies[coverageId] = Policy({
-            basePremiumBps: basePremiumBps,
-            minCreditScore: minCreditScore,
-            set: true
+            buyerCreditLimit:      buyerCreditLimit,
+            coveragePercentageBps: coveragePercentageBps,
+            basePremiumBps:        basePremiumBps,
+            countryRiskBps:        countryRiskBps,
+            industryRiskBps:       industryRiskBps,
+            set:                   true
         });
 
-        emit PolicySet(coverageId, basePremiumBps, minCreditScore);
+        emit PolicySet(coverageId);
     }
 
-    /// @notice Evaluate risk using FHE and submit an async decrypt task.
-    /// @dev FHE best practices applied:
-    ///      1. allowThis() called on every encrypted value immediately after creation.
-    ///      2. Pre-encrypted constants reused (not re-created each call).
-    ///      3. euint16 used for minimum bit-width throughout.
-    ///      4. FHE.select() used — no branching on encrypted data.
-    ///      5. FHE.decrypt() submits async task — result delivered by threshold network.
-    function evaluateRisk(uint256 coverageId, bytes calldata riskProof) external override returns (uint256) {
-        Policy memory policy = policies[coverageId];
-        require(policy.set, "Policy not set");
+    /// @notice Calculates an encrypted premium in basis points from the buyer's encrypted credit score.
+    /// @dev    riskProof = abi.encode(InEuint32 encryptedCreditScore)
+    ///         Formula: (basePremiumBps × multiplier) + countryRiskBps + industryRiskBps
+    ///         Multiplier = 1 if score >= 600, 2 if score < 600. Computed entirely in FHE.
+    function evaluateRisk(uint256 coverageId, bytes calldata riskProof)
+        external
+        override
+        returns (euint64 riskScore)
+    {
+        Policy memory p = policies[coverageId];
+        if (!p.set) revert PolicyNotSet(coverageId);
 
-        // Decode the encrypted credit score and verify it with the TaskManager.
-        // Cast from euint32 (wire format) to euint16 (minimum sufficient bit-width).
-        InEuint32 memory encryptedInput = abi.decode(riskProof, (InEuint32));
-        euint32 creditScore32 = FHE.asEuint32(encryptedInput);
-        FHE.allowThis(creditScore32);
-
-        euint16 creditScore = FHE.asEuint16(creditScore32);
+        // Decode and seal the buyer's encrypted credit score (euint32 — scores never exceed 850).
+        InEuint32 memory encInput = abi.decode(riskProof, (InEuint32));
+        euint32 creditScore = FHE.asEuint32(encInput);
         FHE.allowThis(creditScore);
 
-        // isLowRisk = (creditScore >= 700) — computed on encrypted value, no plaintext exposed
+        // Constant-time risk tier: no branching on encrypted data (best practice).
+        // isLowRisk = creditScore >= 600; multiplier = 1 if low-risk, 2 if high-risk.
         ebool isLowRisk = FHE.gte(creditScore, _encThreshold);
         FHE.allowThis(isLowRisk);
 
-        // multiplier = isLowRisk ? 1 : 2 — constant-time, no branching
-        euint16 multiplier = FHE.select(isLowRisk, _encLowMult, _encHighMult);
+        euint32 multiplier = FHE.select(isLowRisk, _encLowMult, _encHighMult);
         FHE.allowThis(multiplier);
 
-        // basePremiumBps is per-policy so must be encrypted per call (cannot be pre-computed)
-        euint16 basePremiumEnc = FHE.asEuint16(uint16(policy.basePremiumBps));
+        // All intermediate values stay in euint32 (minimum bit-width best practice).
+        euint32 basePremiumEnc = FHE.asEuint32(uint32(p.basePremiumBps));
         FHE.allowThis(basePremiumEnc);
 
-        // riskScoreBps = basePremiumBps * multiplier (encrypted)
-        // Result: 500 * 1 = 500 bps (low risk) or 500 * 2 = 1000 bps (high risk)
-        euint16 riskScore = FHE.mul(basePremiumEnc, multiplier);
+        euint32 adjustedBase = FHE.mul(basePremiumEnc, multiplier);
+        FHE.allowThis(adjustedBase);
+
+        euint32 addOns = FHE.asEuint32(uint32(p.countryRiskBps) + uint32(p.industryRiskBps));
+        FHE.allowThis(addOns);
+
+        euint32 total32 = FHE.add(adjustedBase, addOns);
+        FHE.allowThis(total32);
+
+        // Upcast to euint64 only here — required by IUnderwriterPolicy interface.
+        riskScore = FHE.asEuint64(total32);
         FHE.allowThis(riskScore);
-        FHE.allow(riskScore, msg.sender); // allow CoverageManager to access the ciphertext
-
-        // Submit async decrypt task to the CoFHE threshold network.
-        // CoverageManager must call settlePremium() after decryption completes.
-        FHE.decrypt(riskScore);
-
-        // Return the ciphertext handle as uint256 (interface return type).
-        // euint16 wraps bytes32 in this CoFHE version; reinterpret via assembly.
-        bytes32 handle = euint16.unwrap(riskScore);
-        uint256 handleAsUint;
-        assembly { handleAsUint := handle }
-        return handleAsUint;
+        FHE.allow(riskScore, msg.sender);
     }
 
-    function judge(uint256, bytes calldata) external override returns (bool) {
-        // Simplified: always approve for demo
-        return true;
+    /// @notice Validates a dispute by checking the claim amount against the buyer's credit limit.
+    /// @dev    disputeProof = abi.encode(uint256 claimAmount)
+    ///         Returns encrypted true if claimAmount <= buyerCreditLimit, encrypted false otherwise.
+    function judge(uint256 coverageId, bytes calldata disputeProof)
+        external
+        override
+        returns (ebool valid)
+    {
+        Policy memory p = policies[coverageId];
+        if (!p.set) revert PolicyNotSet(coverageId);
+
+        (uint256 claimAmount) = abi.decode(disputeProof, (uint256));
+
+        bool withinLimit = claimAmount <= p.buyerCreditLimit;
+
+        valid = FHE.asEbool(withinLimit);
+        FHE.allowThis(valid);
+        FHE.allow(valid, msg.sender);
     }
 
+    // ─── ERC-165 ─────────────────────────────────────────────────────────────
+
+    /// @notice Declares IUnderwriterPolicy support so ConfidentialCoverageManager can verify this contract.
     function supportsInterface(bytes4 interfaceId) public view override(ERC165) returns (bool) {
-        return interfaceId == type(IUnderwriterPolicy).interfaceId || super.supportsInterface(interfaceId);
+        return interfaceId == type(IUnderwriterPolicy).interfaceId
+            || super.supportsInterface(interfaceId);
     }
 }

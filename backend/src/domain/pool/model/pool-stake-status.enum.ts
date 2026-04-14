@@ -1,0 +1,7 @@
+export enum PoolStakeStatus {
+  PENDING = 'PENDING',
+  ACTIVE = 'ACTIVE',
+  UNSTAKING = 'UNSTAKING',
+  WITHDRAWN = 'WITHDRAWN',
+  FAILED = 'FAILED',
+}

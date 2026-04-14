@@ -100,6 +100,7 @@ export class PgEscrowRepository implements IEscrowRepository {
         txHash: escrow.txHash,
         metadata: escrow.metadata,
         settledAt: escrow.settledAt,
+        coverageId: escrow.coverageId,
       })
       .where(eq(escrows.id, escrow.id));
   }
@@ -123,6 +124,10 @@ export class PgEscrowRepository implements IEscrowRepository {
       txHash: escrow.txHash,
       createdAt: escrow.createdAt,
       settledAt: escrow.settledAt,
+      resolverAddress: escrow.resolverAddress ?? null,
+      poolAddress: escrow.poolAddress ?? null,
+      policyAddress: escrow.policyAddress ?? null,
+      coverageId: escrow.coverageId ?? null,
     };
   }
 
@@ -147,6 +152,10 @@ export class PgEscrowRepository implements IEscrowRepository {
       txHash: row.txHash ?? undefined,
       createdAt: row.createdAt,
       settledAt: row.settledAt ?? undefined,
+      resolverAddress: row.resolverAddress ?? undefined,
+      poolAddress: row.poolAddress ?? undefined,
+      policyAddress: row.policyAddress ?? undefined,
+      coverageId: row.coverageId ?? undefined,
     });
   }
 }

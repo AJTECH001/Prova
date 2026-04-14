@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { AppNavbar } from '@/components/layout/app-navbar';
+import { AppSidebar } from '@/components/layout/app-sidebar';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -7,9 +7,15 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   return (
-    <div className="min-h-screen bg-transparent">
-      <AppNavbar />
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 relative">{children}</main>
+    <div className="flex min-h-screen bg-white">
+      <AppSidebar />
+      <div className="flex flex-1 flex-col min-w-0">
+        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-6xl">
+            {children}
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

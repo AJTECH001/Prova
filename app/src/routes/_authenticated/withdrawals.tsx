@@ -7,7 +7,6 @@ import { WithdrawalForm } from '@/components/features/withdrawal-form';
 import { WithdrawalList } from '@/components/features/withdrawal-list';
 import { TransactionProgress } from '@/components/features/transaction-progress';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 
 export function WithdrawalsPage() {
   const transactions = useTransactionStore((s) => s.transactions);
@@ -29,6 +28,7 @@ export function WithdrawalsPage() {
     const publicId = await withdrawalFlow.execute(data);
     if (publicId) {
       setShowForm(false);
+      fetchWithdrawals(true);
     }
   }
 
@@ -39,44 +39,75 @@ export function WithdrawalsPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Page header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Withdrawals</h1>
-        <Button onClick={() => (showForm ? handleCancel() : setShowForm(true))}>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">Withdrawals</h1>
+          <p className="mt-0.5 text-sm text-[var(--text-muted)]">Redeem and bridge settled escrows</p>
+        </div>
+        <Button
+          size="sm"
+          variant={showForm ? 'secondary' : 'primary'}
+          onClick={() => (showForm ? handleCancel() : setShowForm(true))}
+        >
           {showForm ? 'Cancel' : 'New Withdrawal'}
         </Button>
       </div>
 
+      {/* Create form panel */}
       {showForm && (
-        <Card title="Create Withdrawal">
-          {withdrawalFlow.currentStep < 0 ? (
-            <WithdrawalForm transactions={transactions} onSubmit={handleCreate} />
-          ) : (
-            <div className="flex flex-col gap-4">
-              <TransactionProgress steps={withdrawalFlow.steps} currentStep={withdrawalFlow.currentStep} />
-              {withdrawalFlow.estimatedAmount && (
-                <p className="text-sm text-[var(--text-secondary)]">
-                  Estimated amount: {withdrawalFlow.estimatedAmount} USDC
-                </p>
-              )}
-              {withdrawalFlow.error && <p className="text-sm text-[var(--status-error)]">{withdrawalFlow.error}</p>}
-              {withdrawalFlow.error && (
-                <div className="flex justify-end">
-                  <Button onClick={withdrawalFlow.reset}>Try Again</Button>
-                </div>
-              )}
-            </div>
-          )}
-        </Card>
+        <div className="rounded-[var(--radius-block)] border border-[var(--border-dark)] bg-white shadow-[var(--shadow-sm)]">
+          <div className="border-b border-[var(--border-dark)] px-5 py-4">
+            <h2 className="text-sm font-semibold text-[var(--text-primary)]">Create Withdrawal</h2>
+            <p className="text-xs text-[var(--text-muted)]">Select settled escrows and destination chain</p>
+          </div>
+          <div className="px-5 py-5">
+            {withdrawalFlow.currentStep < 0 ? (
+              <WithdrawalForm transactions={transactions} onSubmit={handleCreate} />
+            ) : (
+              <div className="flex flex-col gap-4">
+                <TransactionProgress steps={withdrawalFlow.steps} currentStep={withdrawalFlow.currentStep} />
+                {withdrawalFlow.estimatedAmount && (
+                  <div className="flex items-center gap-2 rounded-[var(--radius-subtle)] bg-[hsl(var(--tip-bg))] px-4 py-3">
+                    <svg className="h-4 w-4 text-[var(--status-success)]" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <p className="text-sm text-[var(--status-success)]">
+                      Estimated amount: <strong>{withdrawalFlow.estimatedAmount} USDC</strong>
+                    </p>
+                  </div>
+                )}
+                {withdrawalFlow.error && (
+                  <div className="rounded-[var(--radius-subtle)] border border-[hsl(var(--danger-border))] bg-[hsl(var(--danger-bg))] px-4 py-3">
+                    <p className="text-sm text-[var(--status-error)]">{withdrawalFlow.error}</p>
+                  </div>
+                )}
+                {withdrawalFlow.error && (
+                  <div className="flex justify-end">
+                    <Button size="sm" onClick={withdrawalFlow.reset}>Try Again</Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
-      <Card>
-        <WithdrawalList
-          withdrawals={withdrawals}
-          loading={withdrawalLoading}
-          hasMore={hasMore}
-          onLoadMore={() => fetchWithdrawals()}
-        />
-      </Card>
+      {/* Withdrawals table */}
+      <div className="rounded-[var(--radius-block)] border border-[var(--border-dark)] bg-white shadow-[var(--shadow-sm)]">
+        <div className="border-b border-[var(--border-dark)] px-5 py-4">
+          <h2 className="text-sm font-semibold text-[var(--text-primary)]">All Withdrawals</h2>
+          <p className="text-xs text-[var(--text-muted)]">Bridge and redeem history</p>
+        </div>
+        <div className="px-5 py-4">
+          <WithdrawalList
+            withdrawals={withdrawals}
+            loading={withdrawalLoading}
+            hasMore={hasMore}
+            onLoadMore={() => fetchWithdrawals()}
+          />
+        </div>
+      </div>
     </div>
   );
 }

@@ -46,6 +46,10 @@ export const EscrowResponseSchema = z.object({
   tx_hash: z.string().optional(),
   metadata: z.record(z.unknown()).optional(),
   created_at: z.string(),
+  resolver_address: z.string().optional(),
+  pool_address: z.string().optional(),
+  policy_address: z.string().optional(),
+  coverage_id: z.string().optional(),
 });
 export type EscrowResponse = z.infer<typeof EscrowResponseSchema>;
 

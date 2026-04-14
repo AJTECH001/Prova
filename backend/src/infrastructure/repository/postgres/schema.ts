@@ -14,6 +14,7 @@ export const escrowStatusEnum = pgEnum('escrow_status', [
   'PENDING',
   'ON_CHAIN',
   'PROCESSING',
+  'FUNDED',
   'SETTLED',
   'REDEEMED',
   'EXPIRED',
@@ -36,6 +37,8 @@ export const walletProviderEnum = pgEnum('wallet_provider', [
 
 export const businessTypeEnum = pgEnum('business_type', ['RETAIL', 'SERVICE']);
 
+export const kybStatusEnum = pgEnum('kyb_status', ['PENDING', 'APPROVED', 'REJECTED']);
+
 export const credentialStatusEnum = pgEnum('credential_status', [
   'active',
   'revoked',
@@ -43,6 +46,7 @@ export const credentialStatusEnum = pgEnum('credential_status', [
 
 export const escrowEventTypeEnum = pgEnum('escrow_event_type', [
   'EscrowCreated',
+  'EscrowFunded',
   'EscrowSettled',
 ]);
 
@@ -109,6 +113,10 @@ export const escrows = pgTable(
     txHash: text('tx_hash'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     settledAt: timestamp('settled_at'),
+    resolverAddress: text('resolver_address'),
+    poolAddress: text('pool_address'),
+    policyAddress: text('policy_address'),
+    coverageId: text('coverage_id'),
   },
   (t) => [
     index('escrows_public_id_idx').on(t.publicId),
@@ -162,6 +170,9 @@ export const businessProfiles = pgTable(
     businessType: businessTypeEnum('business_type').notNull(),
     businessAddress: text('business_address'),
     taxId: text('tax_id'),
+    country: text('country'),
+    registrationNumber: text('registration_number'),
+    kybStatus: kybStatusEnum('kyb_status').notNull().default('PENDING'),
   },
   (t) => [index('business_profiles_user_id_idx').on(t.userId)],
 );
@@ -183,6 +194,36 @@ export const apiCredentials = pgTable(
   (t) => [
     index('api_credentials_client_id_idx').on(t.clientId),
     index('api_credentials_user_id_idx').on(t.userId),
+  ],
+);
+
+export const poolStakeStatusEnum = pgEnum('pool_stake_status', [
+  'PENDING',
+  'ACTIVE',
+  'UNSTAKING',
+  'WITHDRAWN',
+  'FAILED',
+]);
+
+export const poolStakes = pgTable(
+  'pool_stakes',
+  {
+    id: text('id').primaryKey(),
+    publicId: text('public_id').unique().notNull(),
+    userId: text('user_id')
+      .references(() => users.id)
+      .notNull(),
+    poolAddress: text('pool_address').notNull(),
+    amount: numeric('amount').notNull(),
+    status: poolStakeStatusEnum('status').notNull().default('PENDING'),
+    txHash: text('tx_hash'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    withdrawnAt: timestamp('withdrawn_at'),
+  },
+  (t) => [
+    index('pool_stakes_public_id_idx').on(t.publicId),
+    index('pool_stakes_user_id_idx').on(t.userId),
+    index('pool_stakes_pool_address_idx').on(t.poolAddress),
   ],
 );
 

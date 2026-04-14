@@ -32,6 +32,7 @@ describe('ProcessEscrowEventUseCase', () => {
   let escrowEventRepo: MemoryEscrowEventRepository;
 
   beforeEach(() => {
+    process.env.JWT_SECRET = 'test-secret-that-is-at-least-32-chars-long';
     escrowRepo = new MemoryEscrowRepository();
     escrowEventRepo = new MemoryEscrowEventRepository();
     useCase = new ProcessEscrowEventUseCase(escrowRepo, escrowEventRepo);
@@ -84,6 +85,32 @@ describe('ProcessEscrowEventUseCase', () => {
 
       const buffered = await escrowEventRepo.findByTxHash(TX_HASH);
       expect(buffered).not.toBeNull();
+    });
+  });
+
+  describe('EscrowFunded event', () => {
+    it('updates an ON_CHAIN escrow to FUNDED', async () => {
+      const escrow = makeEscrow(EscrowStatus.ON_CHAIN, undefined, ESCROW_ID);
+      await escrowRepo.save(escrow);
+
+      await useCase.execute([
+        { tx_hash: TX_HASH, escrow_id: ESCROW_ID, event_type: 'EscrowFunded', block_number: '150' },
+      ]);
+
+      const updated = await escrowRepo.findByOnChainId(ESCROW_ID);
+      expect(updated!.status).toBe(EscrowStatus.FUNDED);
+    });
+
+    it('does nothing when escrow is not in ON_CHAIN status', async () => {
+      const escrow = makeEscrow(EscrowStatus.FUNDED, undefined, ESCROW_ID);
+      await escrowRepo.save(escrow);
+
+      await useCase.execute([
+        { tx_hash: TX_HASH, escrow_id: ESCROW_ID, event_type: 'EscrowFunded', block_number: '150' },
+      ]);
+
+      const unchanged = await escrowRepo.findByOnChainId(ESCROW_ID);
+      expect(unchanged!.status).toBe(EscrowStatus.FUNDED);
     });
   });
 

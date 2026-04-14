@@ -16,6 +16,7 @@ export interface JwtPayload {
 
 export class JwtService {
   private readonly secret: Uint8Array;
+  private readonly refreshSecret: Uint8Array;
   private readonly issuer: string;
   private readonly accessTokenTtl: number;
   private readonly refreshTokenTtl: number;
@@ -23,6 +24,8 @@ export class JwtService {
   constructor() {
     const env = getEnv();
     this.secret = new TextEncoder().encode(env.JWT_SECRET);
+    // Use a dedicated refresh secret when configured; fall back to the access secret.
+    this.refreshSecret = new TextEncoder().encode(env.JWT_REFRESH_SECRET ?? env.JWT_SECRET);
     this.issuer = env.JWT_ISSUER;
     this.accessTokenTtl = env.ACCESS_TOKEN_TTL;
     this.refreshTokenTtl = env.REFRESH_TOKEN_TTL;
@@ -49,7 +52,7 @@ export class JwtService {
       .setIssuer(this.issuer)
       .setIssuedAt(now)
       .setExpirationTime(now + this.refreshTokenTtl)
-      .sign(this.secret);
+      .sign(this.refreshSecret);
 
     return {
       accessToken,
@@ -72,7 +75,7 @@ export class JwtService {
   }
 
   async verifyRefreshToken(token: string): Promise<{ sub: string }> {
-    const { payload } = await jwtVerify(token, this.secret, {
+    const { payload } = await jwtVerify(token, this.refreshSecret, {
       issuer: this.issuer,
     });
 

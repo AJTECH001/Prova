@@ -17,6 +17,8 @@ export class CreateBusinessProfileUseCase {
       businessType: dto.business_type,
       businessAddress: dto.business_address,
       taxId: dto.tax_id,
+      country: dto.country,
+      registrationNumber: dto.registration_number,
     });
 
     await this.businessProfileRepository.save(profile);
@@ -27,6 +29,9 @@ export class CreateBusinessProfileUseCase {
       business_type: profile.businessType,
       business_address: profile.businessAddress,
       tax_id: profile.taxId,
+      country: profile.country,
+      registration_number: profile.registrationNumber,
+      kyb_status: profile.kybStatus,
     };
   }
 }

@@ -1,4 +1,5 @@
 export type BusinessType = 'RETAIL' | 'SERVICE';
+export type KybStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 export interface BusinessProfileParams {
   id: string;
@@ -7,6 +8,9 @@ export interface BusinessProfileParams {
   businessType: BusinessType;
   businessAddress?: string;
   taxId?: string;
+  country?: string;
+  registrationNumber?: string;
+  kybStatus?: KybStatus;
 }
 
 export class BusinessProfile {
@@ -16,6 +20,9 @@ export class BusinessProfile {
   readonly businessType: BusinessType;
   readonly businessAddress?: string;
   readonly taxId?: string;
+  readonly country?: string;
+  readonly registrationNumber?: string;
+  kybStatus: KybStatus;
 
   constructor(params: BusinessProfileParams) {
     this.id = params.id;
@@ -24,5 +31,8 @@ export class BusinessProfile {
     this.businessType = params.businessType;
     this.businessAddress = params.businessAddress;
     this.taxId = params.taxId;
+    this.country = params.country;
+    this.registrationNumber = params.registrationNumber;
+    this.kybStatus = params.kybStatus ?? 'PENDING';
   }
 }

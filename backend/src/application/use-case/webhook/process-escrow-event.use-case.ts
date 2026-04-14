@@ -27,6 +27,8 @@ export class ProcessEscrowEventUseCase {
     for (const event of events) {
       if (event.event_type === 'EscrowCreated') {
         await this.handleEscrowCreated(event);
+      } else if (event.event_type === 'EscrowFunded') {
+        await this.handleEscrowFunded(event);
       } else if (event.event_type === 'EscrowSettled') {
         await this.handleEscrowSettled(event);
       }
@@ -55,6 +57,15 @@ export class ProcessEscrowEventUseCase {
     });
 
     await this.escrowEventRepository.save(bufferedEvent);
+  }
+
+  private async handleEscrowFunded(event: EscrowEventPayload): Promise<void> {
+    const escrow = await this.escrowRepository.findByOnChainId(event.escrow_id);
+
+    if (escrow && escrow.status === EscrowStatus.ON_CHAIN) {
+      escrow.markAsFunded();
+      await this.escrowRepository.update(escrow);
+    }
   }
 
   private async handleEscrowSettled(event: EscrowEventPayload): Promise<void> {

@@ -6,3 +6,4 @@ export { MemoryBusinessProfileRepository } from './memory-business-profile.repos
 export { MemoryApiCredentialRepository } from './memory-api-credential.repository.js';
 export { MemoryEscrowEventRepository } from './memory-escrow-event.repository.js';
 export { MemoryNonceRepository } from './memory-nonce.repository.js';
+export { MemoryPoolStakeRepository } from './memory-pool-stake.repository.js';
