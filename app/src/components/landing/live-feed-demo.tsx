@@ -69,7 +69,7 @@ export function LiveFeedDemo() {
               Choose your role
             </p>
             <h2 className="text-5xl font-black tracking-tight text-[hsl(var(--text-primary))] sm:text-6xl">
-              Three roles.<br />One escrow.
+              Pick your role.<br />Start in seconds.
             </h2>
             <p className="text-lg text-[hsl(var(--text-secondary))]">
               Whether you export goods, underwrite risk, or provide liquidity —

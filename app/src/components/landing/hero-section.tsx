@@ -12,21 +12,19 @@ export function HeroSection() {
       <div className="mb-10 flex items-center gap-2.5">
         <div className="h-2 w-2 rounded-full bg-[hsl(var(--brand-primary))]" />
         <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[hsl(var(--brand-primary))]">
-          FHE-Encrypted Trade Credit · Built on Arbitrum
+          Trade. Protected.
         </span>
       </div>
 
       {/* Headline */}
-      <h1 className="max-w-4xl text-[clamp(3rem,8vw,6.5rem)] font-black leading-[1.02] tracking-tight text-[hsl(var(--text-primary))]">
-        Insuring the trade<br />
-        of people who<br />
-        <span className="text-[hsl(var(--brand-primary))]">hate fine print.</span>
+      <h1 className="w-full max-w-5xl font-black leading-[1.02] tracking-tight">
+        <span className="block whitespace-nowrap text-[clamp(1.8rem,5.5vw,7rem)] text-[hsl(var(--text-primary))]">Protect your invoices.</span>
+        <span className="block whitespace-nowrap text-[clamp(1.8rem,5.5vw,7rem)] text-[hsl(var(--brand-primary))]">Skip the fine print.</span>
       </h1>
 
       {/* Subtext */}
-      <p className="mx-auto mt-8 max-w-md text-lg leading-relaxed text-[hsl(var(--text-secondary))]">
-        On-chain escrow settlement, FHE-encrypted risk underwriting, and
-        USDC liquidity pools — for SME exporters, on Arbitrum.
+      <p className="mx-auto mt-8 max-w-xl text-base leading-relaxed text-[hsl(var(--text-secondary))] sm:text-lg">
+        On-chain trade credit insurance for SME. No minimum portfolio. No data exposure. Instant underwriting via FHE.
       </p>
 
       {/* CTAs */}

@@ -5,6 +5,7 @@ const NAV_LINKS = [
   { label: 'Overview',     href: '#features' },
   { label: 'How it works', href: '#demo' },
   { label: 'Privacy',      href: '#zk' },
+  { label: 'FAQ',          href: '#faq' },
 ];
 
 export function LandingNavbar() {

@@ -4,32 +4,27 @@ const FAQS = [
   {
     question: 'What is Prova and who is it for?',
     answer:
-      'Prova is a ZK-shielded trade credit insurance protocol built on-chain. It is designed for merchants who need receivables protection, underwriters who want to build programmable risk books, and liquidity providers seeking institutional fixed-income yields — all without the friction of traditional finance.',
+      'Prova is an on-chain trade credit insurance protocol built on Arbitrum. It serves SME exporters who need protection against buyer default on invoices ($5K–$50K), underwriters who want programmable on-chain risk books, and liquidity providers who want USDC yield backed by real trade finance assets.',
   },
   {
-    question: 'How does ZK-shielded underwriting work?',
+    question: 'How does FHE-encrypted underwriting work?',
     answer:
-      'Prova uses Zero-Knowledge proofs to verify merchant credit scores and policy conditions without exposing the underlying financial data to underwriters or liquidity providers. Your creditworthiness is proven on-chain — but your business relationships, invoice values, and counterparties remain private.',
+      'Prova uses Fully Homomorphic Encryption (FHE) via Fhenix CoFHE. Your credit score is encrypted before it touches the blockchain. The underwriter policy computes directly on the encrypted value — without ever decrypting it — and returns an encrypted risk score that determines your premium. No plaintext financial data is stored or exposed on-chain.',
+  },
+  {
+    question: 'What happens when a buyer defaults?',
+    answer:
+      'When an invoice passes its due date unpaid, a 7-day waiting period begins. After that window, the escrow condition is met and your coverage triggers automatically. The claim payout is settled from the InsurancePool directly to your wallet — no adjuster, no paperwork, no manual review.',
   },
   {
     question: 'Is Prova non-custodial?',
     answer:
-      'Yes. Prova is fully non-custodial. Premiums and settlement funds are held in audited smart contract escrows on-chain. You retain ownership of your keys and capital at all times — Prova never holds your funds.',
+      'Yes. Buyer USDC is held inside audited ConfidentialEscrow smart contracts on Arbitrum. Neither Prova nor the underlying Reineira infrastructure ever takes custody of your funds. Your account is a ZeroDev passkey smart account — tied to your device, not a seed phrase.',
   },
   {
-    question: 'How are claims settled?',
+    question: 'How do liquidity providers earn yield?',
     answer:
-      'Claims are settled automatically when on-chain conditions are met — no adjuster, no manual review, no delay. The settlement engine reads from verified ZK-proofs and executes payout directly to the insured wallet, typically within seconds of a trigger event.',
-  },
-  {
-    question: 'Is Prova compliant with financial regulations?',
-    answer:
-      'Yes. Every policy verification is designed to satisfy major financial regulations. Our ZK-proof architecture allows you to demonstrate compliance to regulators without disclosing sensitive data publicly. Jurisdiction-aware policy filters and KYC/AML hooks are built into the protocol.',
-  },
-  {
-    question: 'What does coverage cost?',
-    answer:
-      'Premium rates are set dynamically by underwriter policies. Rates typically range from 0.5% to 2% depending on the merchant\'s ZK-credit score, the coverage duration, and the underwriter\'s current risk appetite. There are no minimums and no hidden fees.',
+      'LPs deposit USDC into the InsurancePool. Their capital backs active trade credit policies and earns a proportional share of premiums collected. Exposure is automatically diversified across all active policies. Deposits are non-custodial and withdrawable at any time subject to pool liquidity.',
   },
 ];
 
@@ -41,21 +36,21 @@ export function FAQSection() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 
         {/* Header */}
-        <div className="mb-16 max-w-xl space-y-5">
+        <div className="mb-16 text-center space-y-5">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-[hsl(var(--text-muted))]">
             Got questions?
           </p>
           <h2 className="text-5xl font-black tracking-tight text-[hsl(var(--text-primary))] sm:text-6xl">
             Frequently asked.
           </h2>
-          <p className="text-lg text-[hsl(var(--text-secondary))]">
+          <p className="mx-auto max-w-xl text-lg text-[hsl(var(--text-secondary))]">
             Everything you need to know about how Prova works, who it is for,
             and how your funds are protected.
           </p>
         </div>
 
         {/* Accordion */}
-        <div className="max-w-3xl divide-y divide-[hsl(var(--border-subtle))] border-t border-[hsl(var(--border-subtle))]">
+        <div className="mx-auto max-w-3xl divide-y divide-[hsl(var(--border-subtle))] border-t border-[hsl(var(--border-subtle))]">
           {FAQS.map((faq, i) => (
             <div key={i} className="py-7">
               <button
