@@ -1,114 +1,147 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {IConditionResolver} from "../interfaces/IConditionResolver.sol";
-import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {ConditionResolverBase} from "../reineira-shared/extensions/ConditionResolverBase.sol";
 
 /// @title  ProvaPaymentResolver
-/// @notice Condition resolver implementing TCI protracted-default rules.
-///         A claim triggers when the invoice due date + 7-day waiting period has elapsed
-///         and the buyer has not recorded payment.
-contract ProvaPaymentResolver is IConditionResolver, ERC165, ReentrancyGuard {
+/// @notice Condition resolver implementing trade credit insurance protracted-default rules.
+///
+///         A claim triggers when the invoice due date plus a configurable waiting period
+///         has elapsed without buyer payment. The resolver is purely time-based — party
+///         identities are decoded for input validation and double-insurance detection
+///         but are never stored on-chain.
+///
+/// @dev    Inherits caller-binding and ERC-165 from ConditionResolverBase.
+contract ProvaPaymentResolver is ConditionResolverBase {
 
     // ─── Constants ───────────────────────────────────────────────────────────
 
-    /// @notice Waiting period after due date before a default claim becomes valid.
-    uint256 public constant WAITING_PERIOD = 7 days;
+    /// @notice Default waiting period after invoice due date before a claim can be raised.
+    uint256 public constant DEFAULT_WAITING_PERIOD = 7 days;
+
+    /// @notice Minimum allowed waiting period — prevents trivial instant claims.
+    uint256 public constant MIN_WAITING_PERIOD = 1 days;
+
+    /// @notice Maximum allowed waiting period.
+    uint256 public constant MAX_WAITING_PERIOD = 90 days;
 
     // ─── Errors ──────────────────────────────────────────────────────────────
 
-    error ConditionAlreadySet(uint256 escrowId);
     error ConditionNotSet(uint256 escrowId);
     error InvalidBuyer();
     error InvalidSeller();
     error InvalidAmount();
     error InvalidDueDate();
-    error NotBuyerOrSeller();
-    error InvoiceAlreadyPaid(uint256 escrowId);
+    error InvalidWaitingPeriod();
+    /// @dev Raised when the same invoice hash is already registered under another escrow.
+    error InvoiceAlreadyRegistered(bytes32 invoiceHash);
 
     // ─── Storage ─────────────────────────────────────────────────────────────
 
-    /// @notice Invoice terms stored per escrow.
-    /// @dev    Bools are packed with buyer into one 32-byte slot (20 + 1 + 1 = 22 bytes).
-    ///         seller, invoiceAmount, dueDate each occupy their own slot — 4 slots total.
+    /// @dev Only time parameters are stored. Party identities and invoice amount
+    ///      are validated then discarded to minimise on-chain data exposure.
     struct InvoiceCondition {
-        address buyer;         // debtor — the party that owes payment      (slot 0: 20 bytes)
-        bool    invoicePaid;   // true once either party attests payment     (slot 0: +1 byte)
-        bool    set;           // existence flag                             (slot 0: +1 byte)
-        address seller;        // creditor — the insured party               (slot 1: 20 bytes)
-        uint256 invoiceAmount; // face value in stablecoin smallest unit     (slot 2)
-        uint256 dueDate;       // original payment due date (Unix timestamp) (slot 3)
+        uint256 dueDate;       // invoice payment due date (unix timestamp)
+        uint256 waitingPeriod; // additional grace period after due date before claim opens
+        bool    set;           // guard against uninitialised reads
     }
 
-    mapping(uint256 => InvoiceCondition) public conditions;
+    /// @dev Private — escrow terms must not be world-readable.
+    mapping(uint256 => InvoiceCondition) private _conditions;
+
+    /// @dev Maps a canonical invoice hash to its escrow ID to prevent double-insurance.
+    mapping(bytes32 => uint256) private _invoiceHashToEscrow;
 
     // ─── Events ──────────────────────────────────────────────────────────────
 
-    event ConditionSet(
-        uint256 indexed escrowId,
-        address indexed buyer,
-        address indexed seller,
-        uint256 invoiceAmount,
-        uint256 dueDate
-    );
+    /// @notice Emitted when a condition is registered for an escrow.
+    /// @dev    Party addresses and invoice amount are intentionally omitted from the event.
+    /// @param  escrowId The escrow for which the condition was registered.
+    event ConditionSet(uint256 indexed escrowId);
 
-    event PaymentRecorded(uint256 indexed escrowId, address recordedBy);
+    // ─── Constructor ─────────────────────────────────────────────────────────
+
+    /// @notice Initialize the resolver and assign ownership.
+    /// @param  initialOwner Address that will own this contract.
+    function initialize(address initialOwner) external initializer {
+        __TestnetCoreBase_init(initialOwner);
+    }
 
     // ─── IConditionResolver ──────────────────────────────────────────────────
 
-    /// @notice Stores invoice terms when a new escrow is created.
-    /// @dev    data = abi.encode(address buyer, address seller, uint256 invoiceAmount, uint256 dueDate)
-    function onConditionSet(uint256 escrowId, bytes calldata data) external override nonReentrant {
-        if (conditions[escrowId].set) revert ConditionAlreadySet(escrowId);
+    /// @notice Stores invoice time parameters and binds the calling escrow contract.
+    /// @dev    data = abi.encode(address buyer, address seller, uint256 invoiceAmount,
+    ///                           uint256 dueDate, uint256 waitingPeriod)
+    ///         Party addresses and amount are used only for duplicate invoice detection
+    ///         and are not retained in storage.
+    /// @param  escrowId Unique identifier of the escrow being registered.
+    /// @param  data     ABI-encoded invoice terms — buyer, seller, amount, dueDate, waitingPeriod.
+    function onConditionSet(uint256 escrowId, bytes calldata data) external override {
+        // Binds the caller as the only authorised address for this escrowId.
+        // Reverts ConditionAlreadySet if called a second time for the same escrowId.
+        _bindEscrow(escrowId);
 
-        (address buyer, address seller, uint256 invoiceAmount, uint256 dueDate) =
-            abi.decode(data, (address, address, uint256, uint256));
+        (
+            address buyer,
+            address seller,
+            uint256 invoiceAmount,
+            uint256 dueDate,
+            uint256 waitingPeriod
+        ) = abi.decode(data, (address, address, uint256, uint256, uint256));
 
-        if (buyer == address(0))                    revert InvalidBuyer();
+        if (buyer == address(0))                     revert InvalidBuyer();
         if (seller == address(0) || seller == buyer) revert InvalidSeller();
-        if (invoiceAmount == 0)                     revert InvalidAmount();
-        if (dueDate <= block.timestamp)             revert InvalidDueDate();
+        if (invoiceAmount == 0)                      revert InvalidAmount();
+        if (dueDate <= block.timestamp)              revert InvalidDueDate();
+        if (waitingPeriod < MIN_WAITING_PERIOD ||
+            waitingPeriod > MAX_WAITING_PERIOD)      revert InvalidWaitingPeriod();
 
-        conditions[escrowId] = InvoiceCondition({
-            buyer:         buyer,
-            seller:        seller,
-            invoiceAmount: invoiceAmount,
+        // Prevent the same invoice from being registered under two different escrows.
+        bytes32 hash = _invoiceHash(buyer, seller, invoiceAmount, dueDate);
+        if (_invoiceHashToEscrow[hash] != 0) revert InvoiceAlreadyRegistered(hash);
+        _invoiceHashToEscrow[hash] = escrowId;
+
+        // Only time parameters are persisted — party identities are not retained.
+        _conditions[escrowId] = InvoiceCondition({
             dueDate:       dueDate,
-            invoicePaid:   false,
+            waitingPeriod: waitingPeriod,
             set:           true
         });
 
-        emit ConditionSet(escrowId, buyer, seller, invoiceAmount, dueDate);
+        emit ConditionSet(escrowId);
     }
 
-    /// @notice Returns true when dueDate + WAITING_PERIOD has passed and invoice is unpaid.
-    ///         Called by ConfidentialEscrow on every redemption attempt.
-    function isConditionMet(uint256 escrowId) external view override returns (bool) {
-        InvoiceCondition memory c = conditions[escrowId];
-        if (!c.set || c.invoicePaid) return false;
-        return block.timestamp >= c.dueDate + WAITING_PERIOD;
+    /// @notice Returns true when the invoice due date plus the waiting period has elapsed.
+    /// @dev    Restricted to the bound escrow address to prevent external timing surveillance.
+    /// @param  escrowId Unique identifier of the escrow to evaluate.
+    /// @return          True if the protracted-default window has passed.
+    function isConditionMet(uint256 escrowId)
+        external
+        view
+        override
+        onlyBoundEscrow(escrowId)
+        returns (bool)
+    {
+        InvoiceCondition memory c = _conditions[escrowId];
+        if (!c.set) return false;
+        return block.timestamp >= c.dueDate + c.waitingPeriod;
     }
 
-    // ─── Payment recording ───────────────────────────────────────────────────
+    // ─── Internal helpers ────────────────────────────────────────────────────
 
-    /// @notice Buyer or seller attests that the invoice was paid off-chain.
-    ///         Once called, isConditionMet permanently returns false — claim is blocked.
-    function recordPayment(uint256 escrowId) external nonReentrant {
-        InvoiceCondition storage c = conditions[escrowId];
-        if (!c.set)       revert ConditionNotSet(escrowId);
-        if (c.invoicePaid) revert InvoiceAlreadyPaid(escrowId);
-        if (msg.sender != c.buyer && msg.sender != c.seller) revert NotBuyerOrSeller();
-
-        c.invoicePaid = true;
-        emit PaymentRecorded(escrowId, msg.sender);
-    }
-
-    // ─── ERC-165 ─────────────────────────────────────────────────────────────
-
-    /// @notice Declares IConditionResolver support so ConfidentialEscrow can verify this contract.
-    function supportsInterface(bytes4 interfaceId) public view override(ERC165) returns (bool) {
-        return interfaceId == type(IConditionResolver).interfaceId
-            || super.supportsInterface(interfaceId);
+    /// @dev    Produces a canonical hash of the invoice parties and terms.
+    ///         Used to detect duplicate registrations across different escrow IDs.
+    /// @param  buyer   Buyer address.
+    /// @param  seller  Seller address.
+    /// @param  amount  Invoice amount.
+    /// @param  dueDate Invoice payment due date.
+    /// @return         keccak256 hash uniquely identifying this invoice.
+    function _invoiceHash(
+        address buyer,
+        address seller,
+        uint256 amount,
+        uint256 dueDate
+    ) internal pure returns (bytes32) {
+        return keccak256(abi.encode(buyer, seller, amount, dueDate));
     }
 }

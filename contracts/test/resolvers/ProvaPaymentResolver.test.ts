@@ -1,9 +1,8 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
-import { deployProvaFixture, encodeConditionData } from "../fixtures";
+import { deployProvaFixture, encodeConditionData, DEFAULT_WAITING_PERIOD } from "../fixtures";
 
-const WAITING_PERIOD = 7 * 24 * 60 * 60; // 7 days in seconds
 const INVOICE_AMOUNT = 200_000n * 10n ** 6n; // $200k USDC
 
 describe("ProvaPaymentResolver", function () {
@@ -12,22 +11,15 @@ describe("ProvaPaymentResolver", function () {
 
     describe("onConditionSet", function () {
 
-        it("stores invoice condition and emits ConditionSet", async function () {
+        it("registers condition and emits ConditionSet with only escrowId (T8)", async function () {
             const { resolver, buyer, seller } = await loadFixture(deployProvaFixture);
-            const dueDate = (await time.latest()) + 86400; // tomorrow
+            const dueDate = (await time.latest()) + 86400;
             const data = encodeConditionData(buyer.address, seller.address, INVOICE_AMOUNT, dueDate);
 
+            // Event emits only escrowId — no party addresses, amount, or date on-chain (T8).
             await expect(resolver.onConditionSet(1, data))
                 .to.emit(resolver, "ConditionSet")
-                .withArgs(1, buyer.address, seller.address, INVOICE_AMOUNT, dueDate);
-
-            const condition = await resolver.conditions(1);
-            expect(condition.buyer).to.equal(buyer.address);
-            expect(condition.seller).to.equal(seller.address);
-            expect(condition.invoiceAmount).to.equal(INVOICE_AMOUNT);
-            expect(condition.dueDate).to.equal(dueDate);
-            expect(condition.invoicePaid).to.be.false;
-            expect(condition.set).to.be.true;
+                .withArgs(1);
         });
 
         it("reverts ConditionAlreadySet when called twice for same escrowId", async function () {
@@ -86,16 +78,47 @@ describe("ProvaPaymentResolver", function () {
                 .to.be.revertedWithCustomError(resolver, "InvalidDueDate");
         });
 
-        it("accepts separate escrowIds independently", async function () {
+        it("reverts InvalidWaitingPeriod when waitingPeriod is below 1 day (R4)", async function () {
+            const { resolver, buyer, seller } = await loadFixture(deployProvaFixture);
+            const dueDate = (await time.latest()) + 86400;
+            const tooShort = 3600; // 1 hour — below MIN_WAITING_PERIOD
+            const data = encodeConditionData(buyer.address, seller.address, INVOICE_AMOUNT, dueDate, tooShort);
+
+            await expect(resolver.onConditionSet(1, data))
+                .to.be.revertedWithCustomError(resolver, "InvalidWaitingPeriod");
+        });
+
+        it("reverts InvalidWaitingPeriod when waitingPeriod exceeds 90 days (R4)", async function () {
+            const { resolver, buyer, seller } = await loadFixture(deployProvaFixture);
+            const dueDate = (await time.latest()) + 86400;
+            const tooLong = 91 * 24 * 60 * 60; // 91 days — above MAX_WAITING_PERIOD
+            const data = encodeConditionData(buyer.address, seller.address, INVOICE_AMOUNT, dueDate, tooLong);
+
+            await expect(resolver.onConditionSet(1, data))
+                .to.be.revertedWithCustomError(resolver, "InvalidWaitingPeriod");
+        });
+
+        it("accepts separate escrowIds with different invoices independently (T9)", async function () {
+            const { resolver, buyer, seller } = await loadFixture(deployProvaFixture);
+            const dueDate = (await time.latest()) + 86400;
+
+            // Different invoice data required — same hash would trigger InvoiceAlreadyRegistered (T9).
+            const data1 = encodeConditionData(buyer.address, seller.address, INVOICE_AMOUNT, dueDate);
+            const data2 = encodeConditionData(buyer.address, seller.address, INVOICE_AMOUNT, dueDate + 86400);
+
+            await expect(resolver.onConditionSet(1, data1)).to.not.be.reverted;
+            await expect(resolver.onConditionSet(2, data2)).to.not.be.reverted;
+        });
+
+        it("reverts InvoiceAlreadyRegistered when same invoice is used for two escrowIds (T9)", async function () {
             const { resolver, buyer, seller } = await loadFixture(deployProvaFixture);
             const dueDate = (await time.latest()) + 86400;
             const data = encodeConditionData(buyer.address, seller.address, INVOICE_AMOUNT, dueDate);
 
             await resolver.onConditionSet(1, data);
-            await resolver.onConditionSet(2, data); // different ID — should not revert
-
-            expect((await resolver.conditions(1)).set).to.be.true;
-            expect((await resolver.conditions(2)).set).to.be.true;
+            // Same invoice data = same hash → double-insurance attempt.
+            await expect(resolver.onConditionSet(2, data))
+                .to.be.revertedWithCustomError(resolver, "InvoiceAlreadyRegistered");
         });
     });
 
@@ -105,10 +128,11 @@ describe("ProvaPaymentResolver", function () {
 
         it("returns false before due date", async function () {
             const { resolver, buyer, seller } = await loadFixture(deployProvaFixture);
-            const dueDate = (await time.latest()) + 86400; // 1 day ahead
+            const dueDate = (await time.latest()) + 86400;
             const data = encodeConditionData(buyer.address, seller.address, INVOICE_AMOUNT, dueDate);
             await resolver.onConditionSet(1, data);
 
+            // Same signer (owner) who called onConditionSet is the bound escrow (T4).
             expect(await resolver.isConditionMet(1)).to.be.false;
         });
 
@@ -118,100 +142,58 @@ describe("ProvaPaymentResolver", function () {
             const data = encodeConditionData(buyer.address, seller.address, INVOICE_AMOUNT, dueDate);
             await resolver.onConditionSet(1, data);
 
-            // Advance to just after due date — waiting period (7 days) not over yet
             await time.increase(86400 + 1);
 
             expect(await resolver.isConditionMet(1)).to.be.false;
         });
 
-        it("returns true after dueDate + 7-day waiting period", async function () {
+        it("returns true after dueDate + default 7-day waiting period", async function () {
             const { resolver, buyer, seller } = await loadFixture(deployProvaFixture);
             const dueDate = (await time.latest()) + 86400;
             const data = encodeConditionData(buyer.address, seller.address, INVOICE_AMOUNT, dueDate);
             await resolver.onConditionSet(1, data);
 
-            // Advance past due date + full 7-day waiting period
-            await time.increase(86400 + WAITING_PERIOD + 1);
+            await time.increase(86400 + DEFAULT_WAITING_PERIOD + 1);
 
             expect(await resolver.isConditionMet(1)).to.be.true;
         });
 
-        it("returns false for an unregistered escrowId", async function () {
-            const { resolver } = await loadFixture(deployProvaFixture);
-            expect(await resolver.isConditionMet(999)).to.be.false;
-        });
-
-        it("returns false even after waiting period if invoice was marked paid", async function () {
+        it("uses per-escrow waiting period when set (R4)", async function () {
             const { resolver, buyer, seller } = await loadFixture(deployProvaFixture);
             const dueDate = (await time.latest()) + 86400;
-            const data = encodeConditionData(buyer.address, seller.address, INVOICE_AMOUNT, dueDate);
+            const shortPeriod = 3 * 24 * 60 * 60; // 3 days
+            const data = encodeConditionData(
+                buyer.address, seller.address, INVOICE_AMOUNT, dueDate, shortPeriod,
+            );
             await resolver.onConditionSet(1, data);
 
-            // Buyer records payment before the claim window opens
-            await resolver.connect(buyer).recordPayment(1);
-
-            // Advance past full waiting period
-            await time.increase(86400 + WAITING_PERIOD + 1);
-
-            // Claim should still be blocked
+            // Not yet ready after 2 days past due date.
+            await time.increase(86400 + 2 * 24 * 60 * 60);
             expect(await resolver.isConditionMet(1)).to.be.false;
+
+            // Ready after 3 days past due date.
+            await time.increase(24 * 60 * 60 + 1);
+            expect(await resolver.isConditionMet(1)).to.be.true;
         });
-    });
 
-    // ─── recordPayment ────────────────────────────────────────────────────────
+        it("reverts UnauthorizedCaller for unregistered escrowId (T4)", async function () {
+            const { resolver } = await loadFixture(deployProvaFixture);
+            // No binding exists for escrowId 999 — any caller is unauthorized.
+            await expect(resolver.isConditionMet(999))
+                .to.be.revertedWithCustomError(resolver, "UnauthorizedCaller")
+                .withArgs(999);
+        });
 
-    describe("recordPayment", function () {
-
-        async function setupEscrow(resolver: any, buyer: any, seller: any) {
+        it("reverts UnauthorizedCaller when called by a non-bound address (T4)", async function () {
+            const { resolver, buyer, seller, stranger } = await loadFixture(deployProvaFixture);
             const dueDate = (await time.latest()) + 86400;
             const data = encodeConditionData(buyer.address, seller.address, INVOICE_AMOUNT, dueDate);
             await resolver.onConditionSet(1, data);
-        }
 
-        it("allows buyer to record payment and emits PaymentRecorded", async function () {
-            const { resolver, buyer, seller } = await loadFixture(deployProvaFixture);
-            await setupEscrow(resolver, buyer, seller);
-
-            await expect(resolver.connect(buyer).recordPayment(1))
-                .to.emit(resolver, "PaymentRecorded")
-                .withArgs(1, buyer.address);
-
-            expect((await resolver.conditions(1)).invoicePaid).to.be.true;
-        });
-
-        it("allows seller to record payment", async function () {
-            const { resolver, buyer, seller } = await loadFixture(deployProvaFixture);
-            await setupEscrow(resolver, buyer, seller);
-
-            await expect(resolver.connect(seller).recordPayment(1))
-                .to.emit(resolver, "PaymentRecorded")
-                .withArgs(1, seller.address);
-        });
-
-        it("reverts NotBuyerOrSeller for any other address", async function () {
-            const { resolver, buyer, seller, stranger } = await loadFixture(deployProvaFixture);
-            await setupEscrow(resolver, buyer, seller);
-
-            await expect(resolver.connect(stranger).recordPayment(1))
-                .to.be.revertedWithCustomError(resolver, "NotBuyerOrSeller");
-        });
-
-        it("reverts InvoiceAlreadyPaid on double-attestation", async function () {
-            const { resolver, buyer, seller } = await loadFixture(deployProvaFixture);
-            await setupEscrow(resolver, buyer, seller);
-
-            await resolver.connect(buyer).recordPayment(1);
-            await expect(resolver.connect(seller).recordPayment(1))
-                .to.be.revertedWithCustomError(resolver, "InvoiceAlreadyPaid")
+            // stranger was not the caller of onConditionSet — must be rejected.
+            await expect(resolver.connect(stranger).isConditionMet(1))
+                .to.be.revertedWithCustomError(resolver, "UnauthorizedCaller")
                 .withArgs(1);
-        });
-
-        it("reverts ConditionNotSet for unregistered escrowId", async function () {
-            const { resolver, buyer } = await loadFixture(deployProvaFixture);
-
-            await expect(resolver.connect(buyer).recordPayment(999))
-                .to.be.revertedWithCustomError(resolver, "ConditionNotSet")
-                .withArgs(999);
         });
     });
 
@@ -219,15 +201,24 @@ describe("ProvaPaymentResolver", function () {
 
     describe("constants and interface", function () {
 
-        it("exposes WAITING_PERIOD of 7 days", async function () {
+        it("exposes DEFAULT_WAITING_PERIOD of 7 days", async function () {
             const { resolver } = await loadFixture(deployProvaFixture);
-            expect(await resolver.WAITING_PERIOD()).to.equal(WAITING_PERIOD);
+            expect(await resolver.DEFAULT_WAITING_PERIOD()).to.equal(DEFAULT_WAITING_PERIOD);
+        });
+
+        it("exposes MIN_WAITING_PERIOD of 1 day", async function () {
+            const { resolver } = await loadFixture(deployProvaFixture);
+            expect(await resolver.MIN_WAITING_PERIOD()).to.equal(1 * 24 * 60 * 60);
+        });
+
+        it("exposes MAX_WAITING_PERIOD of 90 days", async function () {
+            const { resolver } = await loadFixture(deployProvaFixture);
+            expect(await resolver.MAX_WAITING_PERIOD()).to.equal(90 * 24 * 60 * 60);
         });
 
         it("supports IConditionResolver via ERC-165", async function () {
             const { resolver } = await loadFixture(deployProvaFixture);
-            // IConditionResolver interfaceId
-            expect(await resolver.supportsInterface("0x01ffc9a7")).to.be.true; // ERC165
+            expect(await resolver.supportsInterface("0x01ffc9a7")).to.be.true;
         });
 
         it("does not claim IUnderwriterPolicy support", async function () {

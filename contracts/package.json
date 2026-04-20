@@ -13,7 +13,7 @@
     "test:resolvers": "hardhat test test/resolvers/",
     "test:policies": "hardhat test test/policies/",
     "clean": "hardhat clean",
-    "deploy": "hardhat run scripts/deploy.ts --network arbitrumSepolia",
+    "deploy": "hardhat run scripts/deploy.ts --network arb-sepolia",
     "deploy:local": "hardhat run scripts/deploy.ts --network localhost",
     "lint": "solhint 'contracts/**/*.sol'",
     "format": "prettier --write '**/*.{ts,js,json,sol}'",
@@ -24,6 +24,7 @@
     "@fhenixprotocol/cofhe-contracts": "^0.1.0",
     "@cofhe/mock-contracts": "^0.4.0",
     "@openzeppelin/contracts": "^5.4.0",
+    "@openzeppelin/contracts-upgradeable": "^5.4.0",
     "@reineira-os/sdk": "^0.1.0",
     "@cofhe/hardhat-plugin": "^0.4.0",
     "@cofhe/sdk": "^0.4.0"
