@@ -17,14 +17,22 @@ export const WITHDRAWAL_FLOW_STEPS = [
   { label: 'Done' },
 ];
 
+type AbiMapKey = keyof typeof ABI_MAP;
+
+function isAbiMapKey(key: string): key is AbiMapKey {
+  return key in ABI_MAP;
+}
+
 function encodeWithdrawalCall(call: WithdrawalCall): { to: string; data: string } {
   const functionName = call.abi_function_signature.split('(')[0];
-  const abi = ABI_MAP[functionName];
-  if (!abi) throw new Error(`Unknown function: ${functionName}`);
+  if (!isAbiMapKey(functionName)) throw new Error(`Unknown function: ${functionName}`);
 
-  const abiDef = abi.find((entry: { name?: string }) => entry.name === functionName);
-  if (!abiDef || !('inputs' in abiDef)) throw new Error(`ABI entry not found: ${functionName}`);
-  const args = abiDef.inputs.map((input) => {
+  const abi = ABI_MAP[functionName];
+  const abiDef = (abi as ReadonlyArray<{ name?: string; inputs?: ReadonlyArray<{ name: string }> }>)
+    .find((entry) => entry.name === functionName);
+  if (!abiDef?.inputs) throw new Error(`ABI entry not found: ${functionName}`);
+
+  const args = abiDef.inputs.map((input: { name: string }) => {
     const value = (call.abi_parameters as Record<string, unknown>)[input.name];
     if (value === undefined) throw new Error(`Missing parameter: ${input.name}`);
     return value;
@@ -32,9 +40,7 @@ function encodeWithdrawalCall(call: WithdrawalCall): { to: string; data: string 
 
   return {
     to: call.contract_address,
-    data: encodeFunctionData({ abi, functionName: functionName as 'redeemMultiple' | 'unwrap', args } as Parameters<
-      typeof encodeFunctionData
-    >[0]),
+    data: encodeFunctionData({ abi, functionName, args } as Parameters<typeof encodeFunctionData>[0]),
   };
 }
 
