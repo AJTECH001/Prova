@@ -1,23 +1,23 @@
 const POOLS = [
   {
-    category: 'For Exporters',
+    category: 'For Sellers',
     title: 'Always covered.',
     description:
-      'Protect invoices from $5K to $50K against buyer default and political risk. Coverage issued on-chain in seconds — no broker, no paperwork, no exposure of your financial data. Your credit score stays encrypted throughout.',
-    tags: ['FHE-encrypted scoring', 'Auto-claim'],
+      'Selling goods or services on credit? Enter your buyer\'s address, invoice amount, and due date — Prova evaluates the buyer\'s payment history and sets your coverage terms automatically. If the buyer doesn\'t pay on time, your claim is settled from the insurance pool. No broker, no adjuster, no weeks of waiting.',
+    tags: ['Automatic claim payout', 'Private credit scoring'],
   },
   {
-    category: 'For Underwriters',
-    title: 'Set your terms.',
+    category: 'Privacy First',
+    title: 'Your data, never exposed.',
     description:
-      'Deploy a ProvaUnderwriterPolicy with custom risk logic. Evaluate exporter applications using FHE-encrypted credit scores — without accessing any plaintext financial data. Earn the premium spread on every active policy.',
-    tags: ['Programmable policy', 'Premium income'],
+      'When Prova evaluates your buyer\'s credit, every score is encrypted before it touches the blockchain. The premium is calculated on encrypted values — no raw financial data is ever readable on-chain. Your policy terms are private. Your claim is validated without exposing amounts. No broker ever sees your books.',
+    tags: ['FHE-encrypted scoring', 'Zero data leaks'],
   },
   {
     category: 'For Liquidity Providers',
     title: 'Earn and withdraw.',
     description:
-      'Deposit USDC into the PremiumPool and earn yield backed by real trade finance assets. Exposure is diversified across active policies. Non-custodial escrow — you retain ownership of capital at all times.',
+      'Deposit USDC into the insurance pool and earn yield backed by real trade transactions. Your capital supports active policies and earns a proportional share of premiums collected. Automatically diversified across all policies. Non-custodial — you control your funds at all times.',
     tags: ['USDC yield', 'Non-custodial'],
   },
 ];
@@ -31,14 +31,14 @@ export function FeatureGrid() {
         <div className="mb-16 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-xl space-y-5">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-[hsl(var(--text-muted))]">
-              Built for emerging-market trade finance
+              Built for modern trade finance
             </p>
             <h2 className="text-5xl font-black tracking-tight text-[hsl(var(--text-primary))] sm:text-6xl">
               Three roles.<br />One protocol.
             </h2>
             <p className="text-lg text-[hsl(var(--text-secondary))]">
-              FHE-encrypted underwriting, on-chain escrow settlement, and USDC
-              liquidity pools. For exporters, underwriters, and LPs — on Arbitrum.
+              Whether you sell on credit, provide liquidity, or underwrite risk —
+              every role connects to the same escrow settlement layer on Arbitrum.
             </p>
           </div>
 

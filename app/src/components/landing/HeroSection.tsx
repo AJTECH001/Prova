@@ -18,13 +18,13 @@ export function HeroSection() {
 
       {/* Headline */}
       <h1 className="w-full max-w-5xl font-black leading-[1.02] tracking-tight">
-        <span className="block whitespace-nowrap text-[clamp(1.8rem,5.5vw,7rem)] text-[hsl(var(--text-primary))]">Protect your invoices.</span>
-        <span className="block whitespace-nowrap text-[clamp(1.8rem,5.5vw,7rem)] text-[hsl(var(--brand-primary))]">Skip the fine print.</span>
+        <span className="block whitespace-nowrap text-[clamp(1.8rem,5.5vw,7rem)] text-[hsl(var(--text-primary))]">Sell on credit.</span>
+        <span className="block whitespace-nowrap text-[clamp(1.8rem,5.5vw,7rem)] text-[hsl(var(--brand-primary))]">Get paid either way.</span>
       </h1>
 
       {/* Subtext */}
       <p className="mx-auto mt-8 max-w-xl text-base leading-relaxed text-[hsl(var(--text-secondary))] sm:text-lg">
-        On-chain trade credit insurance for SME. No minimum portfolio. No data exposure. Instant underwriting via FHE.
+        Trade credit insurance for any business selling goods or services on credit. Instant coverage, automatic payouts if a buyer defaults — no broker, no paperwork, no waiting.
       </p>
 
       {/* CTAs */}
@@ -36,10 +36,12 @@ export function HeroSection() {
           Get started
         </Link>
         <a
-          href="#zk"
+          href="https://cal.com/jamiu-damilola-alade-zgtrvz/30min"
+          target="_blank"
+          rel="noopener noreferrer"
           className="flex w-full items-center justify-center gap-2 rounded-full border border-[hsl(var(--border-strong))] px-8 py-3 text-sm font-semibold text-[hsl(var(--text-muted))] transition-colors hover:border-[hsl(var(--brand-primary)/0.4)] hover:text-[hsl(var(--text-primary))] sm:w-auto"
         >
-          How it works
+          Schedule a call
           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <path d="M5 12h14M12 5l7 7-7 7" />
           </svg>

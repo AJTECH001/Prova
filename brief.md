@@ -1,9 +1,9 @@
-# PROVA — brief.md
+index# PROVA — brief.md
 
 ## What we're building
 
-PROVA is a trade credit insurance platform for SME exporters on Arbitrum Sepolia.
-Exporters create on-chain escrows for invoices. Underwriters evaluate buyer credit risk
+PROVA is a trade credit insurance platform for SMEs.
+Seller create on-chain escrows for invoices. Underwriters evaluate buyer credit risk
 using FHE-encrypted scoring. Liquidity providers stake USDC into insurance pools and
 earn premiums. All financial values (risk scores, coverage amounts, premiums) are
 FHE-encrypted on-chain via CoFHE.

@@ -4,27 +4,32 @@ const FAQS = [
   {
     question: 'What is Prova and who is it for?',
     answer:
-      'Prova is an on-chain trade credit insurance protocol built on Arbitrum. It serves SME exporters who need protection against buyer default on invoices ($5K–$50K), underwriters who want programmable on-chain risk books, and liquidity providers who want USDC yield backed by real trade finance assets.',
+      'Prova is an on-chain trade credit insurance platform built on Arbitrum. It is for any business selling goods or services on credit terms — if you issue invoices and give buyers time to pay, Prova can protect you. Liquidity providers who want USDC yield backed by real trade transactions can also participate.',
   },
   {
-    question: 'How does FHE-encrypted underwriting work?',
+    question: 'Do I need to be an exporter to use Prova?',
     answer:
-      'Prova uses Fully Homomorphic Encryption (FHE) via Fhenix CoFHE. Your credit score is encrypted before it touches the blockchain. The underwriter policy computes directly on the encrypted value — without ever decrypting it — and returns an encrypted risk score that determines your premium. No plaintext financial data is stored or exposed on-chain.',
+      'No. Any business selling goods or services on credit can use Prova — whether you are a manufacturer, wholesaler, service provider, or trading company. If you issue invoices and extend payment terms to buyers, Prova is built for you.',
   },
   {
-    question: 'What happens when a buyer defaults?',
+    question: 'How does the underwriting work?',
     answer:
-      'When an invoice passes its due date unpaid, a 7-day waiting period begins. After that window, the escrow condition is met and your coverage triggers automatically. The claim payout is settled from the InsurancePool directly to your wallet — no adjuster, no paperwork, no manual review.',
+      'Prova uses Fully Homomorphic Encryption (FHE) via Fhenix CoFHE. When you create coverage for an invoice, Prova evaluates your buyer\'s creditworthiness using an encrypted score — the underwriting contract computes directly on the encrypted value without ever decrypting it. The result is an encrypted premium in basis points. No plaintext financial data is stored or exposed on-chain at any point.',
+  },
+  {
+    question: 'What happens when a buyer does not pay?',
+    answer:
+      'When an invoice passes its due date unpaid, a 7-day waiting period begins automatically on-chain. Once that window closes, the payment condition is met. You then initiate the claim with a single transaction — the contract verifies the condition and releases your payout directly from the insurance pool to your wallet. No adjuster, no paperwork, no manual review.',
   },
   {
     question: 'Is Prova non-custodial?',
     answer:
-      'Yes. Buyer USDC is held inside audited ConfidentialEscrow smart contracts on Arbitrum. Neither Prova nor the underlying Reineira infrastructure ever takes custody of your funds. Your account is a ZeroDev passkey smart account — tied to your device, not a seed phrase.',
+      'Yes. Funds are held inside smart contracts on Arbitrum — neither Prova nor the underlying Reineira infrastructure ever takes custody of your money. Your account is a ZeroDev passkey smart account tied to your device, not a seed phrase. You are always in control.',
   },
   {
     question: 'How do liquidity providers earn yield?',
     answer:
-      'LPs deposit USDC into the InsurancePool. Their capital backs active trade credit policies and earns a proportional share of premiums collected. Exposure is automatically diversified across all active policies. Deposits are non-custodial and withdrawable at any time subject to pool liquidity.',
+      'Liquidity providers deposit USDC into the insurance pool. Their capital backs active trade credit policies and earns a proportional share of premiums collected. Exposure is automatically diversified across all active policies — no manual rebalancing needed. Deposits are non-custodial and withdrawable at any time subject to pool liquidity.',
   },
 ];
 
@@ -45,7 +50,7 @@ export function FAQSection() {
           </h2>
           <p className="mx-auto max-w-xl text-lg text-[hsl(var(--text-secondary))]">
             Everything you need to know about how Prova works, who it is for,
-            and how your funds are protected.
+            and what happens to your money and your data.
           </p>
         </div>
 

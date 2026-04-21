@@ -14,16 +14,16 @@ export function CTASection() {
         <div className="mb-8 flex items-center justify-center gap-2.5">
           <div className="h-2 w-2 rounded-full bg-[hsl(var(--brand-primary))]" />
           <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[hsl(var(--brand-primary))]">
-            Ready to get started
+            Ready when you are
           </span>
         </div>
 
         <h2 className="text-[clamp(2rem,5vw,3.5rem)] font-black leading-[1.08] tracking-tight text-[hsl(var(--text-primary))]">
-          Let's build what trade<br className="hidden sm:block" /> credit should be.
+          Protect your next invoice.<br className="hidden sm:block" /> Get paid either way.
         </h2>
 
         <p className="mx-auto mt-5 max-w-sm text-base leading-relaxed text-[hsl(var(--text-secondary))]">
-          FHE-encrypted. Escrow-settled. Built on Arbitrum.
+          Sign up in minutes. No broker, no paperwork — just coverage that works the moment you need it.
         </p>
 
         <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">

@@ -1,8 +1,8 @@
 const FEATURES = [
   {
-    title: 'FHE-Encrypted Credit Scores',
+    title: 'Buyer Credit, Always Encrypted',
     description:
-      'Exporter credit is scored using Fhenix CoFHE. The underwriter evaluates encrypted values on-chain — no plaintext financial data is ever exposed or stored.',
+      'Your buyer\'s creditworthiness is evaluated using Fhenix CoFHE. The underwriting contract scores encrypted values on-chain — no plaintext financial data is ever exposed or stored at any point.',
   },
   {
     title: 'Passkey Smart Accounts',
@@ -10,23 +10,23 @@ const FEATURES = [
       'Built on ZeroDev ERC-4337 account abstraction. Sign in and transact with a device passkey — no seed phrases, no browser wallet extensions required.',
   },
   {
-    title: 'Auditable on Arbitrum',
+    title: 'Verifiable on Arbitrum',
     description:
-      'Every escrow creation, policy issuance, claim trigger, and settlement is recorded on Arbitrum L2. Fully auditable by anyone, at any time.',
+      'Every escrow, policy issuance, and settlement is recorded on Arbitrum L2. Transactions are publicly verifiable — while sensitive values like credit scores and coverage amounts remain encrypted.',
   },
   {
-    title: 'Cross-border ready',
+    title: 'Works wherever you trade',
     description:
-      'Designed for emerging-market corridors — Nigeria↔UK, Kenya↔India. Jurisdiction-aware policy filters and KYC/AML hooks built into the ReineiraOS layer.',
+      'Prova works for any business selling on credit, anywhere in the world. Country and industry risk factors are built into the underwriting model — coverage terms adjust based on where your buyer operates.',
   },
 ];
 
-const FLOW_STEPS = ['Exporter Wallet', 'ConfidentialEscrow', 'FHE Underwriter', 'Settlement'];
+const FLOW_STEPS = ['Seller Wallet', 'Secure Escrow', 'Encrypted Underwriting', 'Settlement'];
 
 const FLOW_BULLETS = [
-  'Buyer deposits USDC into ConfidentialEscrow on invoice creation',
-  'CoFHE evaluates encrypted credit score — premium set in basis points',
-  'On payment due date: escrow releases or claim triggers from PremiumPool',
+  'Seller creates an on-chain escrow for the invoice — buyer funds it before the due date',
+  'Prova evaluates the buyer\'s creditworthiness using CoFHE — premium set automatically',
+  'Buyer pays → funds release to seller. Buyer defaults → seller initiates claim after 7-day window',
 ];
 
 export function ZKPrivacyShowcase() {
@@ -39,7 +39,7 @@ export function ZKPrivacyShowcase() {
           <div className="space-y-10">
             <div className="space-y-5">
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-[hsl(var(--text-muted))]">
-                Privacy &amp; Infrastructure
+                Privacy &amp; Security
               </p>
               <h2 className="text-5xl font-black tracking-tight text-[hsl(var(--text-primary))] sm:text-6xl">
                 Institutional infrastructure.<br />
@@ -47,7 +47,7 @@ export function ZKPrivacyShowcase() {
               </h2>
               <p className="text-lg text-[hsl(var(--text-secondary))]">
                 FHE-encrypted credit evaluation, ERC-4337 passkey accounts, and
-                auditable on-chain settlement — available to any SME exporter.
+                auditable on-chain settlement — available to any business selling on credit.
               </p>
             </div>
 
@@ -75,8 +75,8 @@ export function ZKPrivacyShowcase() {
                   From wallet to settlement.
                 </h3>
                 <p className="text-sm leading-relaxed text-[hsl(var(--text-secondary))]">
-                  How an invoice moves through the Prova protocol: from passkey wallet,
-                  into ConfidentialEscrow, through FHE underwriting, to final settlement.
+                  How an invoice moves through Prova: from your passkey wallet into a
+                  secure on-chain escrow, through encrypted underwriting, to final settlement.
                 </p>
               </div>
 
