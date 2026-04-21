@@ -7,39 +7,7 @@ import {
 } from '@/services/TransactionService';
 import { useWalletStore } from '@/stores/wallet-store';
 import { useTransactionStore } from '@/stores/transaction-store';
-
-const ESCROW_ABI = [
-  {
-    name: 'create',
-    type: 'function',
-    inputs: [
-      {
-        name: 'encryptedOwner',
-        type: 'tuple',
-        components: [
-          { name: 'ctHash', type: 'uint256' },
-          { name: 'securityZone', type: 'uint8' },
-          { name: 'utype', type: 'uint8' },
-          { name: 'signature', type: 'bytes' },
-        ],
-      },
-      {
-        name: 'encryptedAmount',
-        type: 'tuple',
-        components: [
-          { name: 'ctHash', type: 'uint256' },
-          { name: 'securityZone', type: 'uint8' },
-          { name: 'utype', type: 'uint8' },
-          { name: 'signature', type: 'bytes' },
-        ],
-      },
-      { name: 'resolver', type: 'address' },
-      { name: 'resolverData', type: 'bytes' },
-    ],
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-] as const;
+import { ConfidentialEscrowABI } from '@/lib/contracts';
 
 export const TRANSACTION_FLOW_STEPS = [
   { label: 'Creating transaction' },
@@ -77,7 +45,7 @@ export function useTransactionFlow() {
 
       setCurrentStep(1);
       const data = encodeFunctionData({
-        abi: ESCROW_ABI,
+        abi: ConfidentialEscrowABI,
         functionName: 'create',
         args: [
           response.abi_parameters.encrypted_owner as unknown as {

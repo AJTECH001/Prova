@@ -103,18 +103,8 @@ export function encodePolicyData(
 export function encodeMockInEuint32(ctHash: bigint = 99999n): string {
     return ethers.AbiCoder.defaultAbiCoder().encode(
         ["tuple(uint256,uint8,uint8,bytes)"],
-        [buildMockInEuint32(ctHash)],
+        [[ctHash, 0, 4, "0x"]],
     );
-}
-
-/** Construct a raw InEuint32 tuple struct for direct contract calls (mock only). */
-export function buildMockInEuint32(ctHash: bigint = 99999n): [bigint, number, number, string] {
-    return [ctHash, 0, 4, "0x"];
-}
-
-/** Construct a raw InEuint16 tuple struct for direct contract calls (mock only). */
-export function buildMockInEuint16(ctHash: bigint = 99999n): [bigint, number, number, string] {
-    return [ctHash, 0, 2, "0x"];
 }
 
 /**

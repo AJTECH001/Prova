@@ -1,6 +1,5 @@
 import { LandingNavbar } from '@/components/landing/landing-navbar';
 import { HeroSection } from '@/components/landing/hero-section';
-import { StatsBar } from '@/components/landing/stats-bar';
 import { FeatureGrid } from '@/components/landing/feature-grid';
 import { LiveFeedDemo } from '@/components/landing/live-feed-demo';
 import { ZKPrivacyShowcase } from '@/components/landing/zk-privacy-showcase';
@@ -16,7 +15,6 @@ export function WalletAuthPage() {
       <main>
         <HeroSection />
         <PartnersBar />
-        <StatsBar />
         <FeatureGrid />        {/* bg-white */}
         <LiveFeedDemo />       {/* bg-[hsl(var(--bg-surface-alt))] */}
         <ZKPrivacyShowcase />  {/* bg-white */}

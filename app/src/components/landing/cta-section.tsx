@@ -34,7 +34,9 @@ export function CTASection() {
             Get started
           </Link>
           <a
-            href="mailto:hello@prova.xyz"
+            href="https://cal.com/jamiu-damilola-alade-zgtrvz/30min"
+            target="_blank"
+            rel="noopener noreferrer"
             className="flex w-full items-center justify-center gap-2 rounded-full border border-[hsl(var(--border-strong))] px-8 py-3 text-sm font-semibold text-[hsl(var(--text-muted))] transition-colors hover:border-[hsl(var(--brand-primary)/0.4)] hover:text-[hsl(var(--text-primary))] sm:w-auto"
           >
             Schedule a call

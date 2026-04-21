@@ -3,34 +3,12 @@ import { encodeFunctionData } from 'viem';
 import { WithdrawalService, type CreateWithdrawalRequest, type WithdrawalCall } from '@/services/WithdrawalService';
 import { useWalletStore } from '@/stores/wallet-store';
 import { useWithdrawalStore } from '@/stores/withdrawal-store';
+import { ConfidentialEscrowABI, cUSDCABI } from '@/lib/contracts';
 
-const REDEEM_ABI = [
-  {
-    name: 'redeemMultiple',
-    type: 'function',
-    inputs: [{ name: 'escrowIds', type: 'uint256[]' }],
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-] as const;
-
-const UNWRAP_ABI = [
-  {
-    name: 'unwrap',
-    type: 'function',
-    inputs: [
-      { name: 'to', type: 'address' },
-      { name: 'value', type: 'uint64' },
-    ],
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
-] as const;
-
-const ABI_MAP: Record<string, typeof REDEEM_ABI | typeof UNWRAP_ABI> = {
-  redeemMultiple: REDEEM_ABI,
-  unwrap: UNWRAP_ABI,
-};
+const ABI_MAP = {
+  redeemMultiple: ConfidentialEscrowABI,
+  unwrap: cUSDCABI,
+} as const;
 
 export const WITHDRAWAL_FLOW_STEPS = [
   { label: 'Creating withdrawal' },
@@ -44,7 +22,8 @@ function encodeWithdrawalCall(call: WithdrawalCall): { to: string; data: string 
   const abi = ABI_MAP[functionName];
   if (!abi) throw new Error(`Unknown function: ${functionName}`);
 
-  const abiDef = abi[0];
+  const abiDef = abi.find((entry: { name?: string }) => entry.name === functionName);
+  if (!abiDef || !('inputs' in abiDef)) throw new Error(`ABI entry not found: ${functionName}`);
   const args = abiDef.inputs.map((input) => {
     const value = (call.abi_parameters as Record<string, unknown>)[input.name];
     if (value === undefined) throw new Error(`Missing parameter: ${input.name}`);
