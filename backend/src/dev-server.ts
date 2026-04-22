@@ -149,6 +149,18 @@ async function main() {
     const pathname = parsed.pathname;
     const searchParams = parsed.searchParams;
 
+    // Apply CORS headers to every response so preflight always works in local dev
+    rawRes.setHeader('Access-Control-Allow-Origin', '*');
+    rawRes.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    rawRes.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    rawRes.setHeader('Access-Control-Max-Age', '86400');
+
+    if (rawReq.method === 'OPTIONS') {
+      rawRes.statusCode = 204;
+      rawRes.end();
+      return;
+    }
+
     const matched = routes.find((r) => r.pattern.test(pathname));
 
     if (!matched) {

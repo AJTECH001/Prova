@@ -3,6 +3,9 @@
 
 export const CHAIN_ID = 421614; // Arbitrum Sepolia
 
+// Mirrors ProvaPaymentResolver.DEFAULT_WAITING_PERIOD (7 days in ms)
+export const DEFAULT_WAITING_PERIOD_MS = 7 * 24 * 60 * 60 * 1000;
+
 export const ADDRESSES = {
   // PROVA contracts
   ProvaPaymentResolver:    '0x377C482B164567d7bC11f0D63BD69E4AD950fb91',
@@ -563,6 +566,34 @@ export const ConfidentialEscrowABI = [
   {
     name: 'redeemMultiple',
     inputs: [{ name: 'escrowIds', type: 'uint256[]' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+] as const;
+
+export const InsurancePoolABI = [
+  {
+    name: 'stake',
+    inputs: [
+      {
+        name: 'encryptedAmount',
+        type: 'tuple',
+        components: [
+          { name: 'ctHash',       type: 'uint256' },
+          { name: 'securityZone', type: 'uint8' },
+          { name: 'utype',        type: 'uint8' },
+          { name: 'signature',    type: 'bytes' },
+        ],
+      },
+    ],
+    outputs: [{ name: 'stakeId', type: 'uint256' }],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    name: 'unstake',
+    inputs: [{ name: 'stakeId', type: 'uint256' }],
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
-import { useAuthStore } from '@/stores/auth-store';
+import { useAuthStore, type UserRole } from '@/stores/auth-store';
 import { useAuth } from '@/hooks/use-auth';
 
 // ── Icons ──────────────────────────────────────────────────────────────────
@@ -24,6 +24,14 @@ function UploadIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
       <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+function PoolIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+      <path d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" />
     </svg>
   );
 }
@@ -60,34 +68,46 @@ function CloseIcon() {
   );
 }
 
-// ── Nav config ─────────────────────────────────────────────────────────────
-const navSections = [
-  {
+// ── Nav config per role ─────────────────────────────────────────────────────
+type NavLink = { name: string; to: '/dashboard' | '/transactions' | '/withdrawals' | '/pool' | '/profile'; icon: () => React.ReactElement };
+type NavSection = { label: string; links: NavLink[] };
+
+function getNavSections(role: UserRole | null): NavSection[] {
+  const overview: NavSection = {
     label: 'Overview',
-    links: [
-      { name: 'Dashboard', to: '/dashboard' as const, icon: HomeIcon },
-    ],
-  },
-  {
+    links: [{ name: 'Dashboard', to: '/dashboard', icon: HomeIcon }],
+  };
+  const payments: NavSection = {
     label: 'Payments',
     links: [
-      { name: 'Transactions', to: '/transactions' as const, icon: ArrowsIcon },
-      { name: 'Withdrawals', to: '/withdrawals' as const, icon: UploadIcon },
+      { name: 'Transactions', to: '/transactions', icon: ArrowsIcon },
+      { name: 'Withdrawals', to: '/withdrawals', icon: UploadIcon },
     ],
-  },
-  {
+  };
+  const earn: NavSection = {
+    label: 'Earn',
+    links: [{ name: 'Liquidity Pool', to: '/pool', icon: PoolIcon }],
+  };
+  const account: NavSection = {
     label: 'Account',
-    links: [
-      { name: 'Profile', to: '/profile' as const, icon: UserIcon },
-    ],
-  },
-];
+    links: [{ name: 'Profile', to: '/profile', icon: UserIcon }],
+  };
+
+  if (role === 'SELLER') return [overview, payments, account];
+  if (role === 'BUYER')  return [overview, account];
+  if (role === 'LP')     return [overview, earn, account];
+  if (role === 'ADMIN')  return [overview, payments, earn, account];
+  // No role yet — minimal nav
+  return [account];
+}
 
 // ── Sidebar content ────────────────────────────────────────────────────────
 function SidebarContent({ onClose }: { onClose?: () => void }) {
   const location = useLocation();
   const navigate = useNavigate();
   const walletAddress = useAuthStore((s) => s.walletAddress);
+  const role = useAuthStore((s) => s.role);
+  const navSections = getNavSections(role);
   const { logout } = useAuth();
 
   function isActive(path: string) {

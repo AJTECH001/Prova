@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { getEnv } from '../../core/config.js';
+import type { UserRole } from '../../domain/auth/model/user.js';
 
 export interface JwtTokenPair {
   accessToken: string;
@@ -12,6 +13,7 @@ export interface JwtPayload {
   walletAddress: string;
   walletProvider: string;
   email?: string;
+  role?: UserRole;
 }
 
 export class JwtService {
@@ -24,7 +26,6 @@ export class JwtService {
   constructor() {
     const env = getEnv();
     this.secret = new TextEncoder().encode(env.JWT_SECRET);
-    // Use a dedicated refresh secret when configured; fall back to the access secret.
     this.refreshSecret = new TextEncoder().encode(env.JWT_REFRESH_SECRET ?? env.JWT_SECRET);
     this.issuer = env.JWT_ISSUER;
     this.accessTokenTtl = env.ACCESS_TOKEN_TTL;
@@ -38,6 +39,7 @@ export class JwtService {
       walletAddress: payload.walletAddress,
       walletProvider: payload.walletProvider,
       email: payload.email,
+      role: payload.role,
     })
       .setProtectedHeader({ alg: 'HS256' })
       .setSubject(payload.sub)
@@ -71,6 +73,7 @@ export class JwtService {
       walletAddress: payload.walletAddress as string,
       walletProvider: payload.walletProvider as string,
       email: payload.email as string | undefined,
+      role: payload.role as UserRole | undefined,
     };
   }
 

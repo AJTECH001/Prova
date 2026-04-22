@@ -39,6 +39,8 @@ export const businessTypeEnum = pgEnum('business_type', ['RETAIL', 'SERVICE']);
 
 export const kybStatusEnum = pgEnum('kyb_status', ['PENDING', 'APPROVED', 'REJECTED']);
 
+export const userRoleEnum = pgEnum('user_role', ['SELLER', 'BUYER', 'LP', 'ADMIN']);
+
 export const credentialStatusEnum = pgEnum('credential_status', [
   'active',
   'revoked',
@@ -57,6 +59,7 @@ export const users = pgTable(
     walletAddress: text('wallet_address').unique().notNull(),
     walletProvider: walletProviderEnum('wallet_provider').notNull(),
     email: text('email'),
+    role: userRoleEnum('role'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
   },
   (t) => [index('users_wallet_address_idx').on(t.walletAddress)],

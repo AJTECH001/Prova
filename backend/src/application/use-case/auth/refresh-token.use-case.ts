@@ -36,6 +36,7 @@ export class RefreshTokenUseCase {
       walletAddress: user.walletAddress,
       walletProvider: user.walletProvider,
       email: user.email,
+      role: user.role,
     });
 
     const newSession = new Session({

@@ -37,8 +37,8 @@ export function FeatureGrid() {
               Three roles.<br />One protocol.
             </h2>
             <p className="text-lg text-[hsl(var(--text-secondary))]">
-              Whether you sell on credit, provide liquidity, or underwrite risk —
-              every role connects to the same escrow settlement layer on Arbitrum.
+              Whether you sell on credit or provide liquidity —
+              every role connects to the same escrow settlement layer on Prova.
             </p>
           </div>
 

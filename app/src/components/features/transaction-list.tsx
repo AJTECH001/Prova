@@ -2,6 +2,7 @@ import type { TransactionResponse } from '@/services/TransactionService';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { isClaimEligible } from '@/hooks/use-claim-eligibility';
 
 interface TransactionListProps {
   transactions: TransactionResponse[];
@@ -74,7 +75,12 @@ export function TransactionList({ transactions, loading, hasMore, onLoadMore, on
                 </td>
                 <td className="py-3 pr-4 text-sm text-[var(--text-secondary)]">{formatDate(transaction.deadline)}</td>
                 <td className="py-3 pr-4">
-                  <Badge variant={statusVariant(transaction.status)}>{transaction.status}</Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={statusVariant(transaction.status)}>{transaction.status}</Badge>
+                    {isClaimEligible(transaction) && (
+                      <Badge variant="warning">Claim Ready</Badge>
+                    )}
+                  </div>
                 </td>
                 <td className="py-3 text-sm text-[var(--text-secondary)]">{formatDate(transaction.created_at)}</td>
               </tr>

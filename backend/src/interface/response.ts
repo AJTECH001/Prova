@@ -73,6 +73,14 @@ export const Response = {
     };
   },
 
+  forbidden(title: string, detail?: string): HttpResponse {
+    return {
+      statusCode: 403,
+      headers: defaultHeaders(),
+      body: JSON.stringify(ErrorResponseDtoFactory.create(403, title, detail)),
+    };
+  },
+
   notFound(title: string, detail?: string): HttpResponse {
     return {
       statusCode: 404,

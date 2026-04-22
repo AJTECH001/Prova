@@ -49,6 +49,7 @@ export class VerifyWalletUseCase {
       walletAddress: user.walletAddress,
       walletProvider: user.walletProvider,
       email: user.email,
+      role: user.role,
     });
 
     const session = new Session({

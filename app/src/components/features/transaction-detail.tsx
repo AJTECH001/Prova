@@ -1,6 +1,9 @@
+import { useNavigate } from '@tanstack/react-router';
 import type { TransactionResponse } from '@/services/TransactionService';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { isClaimEligible, claimOpenAt } from '@/hooks/use-claim-eligibility';
 
 interface TransactionDetailProps {
   transaction: TransactionResponse;
@@ -43,9 +46,35 @@ function formatAmount(amount: number) {
 }
 
 export function TransactionDetail({ transaction }: TransactionDetailProps) {
+  const navigate = useNavigate();
+  const eligible = isClaimEligible(transaction);
+  const openAt = transaction.on_chain_escrow_id ? claimOpenAt(transaction.deadline) : null;
+  const claimPending = !eligible && openAt !== null && openAt > Date.now();
+
   return (
     <Card>
       <div className="flex flex-col gap-6">
+        {/* Claim eligibility banner */}
+        {eligible && (
+          <div className="flex items-center justify-between rounded-lg border border-[var(--status-warning)] bg-[hsl(var(--warning-bg))] px-4 py-3">
+            <div>
+              <p className="text-sm font-semibold text-[var(--status-warning)]">Claim available</p>
+              <p className="text-xs text-[var(--text-secondary)]">The waiting period has passed. You can initiate your claim now.</p>
+            </div>
+            <Button size="sm" onClick={() => navigate({ to: '/withdrawals' })}>
+              Initiate Claim
+            </Button>
+          </div>
+        )}
+
+        {claimPending && openAt && (
+          <div className="rounded-lg border border-[var(--border-dark)] bg-[hsl(var(--bg-surface-alt))] px-4 py-3">
+            <p className="text-xs text-[var(--text-muted)]">
+              Claim opens on {new Date(openAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            </p>
+          </div>
+        )}
+
         <div className="flex items-start justify-between">
           <div>
             <p className="text-sm text-[var(--text-secondary)]">Transaction</p>

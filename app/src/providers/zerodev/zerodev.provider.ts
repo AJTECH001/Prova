@@ -18,24 +18,20 @@ function requireEnv(key: string): string {
   return value;
 }
 
-// Wraps ZeroDev passkey server fetch errors into clear messages.
-// The SDK swallows HTTP errors — we patch fetch to catch 401/403 early.
-function passkeyErrorMessage(status: number): string {
-  if (status === 401 || status === 403) {
-    return 'Passkey server not authorized. Enable the Passkey Server feature for this project in the ZeroDev dashboard (dashboard.zerodev.app).';
+// Pre-flight check: attempt a no-cors fetch to tell apart "server unreachable"
+// from "CORS blocked" (which ZeroDev returns when Passkey Server is disabled).
+async function checkPasskeyServer(url: string): Promise<void> {
+  try {
+    // no-cors succeeds with an opaque response if the server is up and reachable.
+    const res = await fetch(url, { method: 'GET', mode: 'no-cors' });
+    if (res.type === 'opaque') return; // reachable — CORS will be handled by the SDK
+  } catch {
+    throw new Error(
+      'Cannot reach the ZeroDev passkey server. Possible causes:\n' +
+      '1. The Passkey Server feature is not enabled for this project in the ZeroDev dashboard (dashboard.zerodev.app).\n' +
+      '2. Check that VITE_ZERODEV_PASSKEY_SERVER_URL is set correctly.',
+    );
   }
-  return `Passkey server error (HTTP ${status}). Check your VITE_ZERODEV_PASSKEY_SERVER_URL.`;
-}
-
-async function fetchWithPasskeyErrorHandling(
-  input: RequestInfo | URL,
-  init?: RequestInit,
-): Promise<Response> {
-  const res = await fetch(input, init);
-  if (!res.ok && String(input).includes('passkeys.zerodev.app')) {
-    throw new Error(passkeyErrorMessage(res.status));
-  }
-  return res;
 }
 
 function getChain() {
@@ -96,17 +92,20 @@ export class ZeroDevProvider implements IWalletProvider {
   async register(username: string): Promise<string> {
     await WindowHelper.ensureFocus();
 
+    const passkeyServerUrl = requireEnv('VITE_ZERODEV_PASSKEY_SERVER_URL');
+    await checkPasskeyServer(passkeyServerUrl);
+
     let webAuthnKey: WebAuthnKey;
     try {
       webAuthnKey = await toWebAuthnKey({
         passkeyName: username,
-        passkeyServerUrl: requireEnv('VITE_ZERODEV_PASSKEY_SERVER_URL'),
+        passkeyServerUrl,
         mode: WebAuthnMode.Register,
         passkeyServerHeaders: { 'Content-Type': 'application/json' },
       });
     } catch (e) {
       if (e instanceof TypeError && String(e.message).toLowerCase().includes('fetch')) {
-        throw new Error('Cannot reach passkey server. Check VITE_ZERODEV_PASSKEY_SERVER_URL in your .env file.');
+        throw new Error('Passkey registration failed. Ensure the Passkey Server feature is enabled in the ZeroDev dashboard (dashboard.zerodev.app).');
       }
       throw e;
     }
@@ -123,17 +122,20 @@ export class ZeroDevProvider implements IWalletProvider {
   async login(): Promise<string> {
     await WindowHelper.ensureFocus();
 
+    const passkeyServerUrl = requireEnv('VITE_ZERODEV_PASSKEY_SERVER_URL');
+    await checkPasskeyServer(passkeyServerUrl);
+
     let webAuthnKey: WebAuthnKey;
     try {
       webAuthnKey = await toWebAuthnKey({
         passkeyName: '',
-        passkeyServerUrl: requireEnv('VITE_ZERODEV_PASSKEY_SERVER_URL'),
+        passkeyServerUrl,
         mode: WebAuthnMode.Login,
         passkeyServerHeaders: { 'Content-Type': 'application/json' },
       });
     } catch (e) {
       if (e instanceof TypeError && String(e.message).toLowerCase().includes('fetch')) {
-        throw new Error('Cannot reach passkey server. Check VITE_ZERODEV_PASSKEY_SERVER_URL in your .env file.');
+        throw new Error('Passkey login failed. Ensure the Passkey Server feature is enabled in the ZeroDev dashboard (dashboard.zerodev.app).');
       }
       throw e;
     }

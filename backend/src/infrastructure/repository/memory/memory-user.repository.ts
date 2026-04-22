@@ -1,5 +1,5 @@
 import type { IUserRepository } from '../../../domain/auth/repository/user.repository.js';
-import type { User } from '../../../domain/auth/model/user.js';
+import { User, type UserRole } from '../../../domain/auth/model/user.js';
 
 export class MemoryUserRepository implements IUserRepository {
   private readonly store = new Map<string, User>();
@@ -17,5 +17,10 @@ export class MemoryUserRepository implements IUserRepository {
 
   async save(user: User): Promise<void> {
     this.store.set(user.id, user);
+  }
+
+  async updateRole(userId: string, role: UserRole): Promise<void> {
+    const user = this.store.get(userId);
+    if (user) this.store.set(userId, user.withRole(role));
   }
 }
