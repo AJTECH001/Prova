@@ -39,15 +39,20 @@ This repo is part of the ReineiraOS builder platform:
 ## Project layout
 
 ```
-contracts/
+src/
   interfaces/          — protocol interfaces (read-only reference)
   resolvers/           — IConditionResolver implementations (you create these)
   policies/            — IUnderwriterPolicy implementations (you create these)
+  registries/          — on-chain registry contracts (exposure, claims)
+  shared/              — base contracts and libraries
+  adapters/            — IDebtorProof adapter implementations
+  mocks/               — test-only mock contracts
 test/
   resolvers/           — resolver test files
   policies/            — policy test files
 scripts/
-  deploy.ts            — universal deploy script
+  deploy.ts            — deploys all PROVA contracts in dependency order
+  interact.ts          — end-to-end SDK integration walkthrough
 deployments/           — deployment records (auto-generated)
 ```
 

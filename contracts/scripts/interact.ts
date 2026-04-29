@@ -74,7 +74,7 @@ async function main() {
   } catch (e) { fail("createPool", e); process.exit(1); }
 
   // ══════════════════════════════════════════════════════════════════════════
-  section("2 · Add ProvaUnderwriterPolicy to pool");
+  section("2 · Add TradeCreditInsurancePolicy to pool");
   // ══════════════════════════════════════════════════════════════════════════
   // The pool must whitelist the policy before any coverage can be purchased.
 
@@ -98,18 +98,21 @@ async function main() {
   } catch (e) { fail("stake", e); }
 
   // ══════════════════════════════════════════════════════════════════════════
-  section("4 · Build resolver data for ProvaPaymentResolver");
+  section("4 · Build resolver data for TradeInvoiceResolver");
   // ══════════════════════════════════════════════════════════════════════════
-  // ProvaPaymentResolver.onConditionSet(escrowId, data) expects:
-  //   abi.encode(address buyer, uint256 amount, uint256 dueDate)
+  // TradeInvoiceResolver.onConditionSet(escrowId, data) expects:
+  //   abi.encode(address buyer, address seller, uint256 invoiceAmount,
+  //              uint256 dueDate, uint256 waitingPeriod)
+  // waitingPeriod must be between 30 days and 180 days (MIN/MAX_WAITING_PERIOD).
 
-  const INVOICE_AMOUNT = sdk.usdc(1000);
-  const DUE_DATE       = Math.floor(Date.now() / 1000) + 86400; // 24 h from now
-  const COVERAGE_EXPIRY = Math.floor(Date.now() / 1000) + 86400 * 30; // 30 days
+  const INVOICE_AMOUNT  = sdk.usdc(1000);
+  const DUE_DATE        = Math.floor(Date.now() / 1000) + 86400 * 30; // 30 days from now
+  const WAITING_PERIOD  = 30 * 24 * 60 * 60; // 30 days (minimum per policy)
+  const COVERAGE_EXPIRY = Math.floor(Date.now() / 1000) + 86400 * 90; // 90 days
 
   const resolverData = ethers.AbiCoder.defaultAbiCoder().encode(
-    ["address", "uint256", "uint256"],
-    [wallet.address, INVOICE_AMOUNT, DUE_DATE]
+    ["address", "address", "uint256", "uint256", "uint256"],
+    [wallet.address, wallet.address, INVOICE_AMOUNT, DUE_DATE, WAITING_PERIOD]
   );
   pass("resolverData encoded", `buyer=${wallet.address}  dueDate=${new Date(DUE_DATE * 1000).toISOString()}`);
 
@@ -172,8 +175,8 @@ async function main() {
   section("SUMMARY");
   // ══════════════════════════════════════════════════════════════════════════
   console.log(`
-  ProvaPaymentResolver    ${DEPLOYED.resolver}
-  ProvaUnderwriterPolicy  ${DEPLOYED.policy}
+  TradeInvoiceResolver       ${DEPLOYED.resolver}
+  TradeCreditInsurancePolicy ${DEPLOYED.policy}
   Pool                    ${pool?.address}
   Escrow ID               ${escrow?.id}
   Coverage ID             ${escrow?.coverage?.id}

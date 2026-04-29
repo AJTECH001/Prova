@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {ConditionResolverBase} from "../reineira-shared/extensions/ConditionResolverBase.sol";
+import {ConditionResolverBase} from "../shared/extensions/ConditionResolverBase.sol";
 
-/// @title  ProvaPaymentResolver
+/// @title  TradeInvoiceResolver
 /// @notice Condition resolver implementing trade credit insurance protracted-default rules.
 ///
 ///         A claim triggers when the invoice due date plus a configurable waiting period
@@ -12,18 +12,15 @@ import {ConditionResolverBase} from "../reineira-shared/extensions/ConditionReso
 ///         but are never stored on-chain.
 ///
 /// @dev    Inherits caller-binding and ERC-165 from ConditionResolverBase.
-contract ProvaPaymentResolver is ConditionResolverBase {
+contract TradeInvoiceResolver is ConditionResolverBase {
 
     // ─── Constants ───────────────────────────────────────────────────────────
 
-    /// @notice Default waiting period after invoice due date before a claim can be raised.
-    uint256 public constant DEFAULT_WAITING_PERIOD = 7 days;
+    /// @notice Minimum waiting period for trade credit insurance (industry standard).
+    uint256 public constant MIN_WAITING_PERIOD = 30 days;
 
-    /// @notice Minimum allowed waiting period — prevents trivial instant claims.
-    uint256 public constant MIN_WAITING_PERIOD = 1 days;
-
-    /// @notice Maximum allowed waiting period.
-    uint256 public constant MAX_WAITING_PERIOD = 90 days;
+    /// @notice Maximum waiting period for trade credit insurance (industry standard).
+    uint256 public constant MAX_WAITING_PERIOD = 180 days;
 
     // ─── Errors ──────────────────────────────────────────────────────────────
 
@@ -97,7 +94,9 @@ contract ProvaPaymentResolver is ConditionResolverBase {
             waitingPeriod > MAX_WAITING_PERIOD)      revert InvalidWaitingPeriod();
 
         // Prevent the same invoice from being registered under two different escrows.
-        bytes32 hash = _invoiceHash(buyer, seller, invoiceAmount, dueDate);
+        // Using escrowId in hash prevents collision when same buyer/seller have multiple
+        // invoices with identical amount and due date.
+        bytes32 hash = _invoiceHash(escrowId, buyer, seller);
         if (_invoiceHashToEscrow[hash] != 0) revert InvoiceAlreadyRegistered(hash);
         _invoiceHashToEscrow[hash] = escrowId;
 
@@ -129,19 +128,18 @@ contract ProvaPaymentResolver is ConditionResolverBase {
 
     // ─── Internal helpers ────────────────────────────────────────────────────
 
-    /// @dev    Produces a canonical hash of the invoice parties and terms.
-    ///         Used to detect duplicate registrations across different escrow IDs.
-    /// @param  buyer   Buyer address.
-    /// @param  seller  Seller address.
-    /// @param  amount  Invoice amount.
-    /// @param  dueDate Invoice payment due date.
-    /// @return         keccak256 hash uniquely identifying this invoice.
+    /// @notice Produces a canonical hash to prevent duplicate escrow registrations.
+    /// @dev    Uses escrowId to prevent hash collisions when the same buyer/seller pair
+    ///         has multiple invoices. This is safer than hashing invoice terms alone.
+    /// @param  escrowId Unique escrow identifier.
+    /// @param  buyer    Buyer address.
+    /// @param  seller   Seller address.
+    /// @return          keccak256 hash uniquely identifying this escrow registration.
     function _invoiceHash(
+        uint256 escrowId,
         address buyer,
-        address seller,
-        uint256 amount,
-        uint256 dueDate
+        address seller
     ) internal pure returns (bytes32) {
-        return keccak256(abi.encode(buyer, seller, amount, dueDate));
+        return keccak256(abi.encode(escrowId, buyer, seller));
     }
 }

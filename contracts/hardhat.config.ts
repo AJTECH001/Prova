@@ -9,6 +9,9 @@ import type { HardhatUserConfig } from 'hardhat/config';
 const PRIVATE_KEY = process.env.PRIVATE_KEY || '0x' + '0'.repeat(64);
 
 const config: HardhatUserConfig = {
+  paths: {
+    sources: './src',
+  },
   solidity: {
     version: '0.8.25',
     settings: {

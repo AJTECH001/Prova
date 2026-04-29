@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {TestnetCoreBase} from "../reineira-shared/TestnetCoreBase.sol";
+import {TestnetCoreBase} from "../shared/TestnetCoreBase.sol";
 import {FHE, Common, euint64, ebool} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 
 /// @title  DebtorExposureRegistry

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {TestnetCoreBase} from "../reineira-shared/TestnetCoreBase.sol";
+import {TestnetCoreBase} from "../shared/TestnetCoreBase.sol";
 import {FHE, euint64} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 
-/// @title  ProvaLossHistory
+/// @title  InsuranceClaimsRegistry
 /// @notice Encrypted append-only log of all judged insurance claims.
 ///
 ///         Each entry records the coverage ID, encrypted claim amount as a euint64 handle,
@@ -17,7 +17,11 @@ import {FHE, euint64} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 ///         inferring claim volume or growth rate through sequential ID enumeration.
 ///
 ///         Only owner-whitelisted policy contracts may append or query entries.
-contract ProvaLossHistory is TestnetCoreBase {
+///
+/// @dev    TODO: Enhance with zkTLS off-chain loss history integration (see TECH_DEBT.md)
+///         Future: Build PROVA's proprietary loss data verification system combining
+///         on-chain claims with verified off-chain business data for comprehensive risk assessment.
+contract InsuranceClaimsRegistry is TestnetCoreBase {
 
     // ─── Events ──────────────────────────────────────────────────────────────
 

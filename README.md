@@ -20,7 +20,7 @@ Our dual-plugin architecture separates the privacy-preserving actuarial math fro
 
 ## 🌍 Go-To-Market (GTM) Strategy
 
-Our GTM strategy targets the **$28 Trillion global trade market**, focusing specifically on the structural gap left by legacy insurers (like Euler Hermes or Coface) who systematically reject businesses with under $1M in annual turnover. 
+Our GTM strategy targets the **$28 Trillion global trade market**, focusing specifically on the structural gap left by legacy trade credit insurers who systematically reject businesses with under $1M in annual turnover. 
 
 ### 1. Target Corridors
 We are launching specifically into high-velocity, emerging market export corridors where the demand for single-invoice credit protection ($5,000 to $50,000 range) is massively underserved. Initial pilot corridors include:

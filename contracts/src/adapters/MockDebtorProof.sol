@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {InEuint32} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
-import {IDebtorProof} from "./IDebtorProof.sol";
+import {IDebtorProof} from "../interfaces/IDebtorProof.sol";
 
 /// @title  MockDebtorProof
 /// @notice Test-only IDebtorProof adapter.

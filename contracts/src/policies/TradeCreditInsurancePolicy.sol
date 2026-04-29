@@ -2,22 +2,23 @@
 pragma solidity ^0.8.24;
 
 import {FHE, Common, euint64, euint32, euint16, ebool, InEuint32, InEuint64} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
-import {UnderwriterPolicyBase} from "../reineira-shared/extensions/UnderwriterPolicyBase.sol";
-import {FHEMeta} from "../reineira-shared/lib/FHEMeta.sol";
-import {IDebtorProof} from "../adapters/IDebtorProof.sol";
-import {DebtorExposureRegistry} from "../moat/DebtorExposureRegistry.sol";
-import {ProvaLossHistory} from "../moat/ProvaLossHistory.sol";
+import {UnderwriterPolicyBase} from "../shared/extensions/UnderwriterPolicyBase.sol";
+import {FHEMeta} from "../shared/lib/FHEMeta.sol";
+import {IDebtorProof} from "../interfaces/IDebtorProof.sol";
+import {DebtorExposureRegistry} from "../registries/DebtorExposureRegistry.sol";
+import {InsuranceClaimsRegistry} from "../registries/InsuranceClaimsRegistry.sol";
 import {RiskMathLib} from "../lib/RiskMathLib.sol";
+import {FHERiskMath} from "../lib/FHERiskMath.sol";
 
-/// @title  ProvaUnderwriterPolicy
-/// @notice FHE-based underwriter policy for PROVA trade credit insurance.
+/// @title  TradeCreditInsurancePolicy
+/// @notice FHE-based underwriter policy for trade credit insurance.
 ///
 ///         Risk curve thresholds and premiums are stored as encrypted euint32 arrays —
 ///         no plaintext risk parameters exist in contract state. Country and industry
 ///         risk add-ons are stored as encrypted euint16 values with no plaintext getters.
 ///         Concentration cap enforcement is gated using FHE.select on the encrypted
 ///         boolean returned by DebtorExposureRegistry.
-contract ProvaUnderwriterPolicy is UnderwriterPolicyBase {
+contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
 
     // ─── Errors ──────────────────────────────────────────────────────────────
 
@@ -36,6 +37,7 @@ contract ProvaUnderwriterPolicy is UnderwriterPolicyBase {
         bytes32 debtorId;              // canonical debtor identifier used to fetch the credit score
         address poolId;                // pool address for currency segregation tracking
         bytes2  countryCode;           // ISO 3166-1 alpha-2 country code of the debtor
+                                       // TODO: Replace with zkTLS/zkKYC verification (see TECH_DEBT.md)
         bytes4  industryCode;          // NACE / SIC industry classification code
         uint16  coveragePercentageBps; // percentage of the invoice covered (e.g. 9000 = 90%)
         uint8   curveVersion;          // premium curve version active at issuance time
@@ -79,7 +81,7 @@ contract ProvaUnderwriterPolicy is UnderwriterPolicyBase {
     DebtorExposureRegistry public exposureRegistry;
 
     /// @notice Encrypted append-only log of all judged claims.
-    ProvaLossHistory public lossHistory;
+    InsuranceClaimsRegistry public lossHistory;
 
     // ─── Events ──────────────────────────────────────────────────────────────
 
@@ -109,7 +111,7 @@ contract ProvaUnderwriterPolicy is UnderwriterPolicyBase {
     /// @param  initialOwner        Address that will own this contract.
     /// @param  _debtorProofAdapter Address of the IDebtorProof credit score adapter.
     /// @param  _exposureRegistry   Address of the DebtorExposureRegistry moat contract.
-    /// @param  _lossHistory        Address of the ProvaLossHistory moat contract.
+    /// @param  _lossHistory        Address of the InsuranceClaimsRegistry contract.
     function initialize(
         address initialOwner,
         address _debtorProofAdapter,
@@ -124,7 +126,7 @@ contract ProvaUnderwriterPolicy is UnderwriterPolicyBase {
 
         debtorProofAdapter = IDebtorProof(_debtorProofAdapter);
         exposureRegistry   = DebtorExposureRegistry(_exposureRegistry);
-        lossHistory        = ProvaLossHistory(_lossHistory);
+        lossHistory        = InsuranceClaimsRegistry(_lossHistory);
 
         _encryptAndStoreCurve(RiskMathLib.defaultThresholds(), RiskMathLib.defaultPremiums());
         curveVersion = RiskMathLib.DEFAULT_CURVE_VERSION;
@@ -249,47 +251,32 @@ contract ProvaUnderwriterPolicy is UnderwriterPolicyBase {
         Policy memory p = _policies[coverageId];
         if (!p.set) revert PolicyNotSet(coverageId);
 
+        // TODO: Enhance with zkTLS off-chain risk data (see TECH_DEBT.md)
+        // Current: Only on-chain credit score
+        // Future: Combine with bank history, payment patterns, PROVA's verified loss data system
         (InEuint32 memory encInput, ) = debtorProofAdapter.getScore(p.debtorId);
         euint32 creditScore = FHEMeta.asEuint32(encInput, msg.sender);
         FHE.allowThis(creditScore);
 
-        // Start at the floor bucket and climb toward better rates as the score increases.
-        euint32 premium = _encPremiums[5];
+        // Use shared library for risk curve evaluation
+        euint32 premium = FHERiskMath.evaluateRiskCurveOptimized(
+            creditScore,
+            _encThresholds,
+            _encPremiums
+        );
 
-        ebool b4 = FHE.gte(creditScore, _encThresholds[4]);
-        premium = FHE.select(b4, _encPremiums[4], premium);
+        // TODO: Replace manual country risk with zkTLS-verified country proof (see TECH_DEBT.md)
+        euint16 countryRisk = _countryRisk[p.countryCode];
+        euint16 industryRisk = _industryRisk[p.industryCode];
 
-        ebool b3 = FHE.gte(creditScore, _encThresholds[3]);
-        premium = FHE.select(b3, _encPremiums[3], premium);
+        // Use shared library for add-on calculation
+        euint32 addOns = FHERiskMath.addRiskAddons(countryRisk, industryRisk);
 
-        ebool b2 = FHE.gte(creditScore, _encThresholds[2]);
-        premium = FHE.select(b2, _encPremiums[2], premium);
+        // Use shared library for premium finalization
+        euint32 finalPremium = FHERiskMath.finalizePremium(premium, addOns, p.validCapEnc);
 
-        ebool b1 = FHE.gte(creditScore, _encThresholds[1]);
-        premium = FHE.select(b1, _encPremiums[1], premium);
-
-        ebool b0 = FHE.gte(creditScore, _encThresholds[0]);
-        premium = FHE.select(b0, _encPremiums[0], premium);
-
-        FHE.allowThis(premium);
-
-        euint16 cbps = _countryRisk[p.countryCode];
-        if (!Common.isInitialized(cbps)) cbps = FHE.asEuint16(0);
-
-        euint16 ibps = _industryRisk[p.industryCode];
-        if (!Common.isInitialized(ibps)) ibps = FHE.asEuint16(0);
-
-        euint32 addOnsEnc = FHE.add(FHE.asEuint32(cbps), FHE.asEuint32(ibps));
-        FHE.allowThis(addOnsEnc);
-
-        euint32 total32 = FHE.add(premium, addOnsEnc);
-        // Zero out the premium if the concentration cap was breached at policy issuance.
-        total32 = FHE.select(p.validCapEnc, total32, FHE.asEuint32(0));
-        FHE.allowThis(total32);
-
-        riskScore = FHE.asEuint64(total32);
-        FHE.allowThis(riskScore);
-        FHE.allow(riskScore, msg.sender);
+        // Convert to euint64 with proper ACL permissions
+        riskScore = FHERiskMath.convertToEuint64(finalPremium, msg.sender);
     }
 
     /// @notice Validates a dispute claim within FHE and appends the encrypted

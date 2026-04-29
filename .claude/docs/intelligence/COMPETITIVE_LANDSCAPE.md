@@ -11,10 +11,10 @@ last-reviewed: 2026-04-14
 
 | Competitor      | What They Do                             | Weakness                        | Our Advantage                         |
 | --------------- | ---------------------------------------- | ------------------------------- | ------------------------------------- |
-| Euler Finance   | On-chain credit / lending                | No trade-specific insurance     | FHE credit scoring, invoice-native    |
+| DeFi Credit Protocols | On-chain credit / lending          | No trade-specific insurance     | FHE credit scoring, invoice-native    |
 | Credix          | Emerging market credit pools             | Custodial, not FHE-encrypted    | Non-custodial, confidential amounts   |
-| Coface / Euler  | Traditional trade credit insurance       | Slow, expensive, offline        | On-chain settlement in minutes        |
-| Atradius        | Traditional TCI for large exporters      | Min deal size $1M+, manual UW   | SME-first, automated FHE risk pricing |
+| Legacy TCI Providers | Traditional trade credit insurance   | Slow, expensive, offline        | On-chain settlement in minutes        |
+| Enterprise TCI   | Traditional TCI for large exporters      | Min deal size $1M+, manual UW   | SME-first, automated FHE risk pricing |
 
 ## Indirect Competitors / Workarounds
 
@@ -42,6 +42,6 @@ PROVA is the first trade credit insurance platform where invoice amounts are pro
 
 ## Threats to Watch
 
-1. **Euler Finance or Aave** entering trade finance with larger liquidity pools
-2. **Traditional insurers (Coface, Atradius)** launching tokenized insurance products
+1. **DeFi lending protocols** entering trade finance with larger liquidity pools
+2. **Traditional trade credit insurers** launching tokenized insurance products
 3. **Competitor FHE chains** (e.g., Zama) enabling similar products on other EVM chains

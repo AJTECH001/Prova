@@ -21,60 +21,60 @@ async function main() {
     console.log("Balance:", ethers.formatEther(await ethers.provider.getBalance(deployer.address)), "ETH\n");
 
     // ── 1. MockDebtorProof (testnet adapter — replace with real oracle on mainnet) ──
-    console.log("1/6  Deploying MockDebtorProof...");
+    console.log("1/5  Deploying MockDebtorProof...");
     const MockDebtorProof = await ethers.getContractFactory("MockDebtorProof");
     const mockDebtorProof = await MockDebtorProof.deploy();
     await mockDebtorProof.waitForDeployment();
     const mockDebtorProofAddress = await mockDebtorProof.getAddress();
-    console.log("     MockDebtorProof     :", mockDebtorProofAddress);
+    console.log("     MockDebtorProof        :", mockDebtorProofAddress);
 
     // ── 2. DebtorExposureRegistry ─────────────────────────────────────────────────
-    console.log("2/6  Deploying DebtorExposureRegistry...");
+    console.log("2/5  Deploying DebtorExposureRegistry...");
     const DebtorExposureRegistry = await ethers.getContractFactory("DebtorExposureRegistry");
     const exposureRegistry = await DebtorExposureRegistry.deploy();
     await exposureRegistry.waitForDeployment();
     const exposureRegistryAddress = await exposureRegistry.getAddress();
     await (await exposureRegistry.initialize(deployer.address)).wait();
-    console.log("     DebtorExposureRegistry:", exposureRegistryAddress);
+    console.log("     DebtorExposureRegistry :", exposureRegistryAddress);
 
-    // ── 3. ProvaLossHistory ───────────────────────────────────────────────────────
-    console.log("3/6  Deploying ProvaLossHistory...");
-    const ProvaLossHistory = await ethers.getContractFactory("ProvaLossHistory");
-    const lossHistory = await ProvaLossHistory.deploy();
-    await lossHistory.waitForDeployment();
-    const lossHistoryAddress = await lossHistory.getAddress();
-    await (await lossHistory.initialize(deployer.address)).wait();
-    console.log("     ProvaLossHistory     :", lossHistoryAddress);
+    // ── 3. InsuranceClaimsRegistry ────────────────────────────────────────────────
+    console.log("3/5  Deploying InsuranceClaimsRegistry...");
+    const InsuranceClaimsRegistry = await ethers.getContractFactory("InsuranceClaimsRegistry");
+    const claimsRegistry = await InsuranceClaimsRegistry.deploy();
+    await claimsRegistry.waitForDeployment();
+    const claimsRegistryAddress = await claimsRegistry.getAddress();
+    await (await claimsRegistry.initialize(deployer.address)).wait();
+    console.log("     InsuranceClaimsRegistry:", claimsRegistryAddress);
 
-    // ── 4. ProvaPaymentResolver ───────────────────────────────────────────────────
-    console.log("4/6  Deploying ProvaPaymentResolver...");
-    const ProvaPaymentResolver = await ethers.getContractFactory("ProvaPaymentResolver");
-    const resolver = await ProvaPaymentResolver.deploy();
+    // ── 4. TradeInvoiceResolver ───────────────────────────────────────────────────
+    console.log("4/5  Deploying TradeInvoiceResolver...");
+    const TradeInvoiceResolver = await ethers.getContractFactory("TradeInvoiceResolver");
+    const resolver = await TradeInvoiceResolver.deploy();
     await resolver.waitForDeployment();
     const resolverAddress = await resolver.getAddress();
     await (await resolver.initialize(deployer.address)).wait();
-    console.log("     ProvaPaymentResolver :", resolverAddress);
+    console.log("     TradeInvoiceResolver   :", resolverAddress);
 
-    // ── 5. ProvaUnderwriterPolicy ─────────────────────────────────────────────────
-    console.log("5/6  Deploying ProvaUnderwriterPolicy...");
-    const ProvaUnderwriterPolicy = await ethers.getContractFactory("ProvaUnderwriterPolicy");
-    const policy = await ProvaUnderwriterPolicy.deploy();
+    // ── 5. TradeCreditInsurancePolicy ─────────────────────────────────────────────
+    console.log("5/5  Deploying TradeCreditInsurancePolicy...");
+    const TradeCreditInsurancePolicy = await ethers.getContractFactory("TradeCreditInsurancePolicy");
+    const policy = await TradeCreditInsurancePolicy.deploy();
     await policy.waitForDeployment();
     const policyAddress = await policy.getAddress();
     await (await policy.initialize(
         deployer.address,
         mockDebtorProofAddress,
         exposureRegistryAddress,
-        lossHistoryAddress,
+        claimsRegistryAddress,
     )).wait();
-    console.log("     ProvaUnderwriterPolicy:", policyAddress);
+    console.log("     TradeCreditInsurancePolicy:", policyAddress);
 
-    // ── 6. Wire moat contracts ────────────────────────────────────────────────────
-    console.log("6/6  Wiring moat contracts...");
+    // ── Wire registry contracts ───────────────────────────────────────────────────
+    console.log("\nWiring registry contracts...");
     await (await exposureRegistry.registerContract(policyAddress)).wait();
     console.log("     exposureRegistry.registerContract(policy) ✓");
-    await (await lossHistory.registerPolicy(policyAddress)).wait();
-    console.log("     lossHistory.registerPolicy(policy)        ✓");
+    await (await claimsRegistry.registerPolicy(policyAddress)).wait();
+    console.log("     claimsRegistry.registerPolicy(policy)     ✓");
 
     // ── Save deployment record ────────────────────────────────────────────────────
     const chainId = (await ethers.provider.getNetwork()).chainId;
@@ -90,17 +90,17 @@ async function main() {
             },
             DebtorExposureRegistry: {
                 address: exposureRegistryAddress,
-                note:    "Encrypted concentration risk tracker (moat)",
+                note:    "Encrypted concentration risk tracker",
             },
-            ProvaLossHistory: {
-                address: lossHistoryAddress,
-                note:    "Encrypted append-only claim log (moat)",
+            InsuranceClaimsRegistry: {
+                address: claimsRegistryAddress,
+                note:    "Encrypted append-only claim log",
             },
-            ProvaPaymentResolver: {
+            TradeInvoiceResolver: {
                 address: resolverAddress,
                 note:    "IConditionResolver — time-based protracted default gate",
             },
-            ProvaUnderwriterPolicy: {
+            TradeCreditInsurancePolicy: {
                 address: policyAddress,
                 note:    "IUnderwriterPolicy — FHE risk scoring and claim adjudication",
             },
@@ -116,18 +116,18 @@ async function main() {
 
     // ── Summary ───────────────────────────────────────────────────────────────────
     console.log("\n=== Deployment Summary ===");
-    console.log("MockDebtorProof        :", mockDebtorProofAddress);
-    console.log("DebtorExposureRegistry :", exposureRegistryAddress);
-    console.log("ProvaLossHistory       :", lossHistoryAddress);
-    console.log("ProvaPaymentResolver   :", resolverAddress);
-    console.log("ProvaUnderwriterPolicy :", policyAddress);
+    console.log("MockDebtorProof            :", mockDebtorProofAddress);
+    console.log("DebtorExposureRegistry     :", exposureRegistryAddress);
+    console.log("InsuranceClaimsRegistry    :", claimsRegistryAddress);
+    console.log("TradeInvoiceResolver       :", resolverAddress);
+    console.log("TradeCreditInsurancePolicy :", policyAddress);
     console.log("\n=== Reineira Platform (pre-deployed) ===");
     console.log("ConfidentialEscrow         :", REINEIRA.ConfidentialEscrow);
     console.log("ConfidentialCoverageManager:", REINEIRA.ConfidentialCoverageManager);
     console.log("PoolFactory                :", REINEIRA.PoolFactory);
     console.log("PolicyRegistry             :", REINEIRA.PolicyRegistry);
     console.log("\n=== Next Steps ===");
-    console.log("1. Register ProvaUnderwriterPolicy in Reineira PolicyRegistry");
+    console.log("1. Register TradeCreditInsurancePolicy in Reineira PolicyRegistry");
     console.log("   → PolicyRegistry.registerPolicy(", policyAddress, ")");
     console.log("2. Create an insurance pool via PoolFactory");
     console.log("3. Create an escrow via ConfidentialEscrow with resolver =", resolverAddress);
