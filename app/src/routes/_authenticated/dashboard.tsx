@@ -1,16 +1,35 @@
 import type { ReactNode } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useTransactionStore } from '@/stores/transaction-store';
 import { useWithdrawalStore } from '@/stores/withdrawal-store';
+import { useAuthStore } from '@/stores/auth-store';
 import { useBalance } from '@/hooks/use-balance';
+import { useContractRead } from '@/hooks/use-contract-read';
+import { useAdminFlow, strToBytes2, strToBytes4, parseUint32Array } from '@/hooks/use-admin-flow';
 import { TransactionList } from '@/components/features/transaction-list';
 import { WithdrawalList } from '@/components/features/withdrawal-list';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { isClaimEligible } from '@/hooks/use-claim-eligibility';
+import { ADDRESSES } from '@/lib/contracts';
 
-// ── Stat card ───────────────────────────────────────────────────────────────
+const ARBISCAN = 'https://sepolia.arbiscan.io/address';
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+function fmtDays(seconds: bigint | null) {
+  if (seconds === null) return '—';
+  return `${Number(seconds) / 86400} days`;
+}
+
+function shortAddr(addr: string | null) {
+  if (!addr) return '—';
+  return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+}
+
+// ── Stat card ────────────────────────────────────────────────────────────────
 interface StatCardProps {
   label: string;
   value: string | number;
@@ -22,16 +41,16 @@ interface StatCardProps {
 
 function StatCard({ label, value, sub, icon, accent = 'blue', loading }: StatCardProps) {
   const iconBg = {
-    blue: 'bg-[var(--accent-blue-bg)] text-[var(--accent-blue)]',
-    green: 'bg-[hsl(var(--tip-bg))] text-[var(--status-success)]',
-    amber: 'bg-[hsl(var(--warning-bg))] text-[var(--status-warning)]',
+    blue:   'bg-[var(--accent-blue-bg)] text-[var(--accent-blue)]',
+    green:  'bg-[hsl(var(--tip-bg))] text-[var(--status-success)]',
+    amber:  'bg-[hsl(var(--warning-bg))] text-[var(--status-warning)]',
     purple: 'bg-[hsl(var(--brand-purple-light))] text-[hsl(var(--brand-purple))]',
   }[accent];
 
   const valueColor = {
-    blue: 'text-[var(--text-primary)]',
-    green: 'text-[var(--status-success)]',
-    amber: 'text-[var(--status-warning)]',
+    blue:   'text-[var(--text-primary)]',
+    green:  'text-[var(--status-success)]',
+    amber:  'text-[var(--status-warning)]',
     purple: 'text-[hsl(var(--brand-purple))]',
   }[accent];
 
@@ -55,7 +74,7 @@ function StatCard({ label, value, sub, icon, accent = 'blue', loading }: StatCar
   );
 }
 
-// ── Empty state ─────────────────────────────────────────────────────────────
+// ── Empty state ──────────────────────────────────────────────────────────────
 function EmptyState({ title, desc, action }: { title: string; desc: string; action?: ReactNode }) {
   return (
     <div className="flex flex-col items-center justify-center py-10 text-center">
@@ -71,15 +90,386 @@ function EmptyState({ title, desc, action }: { title: string; desc: string; acti
   );
 }
 
-// ── Dashboard page ──────────────────────────────────────────────────────────
+// ── Address row ──────────────────────────────────────────────────────────────
+function AddrRow({ label, address }: { label: string; address: string }) {
+  return (
+    <div className="flex items-start justify-between gap-4 border-b border-[var(--border-dark)] py-3 last:border-0">
+      <p className="min-w-[180px] shrink-0 text-xs text-[var(--text-muted)]">{label}</p>
+      <a
+        href={`${ARBISCAN}/${address}`}
+        target="_blank"
+        rel="noreferrer"
+        className="break-all font-mono text-xs text-[var(--accent-blue)] hover:underline"
+      >
+        {address}
+      </a>
+    </div>
+  );
+}
+
+// ── State row ────────────────────────────────────────────────────────────────
+function StateRow({ label, value, ok }: { label: string; value: string; ok?: boolean }) {
+  return (
+    <div className="flex items-center justify-between gap-4 border-b border-[var(--border-dark)] py-2.5 last:border-0">
+      <p className="text-xs text-[var(--text-muted)]">{label}</p>
+      <p className={`font-mono text-xs ${ok === undefined ? 'text-[var(--text-primary)]' : ok ? 'text-[var(--status-success)]' : 'text-[var(--status-error)]'}`}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
+// ── Contract state panel ─────────────────────────────────────────────────────
+function ContractStatusPanel() {
+  const { state, loading, error, fetchAll } = useContractRead();
+
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  return (
+    <div className="rounded-[var(--radius-block)] border border-[var(--border-dark)] bg-white shadow-[var(--shadow-sm)]">
+      <div className="flex items-center justify-between border-b border-[var(--border-dark)] px-5 py-4">
+        <div>
+          <h2 className="text-sm font-semibold text-[var(--text-primary)]">Contract State</h2>
+          <p className="text-xs text-[var(--text-muted)]">Live on-chain values — Arbitrum Sepolia</p>
+        </div>
+        <Button size="sm" variant="secondary" loading={loading} onClick={fetchAll}>
+          Refresh
+        </Button>
+      </div>
+
+      {error && (
+        <div className="border-b border-[var(--border-dark)] px-5 py-3">
+          <p className="text-xs text-[var(--status-error)]">{error}</p>
+        </div>
+      )}
+
+      <div className="grid gap-0 sm:grid-cols-2">
+        {/* TradeInvoiceResolver state */}
+        <div className="border-b border-r border-[var(--border-dark)] px-5 py-4 sm:border-b-0">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">TradeInvoiceResolver</p>
+          {loading && !state.escrowContract ? (
+            <div className="flex flex-col gap-2"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-3/4" /></div>
+          ) : (
+            <>
+              <StateRow label="escrowContract"   value={shortAddr(state.escrowContract)} />
+              <StateRow label="MIN_WAITING_PERIOD" value={fmtDays(state.minWaitingPeriod)} />
+              <StateRow label="MAX_WAITING_PERIOD" value={fmtDays(state.maxWaitingPeriod)} />
+              <StateRow label="owner"            value={shortAddr(state.resolverOwner)} />
+            </>
+          )}
+        </div>
+
+        {/* TradeCreditInsurancePolicy state */}
+        <div className="px-5 py-4">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">TradeCreditInsurancePolicy</p>
+          {loading && state.curveVersion === null ? (
+            <div className="flex flex-col gap-2"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-3/4" /></div>
+          ) : (
+            <>
+              <StateRow label="curveVersion"     value={state.curveVersion !== null ? String(state.curveVersion) : '—'} />
+              <StateRow label="protocolCaller"   value={shortAddr(state.protocolCaller)} />
+              <StateRow label="debtorProofAdapter" value={shortAddr(state.debtorProofAdapter)} />
+              <StateRow label="exposureRegistry" value={shortAddr(state.exposureRegistry)} />
+              <StateRow label="lossHistory"      value={shortAddr(state.lossHistory)} />
+              <StateRow label="owner"            value={shortAddr(state.policyOwner)} />
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Registry wiring */}
+      <div className="border-t border-[var(--border-dark)] px-5 py-4">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Registry Wiring</p>
+        {loading && state.policyInExposureRegistry === null ? (
+          <Skeleton className="h-4 w-1/2" />
+        ) : (
+          <div className="grid gap-0 sm:grid-cols-2">
+            <StateRow
+              label="Policy in ExposureRegistry"
+              value={state.policyInExposureRegistry === null ? '—' : state.policyInExposureRegistry ? 'registered ✓' : 'not registered ✗'}
+              ok={state.policyInExposureRegistry ?? undefined}
+            />
+            <StateRow
+              label="Policy in ClaimsRegistry"
+              value={state.policyInClaimsRegistry === null ? '—' : state.policyInClaimsRegistry ? 'registered ✓' : 'not registered ✗'}
+              ok={state.policyInClaimsRegistry ?? undefined}
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Contract addresses panel ─────────────────────────────────────────────────
+function ContractAddressesPanel() {
+  return (
+    <div className="rounded-[var(--radius-block)] border border-[var(--border-dark)] bg-white shadow-[var(--shadow-sm)]">
+      <div className="border-b border-[var(--border-dark)] px-5 py-4">
+        <h2 className="text-sm font-semibold text-[var(--text-primary)]">Contract Addresses</h2>
+        <p className="text-xs text-[var(--text-muted)]">All deployed contracts — chain ID 421614</p>
+      </div>
+      <div className="px-5 py-2">
+        <p className="mb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">PROVA Plugins</p>
+        <AddrRow label="TradeInvoiceResolver"       address={ADDRESSES.TradeInvoiceResolver} />
+        <AddrRow label="TradeCreditInsurancePolicy" address={ADDRESSES.TradeCreditInsurancePolicy} />
+        <AddrRow label="DebtorExposureRegistry"     address={ADDRESSES.DebtorExposureRegistry} />
+        <AddrRow label="InsuranceClaimsRegistry"    address={ADDRESSES.InsuranceClaimsRegistry} />
+        <AddrRow label="MockDebtorProof"            address={ADDRESSES.MockDebtorProof} />
+        <p className="mb-1 pt-4 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Reineira Core</p>
+        <AddrRow label="ConfidentialEscrow"         address={ADDRESSES.ConfidentialEscrow} />
+        <AddrRow label="ConfidentialCoverageManager" address={ADDRESSES.ConfidentialCoverageManager} />
+        <AddrRow label="PoolFactory"                address={ADDRESSES.PoolFactory} />
+        <AddrRow label="PolicyRegistry"             address={ADDRESSES.PolicyRegistry} />
+        <AddrRow label="cUSDC"                      address={ADDRESSES.cUSDC} />
+        <AddrRow label="USDC"                       address={ADDRESSES.USDC} />
+      </div>
+    </div>
+  );
+}
+
+// ── Admin form helpers ────────────────────────────────────────────────────────
+function AdminSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="border-b border-[var(--border-dark)] px-5 py-5 last:border-0">
+      <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{title}</p>
+      <div className="flex flex-col gap-5">{children}</div>
+    </div>
+  );
+}
+
+function AdminForm({
+  label,
+  fields,
+  disabled,
+  onSubmit,
+}: {
+  label: string;
+  fields: { id: string; placeholder: string; value: string; onChange: (v: string) => void }[];
+  disabled: boolean;
+  onSubmit: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2 rounded-[var(--radius-subtle)] border border-[var(--border-dark)] p-4">
+      <p className="text-xs font-medium text-[var(--text-primary)]">{label}</p>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        {fields.map((f) => (
+          <Input
+            key={f.id}
+            placeholder={f.placeholder}
+            value={f.value}
+            onChange={(e) => f.onChange(e.target.value)}
+            disabled={disabled}
+            className="flex-1 font-mono text-xs"
+          />
+        ))}
+        <Button size="sm" disabled={disabled} onClick={onSubmit} className="shrink-0">
+          Send
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ── Admin panel ───────────────────────────────────────────────────────────────
+function AdminPanel() {
+  const admin = useAdminFlow();
+
+  // form state
+  const [escrowContractAddr, setEscrowContractAddr] = useState('');
+
+  const [capDebtorId, setCapDebtorId]   = useState('');
+  const [capValue, setCapValue]         = useState('');
+
+  const [countryCode, setCountryCode]   = useState('');
+  const [countryBps, setCountryBps]     = useState('');
+
+  const [industryCode, setIndustryCode] = useState('');
+  const [industryBps, setIndustryBps]   = useState('');
+
+  const [curveThresholds, setCurveThresholds] = useState('800,720,650,580,500,0');
+  const [curvePremiums, setCurvePremiums]     = useState('150,200,280,400,600,1000');
+
+  const [newProtocolCaller, setNewProtocolCaller] = useState('');
+
+  const [regContractAddr, setRegContractAddr]     = useState('');
+  const [deregContractAddr, setDeregContractAddr] = useState('');
+
+  const [regPolicyAddr, setRegPolicyAddr] = useState('');
+
+  const [scoreDebtorId, setScoreDebtorId] = useState('');
+  const [scoreCtHash, setScoreCtHash]     = useState('');
+  const [defaultCtHash, setDefaultCtHash] = useState('');
+
+  async function submit(fn: () => Promise<unknown>, label: string) {
+    try { await fn(); }
+    catch (e) { console.error(`${label} failed:`, e); }
+  }
+
+  return (
+    <div className="rounded-[var(--radius-block)] border border-[hsl(var(--warning-border,35_100%_80%))] bg-white shadow-[var(--shadow-sm)]">
+      <div className="border-b border-[var(--border-dark)] px-5 py-4">
+        <h2 className="text-sm font-semibold text-[var(--status-warning)]">Admin Panel</h2>
+        <p className="text-xs text-[var(--text-muted)]">Owner-only contract calls — Arbitrum Sepolia</p>
+      </div>
+
+      {admin.error && (
+        <div className="border-b border-[var(--border-dark)] px-5 py-3">
+          <p className="text-xs text-[var(--status-error)]">{admin.error}</p>
+        </div>
+      )}
+
+      {admin.txHash && (
+        <div className="border-b border-[var(--border-dark)] px-5 py-3">
+          <p className="text-xs text-[var(--status-success)]">
+            Sent:{' '}
+            <a href={`https://sepolia.arbiscan.io/tx/${admin.txHash}`} target="_blank" rel="noreferrer"
+              className="font-mono underline">
+              {admin.txHash.slice(0, 18)}…
+            </a>
+          </p>
+        </div>
+      )}
+
+      {/* TradeInvoiceResolver */}
+      <AdminSection title="TradeInvoiceResolver">
+        <AdminForm
+          label="setEscrowContract(address _escrowContract)"
+          disabled={admin.loading}
+          fields={[{ id: 'esc', placeholder: '0x… ConfidentialEscrow address', value: escrowContractAddr, onChange: setEscrowContractAddr }]}
+          onSubmit={() => submit(() => admin.setEscrowContract(escrowContractAddr), 'setEscrowContract')}
+        />
+      </AdminSection>
+
+      {/* TradeCreditInsurancePolicy */}
+      <AdminSection title="TradeCreditInsurancePolicy">
+        <AdminForm
+          label="setConcentrationCap(bytes32 debtorId, uint64 cap)"
+          disabled={admin.loading}
+          fields={[
+            { id: 'cdid', placeholder: '0x… debtorId (bytes32)', value: capDebtorId, onChange: setCapDebtorId },
+            { id: 'cap',  placeholder: 'cap (uint64, e.g. 500000)', value: capValue, onChange: setCapValue },
+          ]}
+          onSubmit={() =>
+            submit(
+              () => admin.setConcentrationCap(capDebtorId as `0x${string}`, BigInt(capValue)),
+              'setConcentrationCap',
+            )
+          }
+        />
+        <AdminForm
+          label="setCountryRisk(bytes2 countryCode, uint16 bps)  — e.g. NG, 300"
+          disabled={admin.loading}
+          fields={[
+            { id: 'cc',  placeholder: 'ISO code e.g. NG', value: countryCode, onChange: setCountryCode },
+            { id: 'cbps', placeholder: 'bps 0–500',       value: countryBps,  onChange: setCountryBps },
+          ]}
+          onSubmit={() =>
+            submit(
+              () => admin.setCountryRisk(strToBytes2(countryCode), parseInt(countryBps, 10)),
+              'setCountryRisk',
+            )
+          }
+        />
+        <AdminForm
+          label="setIndustryRisk(bytes4 industryCode, uint16 bps)  — e.g. 6419, 200"
+          disabled={admin.loading}
+          fields={[
+            { id: 'ic',  placeholder: 'NACE/SIC e.g. 6419', value: industryCode, onChange: setIndustryCode },
+            { id: 'ibps', placeholder: 'bps 0–500',          value: industryBps,  onChange: setIndustryBps },
+          ]}
+          onSubmit={() =>
+            submit(
+              () => admin.setIndustryRisk(strToBytes4(industryCode), parseInt(industryBps, 10)),
+              'setIndustryRisk',
+            )
+          }
+        />
+        <AdminForm
+          label="setCurve(uint32[6] thresholds, uint32[6] premiums)  — 6 comma-separated values each"
+          disabled={admin.loading}
+          fields={[
+            { id: 'thr', placeholder: 'thresholds e.g. 800,720,650,580,500,0',   value: curveThresholds, onChange: setCurveThresholds },
+            { id: 'prm', placeholder: 'premiums bps e.g. 150,200,280,400,600,1000', value: curvePremiums,   onChange: setCurvePremiums },
+          ]}
+          onSubmit={() =>
+            submit(
+              () => admin.setCurve(parseUint32Array(curveThresholds, 6), parseUint32Array(curvePremiums, 6)),
+              'setCurve',
+            )
+          }
+        />
+        <AdminForm
+          label="setProtocolCaller(address caller)"
+          disabled={admin.loading}
+          fields={[{ id: 'pc', placeholder: '0x… ConfidentialCoverageManager', value: newProtocolCaller, onChange: setNewProtocolCaller }]}
+          onSubmit={() => submit(() => admin.setProtocolCaller(newProtocolCaller), 'setProtocolCaller')}
+        />
+      </AdminSection>
+
+      {/* DebtorExposureRegistry */}
+      <AdminSection title="DebtorExposureRegistry">
+        <AdminForm
+          label="registerContract(address prova)"
+          disabled={admin.loading}
+          fields={[{ id: 'rc', placeholder: '0x… contract to whitelist', value: regContractAddr, onChange: setRegContractAddr }]}
+          onSubmit={() => submit(() => admin.registerContract(regContractAddr), 'registerContract')}
+        />
+        <AdminForm
+          label="deregisterContract(address prova)"
+          disabled={admin.loading}
+          fields={[{ id: 'dc', placeholder: '0x… contract to remove', value: deregContractAddr, onChange: setDeregContractAddr }]}
+          onSubmit={() => submit(() => admin.deregisterContract(deregContractAddr), 'deregisterContract')}
+        />
+      </AdminSection>
+
+      {/* InsuranceClaimsRegistry */}
+      <AdminSection title="InsuranceClaimsRegistry">
+        <AdminForm
+          label="registerPolicy(address policy)"
+          disabled={admin.loading}
+          fields={[{ id: 'rp', placeholder: '0x… policy contract', value: regPolicyAddr, onChange: setRegPolicyAddr }]}
+          onSubmit={() => submit(() => admin.registerPolicy(regPolicyAddr), 'registerPolicy')}
+        />
+      </AdminSection>
+
+      {/* MockDebtorProof (testnet) */}
+      <AdminSection title="MockDebtorProof  (testnet only)">
+        <AdminForm
+          label="setScore(bytes32 debtorId, uint256 ctHash)"
+          disabled={admin.loading}
+          fields={[
+            { id: 'sdid', placeholder: '0x… debtorId (bytes32)', value: scoreDebtorId, onChange: setScoreDebtorId },
+            { id: 'sct',  placeholder: 'ctHash (uint256 decimal)', value: scoreCtHash,  onChange: setScoreCtHash },
+          ]}
+          onSubmit={() =>
+            submit(
+              () => admin.setScore(scoreDebtorId as `0x${string}`, BigInt(scoreCtHash)),
+              'setScore',
+            )
+          }
+        />
+        <AdminForm
+          label="setDefaultScore(uint256 ctHash)"
+          disabled={admin.loading}
+          fields={[{ id: 'dct', placeholder: 'ctHash (uint256 decimal)', value: defaultCtHash, onChange: setDefaultCtHash }]}
+          onSubmit={() => submit(() => admin.setDefaultScore(BigInt(defaultCtHash)), 'setDefaultScore')}
+        />
+      </AdminSection>
+    </div>
+  );
+}
+
+// ── Dashboard page ────────────────────────────────────────────────────────────
 export function DashboardPage() {
-  const navigate = useNavigate();
-  const transactions = useTransactionStore((s) => s.transactions);
+  const navigate       = useNavigate();
+  const role           = useAuthStore((s) => s.role);
+  const transactions   = useTransactionStore((s) => s.transactions);
   const transactionLoading = useTransactionStore((s) => s.loading);
-  const fetchTransactions = useTransactionStore((s) => s.fetchTransactions);
-  const withdrawals = useWithdrawalStore((s) => s.withdrawals);
-  const withdrawalLoading = useWithdrawalStore((s) => s.loading);
-  const fetchWithdrawals = useWithdrawalStore((s) => s.fetchWithdrawals);
+  const fetchTransactions  = useTransactionStore((s) => s.fetchTransactions);
+  const withdrawals    = useWithdrawalStore((s) => s.withdrawals);
+  const withdrawalLoading  = useWithdrawalStore((s) => s.loading);
+  const fetchWithdrawals   = useWithdrawalStore((s) => s.fetchWithdrawals);
   const { balance, loading: balanceLoading, startPolling, stopPolling } = useBalance();
 
   useEffect(() => {
@@ -93,7 +483,6 @@ export function DashboardPage() {
     navigate({ to: '/transactions/$id', params: { id: transaction.public_id } });
   }
 
-  // Derived stats
   const activeEscrows = transactions.filter((t) =>
     ['PENDING', 'ON_CHAIN', 'PROCESSING'].includes(t.status),
   ).length;
@@ -263,6 +652,13 @@ export function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Contract state + addresses */}
+      <ContractStatusPanel />
+      <ContractAddressesPanel />
+
+      {/* Admin panel — ADMIN role only */}
+      {role === 'ADMIN' && <AdminPanel />}
     </div>
   );
 }

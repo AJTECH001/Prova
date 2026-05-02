@@ -44,10 +44,9 @@ library FHERiskMath {
         euint32 premium = premiums[5];
 
         // Climb toward better rates as score increases
-        // Check from bucket 4 down to bucket 0 (best rates)
-        for (uint8 i = 4; i < 255; i--) { // Use underflow to break loop
-            ebool meetsThreshold = FHE.gte(score, thresholds[i]);
-            premium = FHE.select(meetsThreshold, premiums[i], premium);
+        for (int8 i = 4; i >= 0; i--) {
+            ebool meetsThreshold = FHE.gte(score, thresholds[uint8(i)]);
+            premium = FHE.select(meetsThreshold, premiums[uint8(i)], premium);
         }
 
         FHE.allowThis(premium);

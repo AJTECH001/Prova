@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
 
-const NAV_LINKS = [
-  { label: 'Overview',     href: '#features' },
-  { label: 'How it works', href: '#demo' },
-  { label: 'Privacy',      href: '#zk' },
-  { label: 'FAQ',          href: '#faq' },
+type NavLink = { label: string; href: string; isRoute?: boolean };
+
+const NAV_LINKS: NavLink[] = [
+  { label: 'Features',     href: '/#features' },
+  { label: 'How it works', href: '/#demo' },
+  { label: 'Pricing',      href: '/pricing', isRoute: true },
+  { label: 'Blog',         href: '/blog',    isRoute: true },
 ];
 
 export function LandingNavbar() {
@@ -23,15 +25,25 @@ export function LandingNavbar() {
 
         {/* Desktop center links */}
         <div className="hidden items-center gap-8 md:flex">
-          {NAV_LINKS.map((l) => (
-            <a
-              key={l.href}
-              href={l.href}
-              className="text-sm font-medium text-[hsl(var(--text-secondary))] transition-colors hover:text-[hsl(var(--text-primary))]"
-            >
-              {l.label}
-            </a>
-          ))}
+          {NAV_LINKS.map((l) =>
+            l.isRoute ? (
+              <Link
+                key={l.href}
+                to={l.href}
+                className="text-sm font-medium text-[hsl(var(--text-secondary))] transition-colors hover:text-[hsl(var(--text-primary))]"
+              >
+                {l.label}
+              </Link>
+            ) : (
+              <a
+                key={l.href}
+                href={l.href}
+                className="text-sm font-medium text-[hsl(var(--text-secondary))] transition-colors hover:text-[hsl(var(--text-primary))]"
+              >
+                {l.label}
+              </a>
+            )
+          )}
         </div>
 
         {/* Desktop right — Sign in CTA */}
@@ -71,16 +83,27 @@ export function LandingNavbar() {
       {/* Mobile dropdown */}
       <div className={`overflow-hidden border-b border-[hsl(var(--border-subtle))] bg-white transition-all duration-300 md:hidden ${menuOpen ? 'max-h-[400px] opacity-100' : 'max-h-0 opacity-0'}`}>
         <div className="flex flex-col gap-1 px-4 py-4">
-          {NAV_LINKS.map((l) => (
-            <a
-              key={l.href}
-              href={l.href}
-              onClick={() => setMenuOpen(false)}
-              className="rounded-lg px-3 py-2.5 text-sm font-medium text-[hsl(var(--text-secondary))] transition-colors hover:bg-[hsl(var(--bg-surface-alt))] hover:text-[hsl(var(--text-primary))]"
-            >
-              {l.label}
-            </a>
-          ))}
+          {NAV_LINKS.map((l) =>
+            l.isRoute ? (
+              <Link
+                key={l.href}
+                to={l.href}
+                onClick={() => setMenuOpen(false)}
+                className="rounded-lg px-3 py-2.5 text-sm font-medium text-[hsl(var(--text-secondary))] transition-colors hover:bg-[hsl(var(--bg-surface-alt))] hover:text-[hsl(var(--text-primary))]"
+              >
+                {l.label}
+              </Link>
+            ) : (
+              <a
+                key={l.href}
+                href={l.href}
+                onClick={() => setMenuOpen(false)}
+                className="rounded-lg px-3 py-2.5 text-sm font-medium text-[hsl(var(--text-secondary))] transition-colors hover:bg-[hsl(var(--bg-surface-alt))] hover:text-[hsl(var(--text-primary))]"
+              >
+                {l.label}
+              </a>
+            )
+          )}
           <div className="mt-3 flex flex-col gap-2 border-t border-[hsl(var(--border-subtle))] pt-3">
             <Link
               to="/auth"

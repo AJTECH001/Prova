@@ -47,6 +47,12 @@ contract InsuranceClaimsRegistry is TestnetCoreBase {
 
     // ─── Constructor ─────────────────────────────────────────────────────────
 
+    constructor() {
+        _disableInitializers();
+    }
+
+    // ─── Initializer ─────────────────────────────────────────────────────────
+
     /// @notice Initialize the loss history log and assign ownership.
     /// @param  initialOwner Address that will own this contract.
     function initialize(address initialOwner) external initializer {

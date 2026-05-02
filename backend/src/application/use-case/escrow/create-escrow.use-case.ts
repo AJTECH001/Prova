@@ -22,20 +22,21 @@ const DEFAULT_DECIMALS = 18;
 
 const ABI_FUNCTION_SIGNATURE = 'createEscrow((bytes,int32,uint8,bytes),(bytes,int32,uint8,bytes),address,bytes)';
 
+// Matches TradeInvoiceResolver.MIN_WAITING_PERIOD (30 days in seconds)
+const MIN_WAITING_PERIOD = BigInt(30 * 24 * 60 * 60);
+
 /**
- * ABI-encodes resolver data for ProvaPaymentResolver.onConditionSet.
- * Matches the Solidity decode: abi.decode(data, (address, address, uint256, uint256))
- *
- * @param buyerAddress  - Bruno's wallet address (the debtor)
- * @param sellerAddress - Amara's wallet address (the insured)
- * @param invoiceAmount - Invoice value in USDC smallest units (6 decimals)
- * @param deadlineDate  - Invoice due date as YYYY-MM-DD string
+ * ABI-encodes resolver data for TradeInvoiceResolver.onConditionSet.
+ * Matches the Solidity decode:
+ *   abi.decode(data, (address, address, uint256, uint256, uint256))
+ *   → (buyer, seller, invoiceAmount, dueDate, waitingPeriod)
  */
 function buildResolverData(
   buyerAddress: string,
   sellerAddress: string,
   invoiceAmount: bigint,
   deadlineDate: string | undefined,
+  waitingPeriod: bigint = MIN_WAITING_PERIOD,
 ): string {
   if (!isAddress(buyerAddress)) return '0x';
 
@@ -51,12 +52,14 @@ function buildResolverData(
       { name: 'seller',        type: 'address' },
       { name: 'invoiceAmount', type: 'uint256' },
       { name: 'dueDate',       type: 'uint256' },
+      { name: 'waitingPeriod', type: 'uint256' },
     ],
     [
       buyerAddress  as `0x${string}`,
       sellerAddress as `0x${string}`,
       invoiceAmount,
       dueDate,
+      waitingPeriod,
     ],
   );
 }

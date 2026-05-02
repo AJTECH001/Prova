@@ -41,11 +41,11 @@ These are deployed to Arbitrum Sepolia. Their addresses come from `.env`.
 
 | Contract | Address |
 |---|---|
-| ConfidentialEscrow | `0xC4333F84F5034D8691CB95f068def2e3B6DC60Fa` |
-| ConfidentialCoverageManager | `0x766e9508BD41BCE0e788F16Da86B3615386Ff6f6` |
-| PoolFactory | `0x03bAc36d45fA6f5aD8661b95D73452b3BedcaBFD` |
-| PolicyRegistry | `0xf421363B642315BD3555dE2d9BD566b7f9213c8E` |
-| cUSDC | `0x6b6e6479b8b3237933c3ab9d8be969862d4ed89f` |
+| ConfidentialEscrow | `0xbe1eEB78504B71beEE1b33D3E3D367A2F9a549A6` |
+| ConfidentialCoverageManager | `0x40A3A53d54D25cF079Bc9C2033224159d4EA3A67` |
+| PoolFactory | `0xCBD3815244ee96a92B3Ca3C71B6eD9acB3661e80` |
+| PolicyRegistry | `0x962A6c7Be4fC765B0E8B601ab4BB210938660190` |
+| cUSDC | `0x42E47f9bA89712C317f60A72C81A610A2b68c48a` |
 | USDC | `0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d` |
 
 ---

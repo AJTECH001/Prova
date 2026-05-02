@@ -3,14 +3,28 @@ import * as fs from "fs";
 import * as path from "path";
 
 // Reineira platform addresses (Arbitrum Sepolia) — pre-deployed, no action needed.
+// Redeployed 2026-04-27: cofhejs/cofhesdk v0.5.0 FHE engine upgrade.
 const REINEIRA = {
-    ConfidentialEscrow:          "0xC4333F84F5034D8691CB95f068def2e3B6DC60Fa",
-    ConfidentialCoverageManager: "0x766e9508BD41BCE0e788F16Da86B3615386Ff6f6",
-    PoolFactory:                 "0x03bAc36d45fA6f5aD8661b95D73452b3BedcaBFD",
-    PolicyRegistry:              "0xf421363B642315BD3555dE2d9BD566b7f9213c8E",
-    cUSDC:                       "0x6b6e6479b8b3237933c3ab9d8be969862d4ed89f",
+    ConfidentialEscrow:          "0xbe1eEB78504B71beEE1b33D3E3D367A2F9a549A6",
+    ConfidentialCoverageManager: "0x40A3A53d54D25cF079Bc9C2033224159d4EA3A67",
+    PoolFactory:                 "0xCBD3815244ee96a92B3Ca3C71B6eD9acB3661e80",
+    PolicyRegistry:              "0x962A6c7Be4fC765B0E8B601ab4BB210938660190",
+    cUSDC:                       "0x42E47f9bA89712C317f60A72C81A610A2b68c48a",
     USDC:                        "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
 };
+
+async function deployProxy(factory: any, initData: string): Promise<{ proxy: any; implAddress: string; proxyAddress: string }> {
+    const impl = await factory.deploy();
+    await impl.waitForDeployment();
+    const implAddress = await impl.getAddress();
+
+    const ERC1967Proxy = await ethers.getContractFactory("ERC1967Proxy");
+    const proxy = await ERC1967Proxy.deploy(implAddress, initData);
+    await proxy.waitForDeployment();
+    const proxyAddress = await proxy.getAddress();
+
+    return { proxy, implAddress, proxyAddress };
+}
 
 async function main() {
     console.log("\n=== PROVA Contract Deployment ===");
@@ -28,45 +42,43 @@ async function main() {
     const mockDebtorProofAddress = await mockDebtorProof.getAddress();
     console.log("     MockDebtorProof        :", mockDebtorProofAddress);
 
-    // ── 2. DebtorExposureRegistry ─────────────────────────────────────────────────
+    // ── 2. DebtorExposureRegistry (UUPS proxy) ───────────────────────────────────
     console.log("2/5  Deploying DebtorExposureRegistry...");
     const DebtorExposureRegistry = await ethers.getContractFactory("DebtorExposureRegistry");
-    const exposureRegistry = await DebtorExposureRegistry.deploy();
-    await exposureRegistry.waitForDeployment();
-    const exposureRegistryAddress = await exposureRegistry.getAddress();
-    await (await exposureRegistry.initialize(deployer.address)).wait();
+    const exposureInitData = DebtorExposureRegistry.interface.encodeFunctionData("initialize", [deployer.address]);
+    const { proxyAddress: exposureRegistryAddress } = await deployProxy(DebtorExposureRegistry, exposureInitData);
+    const exposureRegistry = DebtorExposureRegistry.attach(exposureRegistryAddress);
     console.log("     DebtorExposureRegistry :", exposureRegistryAddress);
 
-    // ── 3. InsuranceClaimsRegistry ────────────────────────────────────────────────
+    // ── 3. InsuranceClaimsRegistry (UUPS proxy) ──────────────────────────────────
     console.log("3/5  Deploying InsuranceClaimsRegistry...");
     const InsuranceClaimsRegistry = await ethers.getContractFactory("InsuranceClaimsRegistry");
-    const claimsRegistry = await InsuranceClaimsRegistry.deploy();
-    await claimsRegistry.waitForDeployment();
-    const claimsRegistryAddress = await claimsRegistry.getAddress();
-    await (await claimsRegistry.initialize(deployer.address)).wait();
+    const claimsInitData = InsuranceClaimsRegistry.interface.encodeFunctionData("initialize", [deployer.address]);
+    const { proxyAddress: claimsRegistryAddress } = await deployProxy(InsuranceClaimsRegistry, claimsInitData);
+    const claimsRegistry = InsuranceClaimsRegistry.attach(claimsRegistryAddress);
     console.log("     InsuranceClaimsRegistry:", claimsRegistryAddress);
 
-    // ── 4. TradeInvoiceResolver ───────────────────────────────────────────────────
+    // ── 4. TradeInvoiceResolver (UUPS proxy) ─────────────────────────────────────
     console.log("4/5  Deploying TradeInvoiceResolver...");
     const TradeInvoiceResolver = await ethers.getContractFactory("TradeInvoiceResolver");
-    const resolver = await TradeInvoiceResolver.deploy();
-    await resolver.waitForDeployment();
-    const resolverAddress = await resolver.getAddress();
-    await (await resolver.initialize(deployer.address)).wait();
+    const resolverInitData = TradeInvoiceResolver.interface.encodeFunctionData("initialize", [
+        deployer.address,
+        REINEIRA.ConfidentialEscrow,
+    ]);
+    const { proxyAddress: resolverAddress } = await deployProxy(TradeInvoiceResolver, resolverInitData);
     console.log("     TradeInvoiceResolver   :", resolverAddress);
 
-    // ── 5. TradeCreditInsurancePolicy ─────────────────────────────────────────────
+    // ── 5. TradeCreditInsurancePolicy (UUPS proxy) ───────────────────────────────
     console.log("5/5  Deploying TradeCreditInsurancePolicy...");
     const TradeCreditInsurancePolicy = await ethers.getContractFactory("TradeCreditInsurancePolicy");
-    const policy = await TradeCreditInsurancePolicy.deploy();
-    await policy.waitForDeployment();
-    const policyAddress = await policy.getAddress();
-    await (await policy.initialize(
+    const policyInitData = TradeCreditInsurancePolicy.interface.encodeFunctionData("initialize", [
         deployer.address,
         mockDebtorProofAddress,
         exposureRegistryAddress,
         claimsRegistryAddress,
-    )).wait();
+        REINEIRA.ConfidentialCoverageManager,
+    ]);
+    const { proxyAddress: policyAddress } = await deployProxy(TradeCreditInsurancePolicy, policyInitData);
     console.log("     TradeCreditInsurancePolicy:", policyAddress);
 
     // ── Wire registry contracts ───────────────────────────────────────────────────
@@ -90,19 +102,19 @@ async function main() {
             },
             DebtorExposureRegistry: {
                 address: exposureRegistryAddress,
-                note:    "Encrypted concentration risk tracker",
+                note:    "Encrypted concentration risk tracker (UUPS proxy)",
             },
             InsuranceClaimsRegistry: {
                 address: claimsRegistryAddress,
-                note:    "Encrypted append-only claim log",
+                note:    "Encrypted append-only claim log (UUPS proxy)",
             },
             TradeInvoiceResolver: {
                 address: resolverAddress,
-                note:    "IConditionResolver — time-based protracted default gate",
+                note:    "IConditionResolver — time-based protracted default gate (UUPS proxy)",
             },
             TradeCreditInsurancePolicy: {
                 address: policyAddress,
-                note:    "IUnderwriterPolicy — FHE risk scoring and claim adjudication",
+                note:    "IUnderwriterPolicy — FHE risk scoring and claim adjudication (UUPS proxy)",
             },
         },
         reineira: REINEIRA,

@@ -4,6 +4,11 @@ import { AppLayout } from '@/components/layout/app-layout';
 import { WalletAuthPage } from '@/routes/index';
 import { AuthPage } from '@/routes/auth';
 import { OnboardingPage } from '@/routes/onboarding';
+import { PricingPage } from '@/routes/pricing';
+import { PrivacyPage } from '@/routes/privacy';
+import { TermsPage } from '@/routes/terms';
+import { ContactPage } from '@/routes/contact';
+import { BlogPage } from '@/routes/blog';
 import { DashboardPage } from '@/routes/_authenticated/dashboard';
 import { TransactionsPage } from '@/routes/_authenticated/transactions/index';
 import { TransactionDetailPage } from '@/routes/_authenticated/transactions/$id';
@@ -114,6 +119,36 @@ const profileRoute = createRoute({
   component: ProfilePage,
 });
 
+const pricingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/pricing',
+  component: PricingPage,
+});
+
+const privacyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/privacy',
+  component: PrivacyPage,
+});
+
+const termsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/terms',
+  component: TermsPage,
+});
+
+const contactRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/contact',
+  component: ContactPage,
+});
+
+const blogRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/blog',
+  component: BlogPage,
+});
+
 const authenticatedTree = authenticatedRoute.addChildren([
   dashboardRoute,
   transactionsRoute,
@@ -127,5 +162,10 @@ export const routeTree = rootRoute.addChildren([
   indexRoute,
   authRoute,
   onboardingRoute,
+  pricingRoute,
+  privacyRoute,
+  termsRoute,
+  contactRoute,
+  blogRoute,
   authenticatedTree,
 ]);

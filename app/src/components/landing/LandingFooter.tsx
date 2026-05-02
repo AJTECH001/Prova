@@ -1,3 +1,5 @@
+import { Link } from '@tanstack/react-router';
+
 const SOCIAL = [
   {
     label: 'X / Twitter',
@@ -80,6 +82,16 @@ export function LandingFooter() {
             </ul>
           </div>
 
+          {/* Company */}
+          <div>
+            <h4 className="mb-6 text-xs font-bold uppercase tracking-widest text-[hsl(var(--text-primary))]">Company</h4>
+            <ul className="space-y-4 text-sm text-[hsl(var(--text-secondary))]">
+              <li><Link to="/blog" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Blog</Link></li>
+              <li><Link to="/pricing" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Pricing</Link></li>
+              <li><Link to="/contact" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Contact</Link></li>
+            </ul>
+          </div>
+
           {/* Social */}
           <div>
             <h4 className="mb-6 text-xs font-bold uppercase tracking-widest text-[hsl(var(--text-primary))]">Stay Connected</h4>
@@ -102,9 +114,9 @@ export function LandingFooter() {
         <div className="flex flex-col items-center justify-between gap-4 border-t border-[hsl(var(--border-subtle))] pt-8 text-xs text-[hsl(var(--text-faint))] md:flex-row">
           <p>© 2026 Prova Protocol Foundation. All rights reserved.</p>
           <div className="flex gap-6">
-            <a href="#" className="transition-colors hover:text-[hsl(var(--text-primary))]">Privacy Policy</a>
-            <a href="#" className="transition-colors hover:text-[hsl(var(--text-primary))]">Terms of Service</a>
-            <a href="#" className="transition-colors hover:text-[hsl(var(--text-primary))]">Cookie Policy</a>
+            <Link to="/privacy" className="transition-colors hover:text-[hsl(var(--text-primary))]">Privacy Policy</Link>
+            <Link to="/terms" className="transition-colors hover:text-[hsl(var(--text-primary))]">Terms of Service</Link>
+            <Link to="/contact" className="transition-colors hover:text-[hsl(var(--text-primary))]">Contact</Link>
           </div>
         </div>
 

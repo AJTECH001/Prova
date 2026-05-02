@@ -28,6 +28,8 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
     error InvalidAddonBps();
     error ZeroAddress();
     error InvalidCurve();
+    error InvalidInvoiceAmount();
+    error ConcentrationCapNotSet(bytes32 debtorId);
 
     // ─── Storage ─────────────────────────────────────────────────────────────
 
@@ -40,7 +42,7 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
                                        // TODO: Replace with zkTLS/zkKYC verification (see TECH_DEBT.md)
         bytes4  industryCode;          // NACE / SIC industry classification code
         uint16  coveragePercentageBps; // percentage of the invoice covered (e.g. 9000 = 90%)
-        uint8   curveVersion;          // premium curve version active at issuance time
+        uint16  curveVersion;          // premium curve version active at issuance time
         ebool   validCapEnc;           // encrypted flag — true if concentration cap was not breached
         bool    set;                   // guard against uninitialised reads
     }
@@ -70,7 +72,7 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
     euint32[6] private _encPremiums;
 
     /// @notice Current premium curve version. Incremented on every setCurve call.
-    uint8 public curveVersion;
+    uint16 public curveVersion;
 
     // ─── External integrations ────────────────────────────────────────────────
 
@@ -83,6 +85,9 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
     /// @notice Encrypted append-only log of all judged claims.
     InsuranceClaimsRegistry public lossHistory;
 
+    /// @notice Authorised protocol caller (ConfidentialCoverageManager).
+    address public protocolCaller;
+
     // ─── Events ──────────────────────────────────────────────────────────────
 
     /// @notice Emitted when a coverage policy is registered.
@@ -92,7 +97,7 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
 
     /// @notice Emitted when the premium curve is replaced by the owner.
     /// @param  newVersion The new curve version number.
-    event CurveUpdated(uint8 newVersion);
+    event CurveUpdated(uint16 newVersion);
 
     /// @notice Emitted when a country risk add-on is set by the owner.
     /// @param  countryCode ISO 3166-1 alpha-2 country code.
@@ -104,7 +109,21 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
     /// @param  bps          Add-on value in basis points.
     event IndustryRiskSet(bytes4 indexed industryCode, uint16 bps);
 
+    /// @notice Emitted when the authorised protocol caller is updated.
+    /// @param  caller The new protocol caller address.
+    event ProtocolCallerSet(address indexed caller);
+
+    /// @notice Emitted when the loss history log call fails, so monitoring can detect it.
+    /// @param  coverageId Coverage whose claim could not be logged.
+    event ClaimLogFailed(uint256 indexed coverageId);
+
     // ─── Constructor ─────────────────────────────────────────────────────────
+
+    constructor() {
+        _disableInitializers();
+    }
+
+    // ─── Initializer ─────────────────────────────────────────────────────────
 
     /// @notice Initialize the policy contract, wire external dependencies, and
     ///         encrypt the default 6-bucket premium curve into contract state.
@@ -112,24 +131,29 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
     /// @param  _debtorProofAdapter Address of the IDebtorProof credit score adapter.
     /// @param  _exposureRegistry   Address of the DebtorExposureRegistry moat contract.
     /// @param  _lossHistory        Address of the InsuranceClaimsRegistry contract.
+    /// @param  _protocolCaller     Address of the ConfidentialCoverageManager.
     function initialize(
         address initialOwner,
         address _debtorProofAdapter,
         address _exposureRegistry,
-        address _lossHistory
+        address _lossHistory,
+        address _protocolCaller
     ) external initializer {
         __UnderwriterPolicyBase_init(initialOwner);
 
         if (_debtorProofAdapter == address(0)) revert ZeroAddress();
         if (_exposureRegistry   == address(0)) revert ZeroAddress();
         if (_lossHistory        == address(0)) revert ZeroAddress();
+        if (_protocolCaller     == address(0)) revert ZeroAddress();
 
         debtorProofAdapter = IDebtorProof(_debtorProofAdapter);
         exposureRegistry   = DebtorExposureRegistry(_exposureRegistry);
         lossHistory        = InsuranceClaimsRegistry(_lossHistory);
+        protocolCaller     = _protocolCaller;
 
         _encryptAndStoreCurve(RiskMathLib.defaultThresholds(), RiskMathLib.defaultPremiums());
         curveVersion = RiskMathLib.DEFAULT_CURVE_VERSION;
+        emit ProtocolCallerSet(_protocolCaller);
     }
 
     // ─── Owner administration ─────────────────────────────────────────────────
@@ -177,21 +201,31 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
 
     /// @notice Set the maximum allowable insured exposure for a debtor across all policies.
     /// @param  debtorId Canonical debtor identifier.
-    /// @param  cap      Maximum total exposure in the same units as invoice amounts.
+    /// @param  cap      Maximum total exposure in the same units as invoice amounts. Must be > 0.
     function setConcentrationCap(bytes32 debtorId, uint64 cap) external onlyOwner {
         _concentrationCaps[debtorId] = cap;
+    }
+
+    /// @notice Update the authorised protocol caller.
+    /// @param  caller Address of the new ConfidentialCoverageManager.
+    function setProtocolCaller(address caller) external onlyOwner {
+        if (caller == address(0)) revert ZeroAddress();
+        protocolCaller = caller;
+        emit ProtocolCallerSet(caller);
     }
 
     // ─── IUnderwriterPolicy ──────────────────────────────────────────────────
 
     /// @notice Stores coverage policy parameters, registers debtor exposure, and
     ///         binds the calling coverage manager as the authorised caller for this ID.
-    /// @dev    data = abi.encode(bytes32 debtorId, address poolId, uint64 buyerCreditLimit,
+    /// @dev    Restricted to protocolCaller. Any other sender reverts with UnauthorizedCaller.
+    ///         data = abi.encode(bytes32 debtorId, address poolId, uint64 buyerCreditLimit,
     ///                           uint16 coveragePercentageBps, bytes2 countryCode,
     ///                           bytes4 industryCode, uint64 invoiceAmount)
     /// @param  coverageId Unique identifier assigned by the coverage manager.
     /// @param  data       ABI-encoded policy configuration parameters.
     function onPolicySet(uint256 coverageId, bytes calldata data) external override {
+        if (msg.sender != protocolCaller) revert UnauthorizedCaller(coverageId);
         _bindManager(coverageId);
 
         (
@@ -207,21 +241,13 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
         if (buyerCreditLimit == 0)                          revert InvalidCreditLimit();
         if (coveragePercentageBps == 0 ||
             coveragePercentageBps > 10_000)                 revert InvalidCoveragePercentage();
+        if (invoiceAmount == 0)                             revert InvalidInvoiceAmount();
+
+        // Extracted to helper to avoid stack-too-deep from coincident hardCap + invoiceAmountEnc.
+        ebool isCapValid = _registerExposure(debtorId, poolId, invoiceAmount);
 
         euint64 creditLimitEnc = FHE.asEuint64(buyerCreditLimit);
         FHE.allowThis(creditLimitEnc);
-
-        ebool isCapValid;
-        if (invoiceAmount > 0 && address(exposureRegistry) != address(0)) {
-            uint64 hardCap = _concentrationCaps[debtorId];
-            euint64 invoiceAmountEnc = FHE.asEuint64(invoiceAmount);
-            // Grant the registry ACL permission before the cross-contract call.
-            FHE.allow(invoiceAmountEnc, address(exposureRegistry));
-            isCapValid = exposureRegistry.addExposure(debtorId, poolId, invoiceAmountEnc, hardCap);
-        } else {
-            isCapValid = FHE.asEbool(true);
-        }
-        FHE.allowThis(isCapValid);
 
         _policies[coverageId] = Policy({
             buyerCreditLimitEnc:   creditLimitEnc,
@@ -282,9 +308,12 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
     /// @notice Validates a dispute claim within FHE and appends the encrypted
     ///         claim amount to the loss history log.
     /// @dev    disputeProof = abi.encode(InEuint64 encryptedClaimAmount)
+    ///         The claim is valid only when the amount is within the credit limit AND the
+    ///         concentration cap was not breached at policy issuance. Exposure is released
+    ///         proportionally to the validated claim amount.
     /// @param  coverageId    Unique identifier of the coverage being disputed.
     /// @param  disputeProof  ABI-encoded InEuint64 containing the encrypted claim amount.
-    /// @return valid         Encrypted boolean — true if the claim is within the credit limit.
+    /// @return valid         Encrypted boolean — true if the claim is valid.
     function judge(uint256 coverageId, bytes calldata disputeProof)
         external
         override
@@ -298,18 +327,46 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
         euint64 claimAmount = FHEMeta.asEuint64(encInput, msg.sender);
         FHE.allowThis(claimAmount);
 
-        valid = FHE.lte(claimAmount, p.buyerCreditLimitEnc);
+        // Claim is valid only if within the credit limit AND the cap was not breached.
+        ebool withinLimit = FHE.lte(claimAmount, p.buyerCreditLimitEnc);
+        valid = FHE.and(withinLimit, p.validCapEnc);
         FHE.allowThis(valid);
         FHE.allow(valid, msg.sender);
 
         if (address(lossHistory) != address(0)) {
             // Grant the loss history contract ACL permission before the cross-contract call.
             FHE.allow(claimAmount, address(lossHistory));
-            try lossHistory.logClaim(coverageId, uint32(p.curveVersion), claimAmount) {} catch {}
+            try lossHistory.logClaim(coverageId, uint32(p.curveVersion), claimAmount) {} catch {
+                emit ClaimLogFailed(coverageId);
+            }
+        }
+
+        // Release aggregate exposure proportional to the validated claim only.
+        // FHE.select yields claimAmount for a valid claim, 0 for an invalid one.
+        if (address(exposureRegistry) != address(0)) {
+            euint64 reductionAmount = FHE.select(valid, claimAmount, FHE.asEuint64(0));
+            FHE.allowThis(reductionAmount);
+            FHE.allow(reductionAmount, address(exposureRegistry));
+            exposureRegistry.reduceExposure(p.debtorId, reductionAmount);
         }
     }
 
     // ─── Internal helpers ─────────────────────────────────────────────────────
+
+    /// @dev Validates the debtor concentration cap and registers the invoice exposure.
+    ///      Extracted from onPolicySet to keep its stack depth within EVM limits.
+    function _registerExposure(
+        bytes32 debtorId,
+        address poolId,
+        uint64 invoiceAmount
+    ) private returns (ebool isCapValid) {
+        uint64 hardCap = _concentrationCaps[debtorId];
+        if (hardCap == 0) revert ConcentrationCapNotSet(debtorId);
+        euint64 invoiceAmountEnc = FHE.asEuint64(invoiceAmount);
+        FHE.allow(invoiceAmountEnc, address(exposureRegistry));
+        isCapValid = exposureRegistry.addExposure(debtorId, poolId, invoiceAmountEnc, hardCap);
+        FHE.allowThis(isCapValid);
+    }
 
     /// @dev    Encrypts plaintext curve values and writes them into the encrypted storage arrays.
     /// @param  thresholds Six plaintext score thresholds to encrypt and store.

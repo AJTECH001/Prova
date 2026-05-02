@@ -136,8 +136,8 @@ export function AuthPage() {
       {/* Bottom legal */}
       <div className="absolute bottom-6 flex items-center gap-6 text-xs text-[hsl(var(--text-faint))]">
         <span>© 2026 Prova Protocol</span>
-        <a href="#" className="hover:text-[hsl(var(--text-primary))]">Privacy</a>
-        <a href="#" className="hover:text-[hsl(var(--text-primary))]">Terms</a>
+        <Link to="/privacy" className="hover:text-[hsl(var(--text-primary))]">Privacy</Link>
+        <Link to="/terms" className="hover:text-[hsl(var(--text-primary))]">Terms</Link>
       </div>
     </div>
   );
