@@ -50,6 +50,7 @@ export const escrowEventTypeEnum = pgEnum('escrow_event_type', [
   'EscrowCreated',
   'EscrowFunded',
   'EscrowSettled',
+  'EscrowRedeemed',
 ]);
 
 export const users = pgTable(

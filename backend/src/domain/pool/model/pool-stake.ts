@@ -8,6 +8,7 @@ export interface PoolStakeParams {
   amount: number;
   status: PoolStakeStatus;
   txHash?: string;
+  onChainStakeId?: string;
   createdAt: Date;
   withdrawnAt?: Date;
 }
@@ -20,6 +21,7 @@ export class PoolStake {
   readonly amount: number;
   status: PoolStakeStatus;
   txHash?: string;
+  onChainStakeId?: string;
   readonly createdAt: Date;
   withdrawnAt?: Date;
 
@@ -31,6 +33,7 @@ export class PoolStake {
     this.amount = params.amount;
     this.status = params.status;
     this.txHash = params.txHash;
+    this.onChainStakeId = params.onChainStakeId;
     this.createdAt = params.createdAt;
     this.withdrawnAt = params.withdrawnAt;
   }

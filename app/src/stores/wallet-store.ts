@@ -99,8 +99,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   },
 
   sendUserOperation: async (calls) => {
-    await useWalletStore.getState().ensureConnected();
-    if (!_provider) throw new Error('No wallet connected');
+    if (!_provider) throw new Error('Wallet not connected. Please sign in again.');
     return _provider.sendUserOperation(calls);
   },
 }));

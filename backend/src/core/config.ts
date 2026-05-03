@@ -23,6 +23,7 @@ const EnvSchema = z.object({
   EXPOSURE_REGISTRY_ADDRESS: z.string().optional(),
   CLAIMS_REGISTRY_ADDRESS: z.string().optional(),
   MOCK_DEBTOR_PROOF_ADDRESS: z.string().optional(),
+  COVERAGE_MANAGER_ADDRESS: z.string().optional(),
   POOL_ADDRESS: z.string().optional(),
   POOL_FACTORY_ADDRESS: z.string().optional(),
   USDC_ADDRESS: z.string().optional(),

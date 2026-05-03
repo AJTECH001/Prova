@@ -13,7 +13,7 @@ export const ADDRESSES = {
   DebtorExposureRegistry:     '0xe3b6a9E4BDF597899e79D13C4f73B16dff610fBE',
   InsuranceClaimsRegistry:    '0x69e4fce78B3E1A4582FF2e35C51EA4364CB5D5dA',
   MockDebtorProof:            '0x817A8DA1e6B5A7E45Dcf3784870d82C3E67F1576',
-  // Reineira core contracts (redeployed 2026-04-27 — cofhejs/cofhesdk v0.5.0 engine upgrade)
+  // Reineira core contracts redeployed 
   ConfidentialEscrow:          '0xbe1eEB78504B71beEE1b33D3E3D367A2F9a549A6',
   ConfidentialCoverageManager: '0x40A3A53d54D25cF079Bc9C2033224159d4EA3A67',
   PoolFactory:                 '0xCBD3815244ee96a92B3Ca3C71B6eD9acB3661e80',
@@ -678,9 +678,95 @@ export const InsurancePoolABI = [
     stateMutability: 'nonpayable',
     type: 'function',
   },
+  {
+    name: 'Staked',
+    type: 'event',
+    anonymous: false,
+    inputs: [{ indexed: true, name: 'stakeId', type: 'uint256' }],
+  },
+  {
+    name: 'Unstaked',
+    type: 'event',
+    anonymous: false,
+    inputs: [{ indexed: true, name: 'stakeId', type: 'uint256' }],
+  },
+] as const;
+
+// ─── ConfidentialCoverageManager ABI (Reineira core) ─────────────────────────
+// Source: ReineiraOS protocol docs — insurance.md
+
+const InEuintComponents = [
+  { name: 'ctHash',       type: 'uint256' },
+  { name: 'securityZone', type: 'uint8' },
+  { name: 'utype',        type: 'uint8' },
+  { name: 'signature',    type: 'bytes' },
+] as const;
+
+export const ConfidentialCoverageManagerABI = [
+  {
+    name: 'purchaseCoverage',
+    inputs: [
+      { name: 'encryptedHolder',         type: 'tuple', components: InEuintComponents },
+      { name: 'pool',                    type: 'address' },
+      { name: 'policy',                  type: 'address' },
+      { name: 'escrowId',                type: 'uint256' },
+      { name: 'encryptedCoverageAmount', type: 'tuple', components: InEuintComponents },
+      { name: 'coverageExpiry',          type: 'uint256' },
+      { name: 'policyData',              type: 'bytes' },
+      { name: 'riskProof',               type: 'bytes' },
+    ],
+    outputs: [{ name: 'coverageId', type: 'uint256' }],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    name: 'dispute',
+    inputs: [
+      { name: 'coverageId',   type: 'uint256' },
+      { name: 'disputeProof', type: 'bytes' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    name: 'coverageStatus',
+    inputs: [{ name: 'coverageId', type: 'uint256' }],
+    outputs: [{ name: '', type: 'uint8' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    name: 'CoveragePurchased',
+    anonymous: false,
+    inputs: [{ indexed: true, name: 'coverageId', type: 'uint256' }],
+    type: 'event',
+  },
+  {
+    name: 'DisputeFiled',
+    anonymous: false,
+    inputs: [{ indexed: true, name: 'coverageId', type: 'uint256' }],
+    type: 'event',
+  },
+  {
+    name: 'CoverageClaimed',
+    anonymous: false,
+    inputs: [{ indexed: true, name: 'coverageId', type: 'uint256' }],
+    type: 'event',
+  },
 ] as const;
 
 export const cUSDCABI = [
+  {
+    name: 'wrap',
+    inputs: [
+      { name: 'to',     type: 'address' },
+      { name: 'amount', type: 'uint256' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
   {
     name: 'unwrap',
     inputs: [
@@ -688,6 +774,39 @@ export const cUSDCABI = [
       { name: 'value', type: 'uint64' },
     ],
     outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    name: 'setOperator',
+    inputs: [
+      { name: 'operator', type: 'address' },
+      { name: 'until',    type: 'uint48' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    name: 'isOperator',
+    inputs: [
+      { name: 'holder',  type: 'address' },
+      { name: 'spender', type: 'address' },
+    ],
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+] as const;
+
+export const ERC20ApproveABI = [
+  {
+    name: 'approve',
+    inputs: [
+      { name: 'spender', type: 'address' },
+      { name: 'amount',  type: 'uint256' },
+    ],
+    outputs: [{ type: 'bool' }],
     stateMutability: 'nonpayable',
     type: 'function',
   },
@@ -720,6 +839,10 @@ export const CONTRACTS = {
   ConfidentialEscrow: {
     address: ADDRESSES.ConfidentialEscrow,
     abi: ConfidentialEscrowABI,
+  },
+  ConfidentialCoverageManager: {
+    address: ADDRESSES.ConfidentialCoverageManager,
+    abi: ConfidentialCoverageManagerABI,
   },
   cUSDC: {
     address: ADDRESSES.cUSDC,

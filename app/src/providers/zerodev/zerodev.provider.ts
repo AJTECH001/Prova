@@ -175,16 +175,29 @@ export class ZeroDevProvider implements IWalletProvider {
   async sendUserOperation(calls: Call[]): Promise<string> {
     if (!this.kernelClient?.account) throw new Error('Not connected');
 
-    const callData = await this.kernelClient.account.encodeCalls(
-      calls.map((c) => ({
-        to: c.to as Hex,
-        data: c.data as Hex,
-        value: c.value ?? 0n,
-      })),
-    );
+    const encodeCalls = async () =>
+      this.kernelClient!.account!.encodeCalls(
+        calls.map((c) => ({ to: c.to as Hex, data: c.data as Hex, value: c.value ?? 0n })),
+      );
 
-    const userOpHash = await this.kernelClient.sendUserOperation({ callData });
-    const receipt = await this.kernelClient.waitForUserOperationReceipt({ hash: userOpHash });
-    return receipt.receipt.transactionHash;
+    const attempt = async (): Promise<string> => {
+      const callData = await encodeCalls();
+      const userOpHash = await this.kernelClient!.sendUserOperation({ callData });
+      const receipt = await this.kernelClient!.waitForUserOperationReceipt({ hash: userOpHash });
+      return receipt.receipt.transactionHash;
+    };
+
+    try {
+      return await attempt();
+    } catch (e: any) {
+      // AA25 means the bundler rejected the UserOp due to a stale nonce (prior tx advanced
+      // the on-chain nonce but the kernelClient still holds the old value). Rebuild the
+      // client so it re-fetches the current nonce, then retry once.
+      if (e?.message?.includes('AA25') && this.webAuthnKeyRef) {
+        this.kernelClient = await buildKernelClient(this.webAuthnKeyRef);
+        return await attempt();
+      }
+      throw e;
+    }
   }
 }

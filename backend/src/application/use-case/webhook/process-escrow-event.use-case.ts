@@ -29,6 +29,8 @@ export class ProcessEscrowEventUseCase {
         await this.handleEscrowCreated(event);
       } else if (event.event_type === 'EscrowFunded') {
         await this.handleEscrowFunded(event);
+      } else if (event.event_type === 'EscrowRedeemed') {
+        await this.handleEscrowRedeemed(event);
       } else if (event.event_type === 'EscrowSettled') {
         await this.handleEscrowSettled(event);
       }
@@ -68,6 +70,32 @@ export class ProcessEscrowEventUseCase {
     }
   }
 
+  // EscrowRedeemed — the real on-chain event emitted by ConfidentialEscrow when funds are released.
+  private async handleEscrowRedeemed(event: EscrowEventPayload): Promise<void> {
+    const escrow = await this.escrowRepository.findByOnChainId(event.escrow_id);
+
+    if (escrow && escrow.status === EscrowStatus.FUNDED) {
+      escrow.markAsRedeemed();
+      await this.escrowRepository.update(escrow);
+
+      // Recompute buyer's credit score. The buyer is the counterparty (the payer),
+      // so we encrypt to their wallet address — not the seller's walletId.
+      const buyerWallet = escrow.counterparty ?? escrow.walletId;
+      if (this.computeCreditScoreUseCase) {
+        try {
+          const result = await this.computeCreditScoreUseCase.execute(escrow.userId, buyerWallet);
+          logger.info(
+            { userId: escrow.userId, buyerWallet, rawScore: result.rawScore },
+            'Credit score recomputed after escrow redemption',
+          );
+        } catch (err) {
+          logger.warn({ userId: escrow.userId, err }, 'Credit score recomputation failed after redemption');
+        }
+      }
+    }
+  }
+
+  // EscrowSettled — kept for backwards-compatibility with older webhook payloads.
   private async handleEscrowSettled(event: EscrowEventPayload): Promise<void> {
     const escrow = await this.escrowRepository.findByOnChainId(event.escrow_id);
 
@@ -75,17 +103,15 @@ export class ProcessEscrowEventUseCase {
       escrow.markAsSettled();
       await this.escrowRepository.update(escrow);
 
-      // Recompute buyer's credit score now that a new settled escrow is recorded.
-      // walletId is the buyer's wallet address used as the FHE encryption target.
+      const buyerWallet = escrow.counterparty ?? escrow.walletId;
       if (this.computeCreditScoreUseCase) {
         try {
-          const result = await this.computeCreditScoreUseCase.execute(escrow.userId, escrow.walletId);
+          const result = await this.computeCreditScoreUseCase.execute(escrow.userId, buyerWallet);
           logger.info(
-            { userId: escrow.userId, rawScore: result.rawScore },
+            { userId: escrow.userId, buyerWallet, rawScore: result.rawScore },
             'Credit score recomputed after escrow settlement',
           );
         } catch (err) {
-          // Non-fatal — score can be recomputed on demand. Log and continue.
           logger.warn({ userId: escrow.userId, err }, 'Credit score computation failed after settlement');
         }
       }

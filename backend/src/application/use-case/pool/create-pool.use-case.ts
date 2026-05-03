@@ -10,14 +10,15 @@ export class CreatePoolUseCase {
   async execute(_dto: CreatePoolDto): Promise<CreatePoolResponse> {
     const env = getEnv();
     const poolFactoryAddress = env.POOL_FACTORY_ADDRESS ?? '';
-    const usdcAddress = env.USDC_ADDRESS ?? '0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d';
+    // Pool payment token must be cUSDC (FHERC20 wrapper), not plain USDC
+    const cUsdcAddress = env.PUSDC_WRAPPER_ADDRESS ?? '0x42E47f9bA89712C317f60A72C81A610A2b68c48a';
 
     return {
       call: {
         contract_address: poolFactoryAddress,
         abi_function_signature: POOL_FACTORY_ABI_SIG,
         abi_parameters: {
-          payment_token: usdcAddress,
+          payment_token: cUsdcAddress,
         },
       },
     };

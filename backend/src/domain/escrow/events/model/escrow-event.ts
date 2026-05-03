@@ -1,4 +1,4 @@
-export type EscrowEventType = 'EscrowCreated' | 'EscrowFunded' | 'EscrowSettled';
+export type EscrowEventType = 'EscrowCreated' | 'EscrowFunded' | 'EscrowSettled' | 'EscrowRedeemed';
 
 export interface EscrowEventParams {
   txHash: string;

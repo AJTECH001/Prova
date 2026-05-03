@@ -14,9 +14,9 @@ export interface AddPolicyResponse {
 
 export interface StakeResponse {
   public_id: string;
-  call: ContractCall;
-  amount: number;
   pool_address: string;
+  amount: number;
+  amount_smallest_unit: string;
 }
 
 export interface UnstakeResponse {

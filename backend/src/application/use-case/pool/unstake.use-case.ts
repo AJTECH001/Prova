@@ -3,7 +3,7 @@ import type { IPoolStakeRepository } from '../../../domain/pool/repository/pool-
 import { PoolStakeStatus } from '../../../domain/pool/model/pool-stake-status.enum.js';
 import type { UnstakeResponse } from '../../dto/pool/pool-response.dto.js';
 
-const UNSTAKE_ABI_SIG = 'unstake(bytes32)';
+const UNSTAKE_ABI_SIG = 'unstake(uint256)';
 
 export class UnstakeUseCase {
   constructor(private readonly poolStakeRepo: IPoolStakeRepository) {}
@@ -19,12 +19,15 @@ export class UnstakeUseCase {
       throw new ApplicationHttpError(403, 'Unauthorized');
     }
 
-    if (stake.status !== PoolStakeStatus.ACTIVE) {
-      throw new ApplicationHttpError(422, 'Stake is not active');
+    const unstakeable = [PoolStakeStatus.ACTIVE, PoolStakeStatus.PENDING, PoolStakeStatus.UNSTAKING];
+    if (!unstakeable.includes(stake.status)) {
+      throw new ApplicationHttpError(422, `Cannot unstake: stake status is ${stake.status}`);
     }
 
-    stake.markAsUnstaking();
-    await this.poolStakeRepo.update(stake);
+    if (stake.status !== PoolStakeStatus.UNSTAKING) {
+      stake.markAsUnstaking();
+      await this.poolStakeRepo.update(stake);
+    }
 
     return {
       public_id: stake.publicId,
@@ -32,7 +35,7 @@ export class UnstakeUseCase {
         contract_address: stake.poolAddress,
         abi_function_signature: UNSTAKE_ABI_SIG,
         abi_parameters: {
-          stake_id: stake.publicId,
+          stake_id: stake.onChainStakeId ?? null,
         },
       },
     };

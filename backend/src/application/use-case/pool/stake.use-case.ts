@@ -6,7 +6,6 @@ import { PoolStakeStatus } from '../../../domain/pool/model/pool-stake-status.en
 import type { StakeDto } from '../../dto/pool/stake.dto.js';
 import type { StakeResponse } from '../../dto/pool/pool-response.dto.js';
 
-const STAKE_ABI_SIG = 'stake(uint256)';
 const USDC_DECIMALS = 6;
 
 export class StakeUseCase {
@@ -32,15 +31,9 @@ export class StakeUseCase {
 
     return {
       public_id: stake.publicId,
-      call: {
-        contract_address: poolAddress,
-        abi_function_signature: STAKE_ABI_SIG,
-        abi_parameters: {
-          amount: amountInSmallestUnit.toString(),
-        },
-      },
-      amount: dto.amount,
       pool_address: poolAddress,
+      amount: dto.amount,
+      amount_smallest_unit: amountInSmallestUnit.toString(),
     };
   }
 }

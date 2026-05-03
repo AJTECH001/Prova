@@ -69,23 +69,22 @@ describe('StakeUseCase', () => {
     useCase = new StakeUseCase(repo);
   });
 
-  it('returns a contract call with correct abi signature', async () => {
+  it('returns pool_address in response', async () => {
     const result = await useCase.execute({ amount: 100 }, USER_ID);
 
-    expect(result.call.abi_function_signature).toBe('stake(uint256)');
-    expect(result.call.contract_address).toBe(POOL_ADDRESS);
+    expect(result.pool_address).toBe(POOL_ADDRESS);
   });
 
   it('converts amount to USDC smallest unit (6 decimals)', async () => {
     const result = await useCase.execute({ amount: 100 }, USER_ID);
 
-    expect(result.call.abi_parameters.amount).toBe('100000000');
+    expect(result.amount_smallest_unit).toBe('100000000');
   });
 
   it('converts fractional USDC amount correctly', async () => {
     const result = await useCase.execute({ amount: 1.5 }, USER_ID);
 
-    expect(result.call.abi_parameters.amount).toBe('1500000');
+    expect(result.amount_smallest_unit).toBe('1500000');
   });
 
   it('saves stake to repository with PENDING status', async () => {
@@ -108,7 +107,6 @@ describe('StakeUseCase', () => {
     const customPool = '0xcustompool';
     const result = await useCase.execute({ amount: 100, pool_address: customPool }, USER_ID);
 
-    expect(result.call.contract_address).toBe(customPool);
     expect(result.pool_address).toBe(customPool);
   });
 

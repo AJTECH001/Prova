@@ -1,5 +1,6 @@
 import type { IUserRepository } from '../../../domain/auth/repository/user.repository.js';
 import type { UserRole } from '../../../domain/auth/model/user.js';
+import { ApplicationHttpError } from '../../../core/errors.js';
 
 const ALLOWED_ROLES: UserRole[] = ['SELLER', 'BUYER', 'LP'];
 
