@@ -1,12 +1,13 @@
 import { useCallback, useState } from 'react';
-import { encodeFunctionData } from 'viem';
+import { encodeFunctionData, parseEventLogs } from 'viem';
 import { EscrowService, type CreateEscrowClientEncryptResponse } from '@/services/EscrowService';
 import { fheService } from '@/services/FheService';
+import { publicClient } from '@/lib/public-client';
 import { useWalletStore } from '@/stores/wallet-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTransactionStore } from '@/stores/transaction-store';
 import type { CreateTransactionRequest } from '@/services/TransactionService';
-import { ConfidentialEscrowABI } from '@/lib/contracts';
+import { ConfidentialEscrowABI, ADDRESSES } from '@/lib/contracts';
 
 export const ESCROW_FLOW_STEPS = [
   { label: 'Creating escrow' },
@@ -56,6 +57,7 @@ export function useEscrowFlow() {
       ]);
 
       setCurrentStep(2);
+      await useWalletStore.getState().ensureConnected();
       const data = encodeFunctionData({
         abi: ConfidentialEscrowABI,
         functionName: 'create',
@@ -79,10 +81,31 @@ export function useEscrowFlow() {
 
       const txHash = await useWalletStore.getState().sendUserOperation([{ to: escrow.contract_address, data }]);
 
+      // Parse the EscrowCreated(uint256 indexed escrowId) event from the receipt
       setCurrentStep(3);
-      await EscrowService.reportTransaction(txHash, escrow.public_id);
+      let onChainEscrowId: string | undefined;
+      try {
+        const receipt = await publicClient.getTransactionReceipt({ hash: txHash as `0x${string}` });
+        const events = parseEventLogs({
+          abi: ConfidentialEscrowABI,
+          logs: receipt.logs.filter(
+            (l) => l.address.toLowerCase() === ADDRESSES.ConfidentialEscrow.toLowerCase(),
+          ),
+          eventName: 'EscrowCreated',
+        });
+        if (events.length > 0) onChainEscrowId = events[0].args.escrowId.toString();
+      } catch {
+        // non-fatal — backend will pick it up via webhook
+      }
 
-      await pollUntilConfirmed(escrow.public_id);
+      await EscrowService.reportTransaction(txHash, escrow.public_id, onChainEscrowId);
+
+      if (!onChainEscrowId) {
+        await pollUntilConfirmed(escrow.public_id);
+      } else {
+        // Refresh once so the UI reflects ON_CHAIN status immediately
+        await useTransactionStore.getState().fetchTransaction(escrow.public_id);
+      }
 
       setCurrentStep(4);
       return escrow.public_id;

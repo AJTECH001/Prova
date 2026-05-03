@@ -650,6 +650,12 @@ export const ConfidentialEscrowABI = [
     stateMutability: 'nonpayable',
     type: 'function',
   },
+  {
+    name: 'EscrowCreated',
+    type: 'event',
+    anonymous: false,
+    inputs: [{ indexed: true, name: 'escrowId', type: 'uint256' }],
+  },
 ] as const;
 
 export const InsurancePoolABI = [

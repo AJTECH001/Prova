@@ -30,8 +30,9 @@ export interface TransactionResponse {
   amount: number;
   currency: { type: string; code: string };
   status: string;
-  on_chain_escrow_id?: string;
+  on_chain_id?: string;
   tx_hash?: string;
+  coverage_id?: string;
   created_at: string;
 }
 

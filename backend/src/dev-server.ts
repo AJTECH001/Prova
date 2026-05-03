@@ -152,7 +152,7 @@ async function main() {
     // Apply CORS headers to every response so preflight always works in local dev
     rawRes.setHeader('Access-Control-Allow-Origin', '*');
     rawRes.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-    rawRes.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    rawRes.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-encryption-mode');
     rawRes.setHeader('Access-Control-Max-Age', '86400');
 
     if (rawReq.method === 'OPTIONS') {

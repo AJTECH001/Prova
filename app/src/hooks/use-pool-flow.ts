@@ -300,6 +300,7 @@ export function useCoverageFlow() {
       ]);
 
       setCurrentStep(2);
+      await useWalletStore.getState().ensureConnected();
       const data = encodeFunctionData({
         abi: ConfidentialCoverageManagerABI,
         functionName: 'purchaseCoverage',

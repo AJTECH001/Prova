@@ -10,7 +10,7 @@ const TERMINAL_STATUSES = new Set(['SETTLED', 'REDEEMED', 'COMPLETED', 'FAILED',
  * Uses MIN_WAITING_PERIOD as the conservative estimate when per-escrow period is unknown.
  */
 export function isClaimEligible(transaction: TransactionResponse): boolean {
-  if (!transaction.on_chain_escrow_id) return false;
+  if (!transaction.on_chain_id) return false;
   if (TERMINAL_STATUSES.has(transaction.status)) return false;
   const claimOpenAt = new Date(transaction.deadline).getTime() + MIN_WAITING_PERIOD_MS;
   return Date.now() >= claimOpenAt;
