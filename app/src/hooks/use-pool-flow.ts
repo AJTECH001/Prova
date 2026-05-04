@@ -10,7 +10,7 @@ import { InsurancePoolABI, ConfidentialCoverageManagerABI, cUSDCABI, ERC20Approv
 
 const USDC_DECIMALS = 6;
 // one year operator approval
-const OPERATOR_TTL = () => BigInt(Math.floor(Date.now() / 1000) + 365 * 24 * 60 * 60);
+const OPERATOR_TTL = () => Math.floor(Date.now() / 1000) + 365 * 24 * 60 * 60;
 
 export const POOL_FLOW_STEPS = [
   { label: 'Preparing' },

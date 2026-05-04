@@ -26,7 +26,7 @@ export function WithdrawalForm({ transactions, onSubmit }: WithdrawalFormProps) 
   const selectedTotal = useMemo(
     () =>
       settledTransactions
-        .filter((txn) => selectedIds.has(Number(txn.on_chain_escrow_id)))
+        .filter((txn) => selectedIds.has(Number(txn.on_chain_id)))
         .reduce((sum, txn) => sum + txn.amount, 0),
     [settledTransactions, selectedIds],
   );
@@ -73,8 +73,8 @@ export function WithdrawalForm({ transactions, onSubmit }: WithdrawalFormProps) 
               >
                 <input
                   type="checkbox"
-                  checked={selectedIds.has(Number(txn.on_chain_escrow_id))}
-                  onChange={() => toggleTransaction(txn.on_chain_escrow_id)}
+                  checked={selectedIds.has(Number(txn.on_chain_id))}
+                  onChange={() => toggleTransaction(txn.on_chain_id)}
                   className="h-4 w-4 rounded border-[var(--border-dark)] accent-[var(--accent-blue)]"
                 />
                 <span className="flex-1 text-sm text-[var(--text-primary)]">
