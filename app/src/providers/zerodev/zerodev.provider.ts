@@ -78,19 +78,20 @@ export class ZeroDevProvider implements IWalletProvider {
     await WindowHelper.ensureFocus();
 
     const passkeyServerUrl = requireEnv('VITE_ZERODEV_PASSKEY_SERVER_URL');
-
+    const rpID = window.location.hostname;
 
     let webAuthnKey: WebAuthnKey;
     try {
       webAuthnKey = await toWebAuthnKey({
         passkeyName: username,
         passkeyServerUrl,
+        rpID,
         mode: WebAuthnMode.Register,
         passkeyServerHeaders: { 'Content-Type': 'application/json' },
       });
     } catch (e) {
       if (e instanceof TypeError && String(e.message).toLowerCase().includes('fetch')) {
-        throw new Error('Passkey registration failed. Ensure the Passkey Server feature is enabled in the ZeroDev dashboard (dashboard.zerodev.app).');
+        throw new Error(`Cannot reach the ZeroDev passkey server. Possible causes:\n1. The Passkey Server feature is not enabled for this project in the ZeroDev dashboard (dashboard.zerodev.app).\n2. Check that VITE_ZERODEV_PASSKEY_SERVER_URL is set correctly.`);
       }
       throw e;
     }
@@ -108,19 +109,20 @@ export class ZeroDevProvider implements IWalletProvider {
     await WindowHelper.ensureFocus();
 
     const passkeyServerUrl = requireEnv('VITE_ZERODEV_PASSKEY_SERVER_URL');
-
+    const rpID = window.location.hostname;
 
     let webAuthnKey: WebAuthnKey;
     try {
       webAuthnKey = await toWebAuthnKey({
         passkeyName: '',
         passkeyServerUrl,
+        rpID,
         mode: WebAuthnMode.Login,
         passkeyServerHeaders: { 'Content-Type': 'application/json' },
       });
     } catch (e) {
       if (e instanceof TypeError && String(e.message).toLowerCase().includes('fetch')) {
-        throw new Error('Passkey login failed. Ensure the Passkey Server feature is enabled in the ZeroDev dashboard (dashboard.zerodev.app).');
+        throw new Error(`Cannot reach the ZeroDev passkey server. Possible causes:\n1. The Passkey Server feature is not enabled for this project in the ZeroDev dashboard (dashboard.zerodev.app).\n2. Check that VITE_ZERODEV_PASSKEY_SERVER_URL is set correctly.`);
       }
       throw e;
     }
