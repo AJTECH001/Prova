@@ -63,6 +63,11 @@ export class TransactionService {
     return data;
   }
 
+  static async listPayable(): Promise<TransactionResponse[]> {
+    const { data } = await httpClient.get<TransactionResponse[]>('/v1/escrows/payable');
+    return data;
+  }
+
   static async reportTransaction(
     txHash: string,
     entityId: string,

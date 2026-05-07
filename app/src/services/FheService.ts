@@ -19,22 +19,32 @@ class FheService {
   private client: any = null;
   private initPromise: Promise<void> | null = null;
   private currentAddress: string | null = null;
+  private hasRealWalletClient = false;
 
-  async initialize(walletAddress: string): Promise<void> {
+  async initialize(walletAddress: string, viemWalletClient?: unknown): Promise<void> {
     const normalized = walletAddress.toLowerCase();
+    const needsReal = !!viemWalletClient;
 
-    if (this.client && this.currentAddress === normalized) {
+    // Cache hit — address matches AND capability satisfies the caller's requirement
+    if (this.client && this.currentAddress === normalized && (!needsReal || this.hasRealWalletClient)) {
       return;
+    }
+
+    // Real client requested but we only cached the fake one — bust the cache and re-init
+    if (this.client && this.currentAddress === normalized && needsReal && !this.hasRealWalletClient) {
+      this.client = null;
+      this.initPromise = null;
+      this.hasRealWalletClient = false;
     }
 
     if (this.initPromise) {
       await this.initPromise;
-      if (this.client && this.currentAddress === normalized) {
+      if (this.client && this.currentAddress === normalized && (!needsReal || this.hasRealWalletClient)) {
         return;
       }
     }
 
-    this.initPromise = this.doInitialize(normalized);
+    this.initPromise = this.doInitialize(normalized, viemWalletClient);
     await this.initPromise;
   }
 
@@ -86,6 +96,17 @@ class FheService {
     return (result as EncryptedInput[]).map((enc) => this.formatResult(enc));
   }
 
+  async decryptUint64(ctHash: bigint): Promise<bigint> {
+    this.assertReady();
+    const { FheTypes } = await import('@cofhe/sdk');
+    // ensure a self-permit exists for the connected account before decrypting
+    await this.client.permits.getOrCreateSelfPermit();
+    return this.client
+      .decryptForView(ctHash, FheTypes.Uint64)
+      .withPermit()
+      .execute() as Promise<bigint>;
+  }
+
   isReady(): boolean {
     return this.client !== null;
   }
@@ -96,7 +117,7 @@ class FheService {
     }
   }
 
-  private async doInitialize(address: string): Promise<void> {
+  private async doInitialize(address: string, realWalletClient?: unknown): Promise<void> {
     try {
       const { createCofheConfig, createCofheClient } = await import('@cofhe/sdk/web');
       const { arbSepolia } = await import('@cofhe/sdk/chains');
@@ -110,7 +131,10 @@ class FheService {
         transport: http(rpcUrl),
       });
 
-      const viemWalletClient = createWalletClient({
+      // Use the real wallet client (ZeroDev kernel) when provided — required for permit
+      // signing during decryption. Encryption-only flows can pass undefined and get the
+      // minimal fake client that handles eth_accounts only.
+      const walletClientForSdk = realWalletClient ?? createWalletClient({
         account: address as `0x${string}`,
         chain: arbitrumSepolia,
         transport: custom({
@@ -129,13 +153,15 @@ class FheService {
 
       this.client = createCofheClient(sdkConfig);
 
-      const { publicClient, walletClient } = await WagmiAdapter(viemWalletClient, viemPublicClient);
+      const { publicClient, walletClient } = await WagmiAdapter(walletClientForSdk as any, viemPublicClient);
       await this.client.connect(publicClient, walletClient);
 
       this.currentAddress = address;
+      this.hasRealWalletClient = !!realWalletClient;
     } catch (error: any) {
       this.client = null;
       this.initPromise = null;
+      this.hasRealWalletClient = false;
       const message = error?.message || error?.toString() || 'Unknown error';
       throw new Error(`FHE initialization failed: ${message}`);
     }

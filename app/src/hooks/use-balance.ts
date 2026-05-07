@@ -1,11 +1,13 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { BalanceService, type BalanceResponse } from '@/services/BalanceService';
 import { usePolling } from '@/hooks/use-polling';
+import { useRefreshStore } from '@/stores/refresh-store';
 
 export function useBalance(pollingInterval = 10000) {
   const [balance, setBalance] = useState<BalanceResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const balanceRefreshKey = useRefreshStore((s) => s.balanceRefreshKey);
 
   const fetchBalance = useCallback(async () => {
     setLoading(true);
@@ -23,6 +25,11 @@ export function useBalance(pollingInterval = 10000) {
   }, []);
 
   const { isPolling, start, stop } = usePolling(fetchBalance, pollingInterval);
+
+  // re-fetch immediately whenever the unstake/withdrawal flow signals a balance change
+  useEffect(() => {
+    if (balanceRefreshKey > 0) fetchBalance();
+  }, [balanceRefreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const startPolling = useCallback(async () => {
     await fetchBalance();

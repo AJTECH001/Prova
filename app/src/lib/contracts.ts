@@ -1,5 +1,5 @@
 // ─── Deployed contract addresses ────────────────────────────────────────────
-// Source: contracts/deployments/arb-sepolia.json  (chainId 421614, deployed 2026-05-01)
+// Source: contracts/deployments/arb-sepolia.json  (chainId 421614)
 
 export const CHAIN_ID = 421614; // Arbitrum Sepolia
 
@@ -45,7 +45,10 @@ export const TradeInvoiceResolverABI = [
   {
     name: 'ConditionSet',
     anonymous: false,
-    inputs: [{ indexed: true, name: 'escrowId', type: 'uint256' }],
+    inputs: [
+      { indexed: true, name: 'escrowId', type: 'uint256' },
+      { indexed: true, name: 'resolver', type: 'address' },
+    ],
     type: 'event',
   },
   {
@@ -614,6 +617,25 @@ export const MockDebtorProofABI = [
 
 export const ConfidentialEscrowABI = [
   {
+    name: 'fund',
+    inputs: [
+      { name: 'escrowId', type: 'uint256' },
+      {
+        name: 'encryptedPayment',
+        type: 'tuple',
+        components: [
+          { name: 'ctHash',       type: 'uint256' },
+          { name: 'securityZone', type: 'uint8' },
+          { name: 'utype',        type: 'uint8' },
+          { name: 'signature',    type: 'bytes' },
+        ],
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
     name: 'create',
     inputs: [
       {
@@ -655,6 +677,39 @@ export const ConfidentialEscrowABI = [
     type: 'event',
     anonymous: false,
     inputs: [{ indexed: true, name: 'escrowId', type: 'uint256' }],
+  },
+  {
+    name: 'EscrowFunded',
+    type: 'event',
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: 'escrowId', type: 'uint256' },
+      { indexed: true, name: 'payer',    type: 'address' },
+    ],
+  },
+  {
+    name: 'EscrowRedeemed',
+    type: 'event',
+    anonymous: false,
+    inputs: [{ indexed: true, name: 'escrowId', type: 'uint256' }],
+  },
+  {
+    name: 'EscrowBatchRedeemed',
+    type: 'event',
+    anonymous: false,
+    inputs: [{ indexed: false, name: 'escrowIds', type: 'uint256[]' }],
+  },
+  {
+    name: 'FeeSet',
+    type: 'event',
+    anonymous: false,
+    inputs: [{ indexed: true, name: 'escrowId', type: 'uint256' }],
+  },
+  {
+    name: 'InsuranceManagerSet',
+    type: 'event',
+    anonymous: false,
+    inputs: [{ indexed: true, name: 'insuranceManager', type: 'address' }],
   },
 ] as const;
 
@@ -774,10 +829,11 @@ export const cUSDCABI = [
     type: 'function',
   },
   {
-    name: 'unwrap',
+    name: 'unshield',
     inputs: [
-      { name: 'to',    type: 'address' },
-      { name: 'value', type: 'uint64' },
+      { name: 'from',   type: 'address' },
+      { name: 'to',     type: 'address' },
+      { name: 'amount', type: 'tuple', components: InEuintComponents },
     ],
     outputs: [],
     stateMutability: 'nonpayable',
@@ -800,6 +856,13 @@ export const cUSDCABI = [
       { name: 'spender', type: 'address' },
     ],
     outputs: [{ type: 'bool' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    name: 'confidentialBalanceOf',
+    inputs: [{ name: 'account', type: 'address' }],
+    outputs: [{ name: '', type: 'bytes32' }],
     stateMutability: 'view',
     type: 'function',
   },

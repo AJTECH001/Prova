@@ -82,11 +82,6 @@ export class CreateWithdrawalUseCase {
           abi_function_signature: 'redeemMultiple(uint256[])',
           abi_parameters: { escrow_ids: onChainIds },
         },
-        {
-          contract_address: getEnv().PUSDC_WRAPPER_ADDRESS ?? '',
-          abi_function_signature: 'unwrap(uint256)',
-          abi_parameters: { amount: estimatedAmount },
-        },
       ],
       status: withdrawal.status,
       estimated_amount: estimatedAmount,

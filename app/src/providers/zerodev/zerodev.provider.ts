@@ -18,21 +18,6 @@ function requireEnv(key: string): string {
   return value;
 }
 
-// Pre-flight check: attempt a no-cors fetch to tell apart "server unreachable"
-// from "CORS blocked" (which ZeroDev returns when Passkey Server is disabled).
-async function checkPasskeyServer(url: string): Promise<void> {
-  try {
-    // no-cors succeeds with an opaque response if the server is up and reachable.
-    const res = await fetch(url, { method: 'GET', mode: 'no-cors' });
-    if (res.type === 'opaque') return; // reachable — CORS will be handled by the SDK
-  } catch {
-    throw new Error(
-      'Cannot reach the ZeroDev passkey server. Possible causes:\n' +
-      '1. The Passkey Server feature is not enabled for this project in the ZeroDev dashboard (dashboard.zerodev.app).\n' +
-      '2. Check that VITE_ZERODEV_PASSKEY_SERVER_URL is set correctly.',
-    );
-  }
-}
 
 function getChain() {
   return arbitrumSepolia;
@@ -93,7 +78,7 @@ export class ZeroDevProvider implements IWalletProvider {
     await WindowHelper.ensureFocus();
 
     const passkeyServerUrl = requireEnv('VITE_ZERODEV_PASSKEY_SERVER_URL');
-    await checkPasskeyServer(passkeyServerUrl);
+
 
     let webAuthnKey: WebAuthnKey;
     try {
@@ -123,7 +108,7 @@ export class ZeroDevProvider implements IWalletProvider {
     await WindowHelper.ensureFocus();
 
     const passkeyServerUrl = requireEnv('VITE_ZERODEV_PASSKEY_SERVER_URL');
-    await checkPasskeyServer(passkeyServerUrl);
+
 
     let webAuthnKey: WebAuthnKey;
     try {
@@ -166,6 +151,10 @@ export class ZeroDevProvider implements IWalletProvider {
 
   getAddress(): string | null {
     return this._address;
+  }
+
+  getViemWalletClient(): unknown {
+    return this.kernelClient;
   }
 
   isConnected(): boolean {

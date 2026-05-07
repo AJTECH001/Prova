@@ -28,6 +28,9 @@ export function TransactionsPage() {
       setShowForm(false);
       fetchTransactions(true);
       navigate({ to: '/transactions/$id', params: { id: publicId } });
+    } else {
+      // On duplicate-invoice error, refresh the list so the existing escrow surfaces
+      fetchTransactions(true);
     }
   }
 

@@ -7,7 +7,9 @@ import { Card } from '@/components/ui/card';
 import { TransactionProgress } from '@/components/features/transaction-progress';
 import { isClaimEligible, claimOpenAt } from '@/hooks/use-claim-eligibility';
 import { useCoverageFlow, COVERAGE_FLOW_STEPS } from '@/hooks/use-pool-flow';
+import { useFundFlow, FUND_FLOW_STEPS } from '@/hooks/use-fund-flow';
 import { useTransactionStore } from '@/stores/transaction-store';
+import { useAuthStore } from '@/stores/auth-store';
 
 interface TransactionDetailProps {
   transaction: TransactionResponse;
@@ -52,15 +54,29 @@ function formatAmount(amount: number) {
 export function TransactionDetail({ transaction }: TransactionDetailProps) {
   const navigate = useNavigate();
   const fetchTransaction = useTransactionStore((s) => s.fetchTransaction);
+  const walletAddress = useAuthStore((s) => s.walletAddress);
+
+  const isBuyer = !!walletAddress && !!transaction.counterparty &&
+    walletAddress.toLowerCase() === transaction.counterparty.toLowerCase();
+  const isSeller = !isBuyer;
+
   const eligible = isClaimEligible(transaction);
   const openAt = transaction.on_chain_id ? claimOpenAt(transaction.deadline) : null;
   const claimPending = !eligible && openAt !== null && openAt > Date.now();
+  // Buyer paid and waiting period passed → seller can redeem
+  const canRedeem = isSeller && eligible && transaction.status === 'FUNDED';
+  // Buyer never paid and waiting period passed → seller can only claim insurance (if covered)
+  const buyerDefaulted = isSeller && eligible && transaction.status === 'ON_CHAIN';
 
   const coverageFlow = useCoverageFlow();
   const [showCoverageFlow, setShowCoverageFlow] = useState(false);
 
-  const canBuyCoverage = !!transaction.on_chain_id && !transaction.coverage_id;
+  const fundFlow = useFundFlow();
+  const [showFundFlow, setShowFundFlow] = useState(false);
+
+  const canBuyCoverage = isSeller && !!transaction.on_chain_id && !transaction.coverage_id && transaction.status === 'ON_CHAIN';
   const hasCoverage = !!transaction.coverage_id;
+  const canPay = isBuyer && transaction.status === 'ON_CHAIN' && !!transaction.on_chain_id;
 
   async function handleBuyCoverage() {
     setShowCoverageFlow(true);
@@ -71,19 +87,44 @@ export function TransactionDetail({ transaction }: TransactionDetailProps) {
     }
   }
 
+  async function handlePay() {
+    setShowFundFlow(true);
+    fundFlow.reset();
+    await fundFlow.execute(transaction.on_chain_id!, transaction.amount, transaction.public_id);
+  }
+
   return (
     <Card>
       <div className="flex flex-col gap-6">
-        {/* Claim eligibility banner */}
-        {eligible && (
-          <div className="flex items-center justify-between rounded-lg border border-[var(--status-warning)] bg-[hsl(var(--warning-bg))] px-4 py-3">
+        {/* Buyer paid — seller can redeem */}
+        {canRedeem && (
+          <div className="flex items-center justify-between rounded-lg border border-[var(--status-success)] bg-[hsl(var(--tip-bg))] px-4 py-3">
             <div>
-              <p className="text-sm font-semibold text-[var(--status-warning)]">Claim available</p>
-              <p className="text-xs text-[var(--text-secondary)]">The waiting period has passed. You can initiate your claim now.</p>
+              <p className="text-sm font-semibold text-[var(--status-success)]">Ready to redeem</p>
+              <p className="text-xs text-[var(--text-secondary)]">The buyer has paid and the waiting period has passed. Go to Withdrawals to collect your funds.</p>
             </div>
             <Button size="sm" onClick={() => navigate({ to: '/withdrawals' })}>
-              Initiate Claim
+              Redeem Now
             </Button>
+          </div>
+        )}
+
+        {/* Buyer defaulted — seller can only claim insurance */}
+        {buyerDefaulted && (
+          <div className="flex items-center justify-between rounded-lg border border-[var(--status-warning)] bg-[hsl(var(--warning-bg))] px-4 py-3">
+            <div>
+              <p className="text-sm font-semibold text-[var(--status-warning)]">Buyer has not paid</p>
+              <p className="text-xs text-[var(--text-secondary)]">
+                {hasCoverage
+                  ? 'The waiting period has passed and no payment was received. You can file an insurance claim.'
+                  : 'The waiting period has passed and no payment was received. No coverage was purchased — funds cannot be recovered.'}
+              </p>
+            </div>
+            {hasCoverage && (
+              <Button size="sm" variant="secondary" onClick={() => navigate({ to: '/withdrawals' })}>
+                File Claim
+              </Button>
+            )}
           </div>
         )}
 
@@ -161,6 +202,51 @@ export function TransactionDetail({ transaction }: TransactionDetailProps) {
                   <Button size="sm" onClick={handleBuyCoverage}>Try Again</Button>
                 </div>
               </div>
+            )}
+          </div>
+        )}
+
+        {/* Pay Invoice section — visible when escrow is on-chain and not yet funded */}
+        {canPay && !showFundFlow && (
+          <div className="flex items-center justify-between rounded-lg border border-[var(--border-dark)] bg-[hsl(var(--bg-surface-alt))] px-4 py-3">
+            <div>
+              <p className="text-sm font-semibold text-[var(--text-primary)]">Pay invoice</p>
+              <p className="text-xs text-[var(--text-muted)]">
+                Send {transaction.amount.toFixed(2)} USDC to fund this escrow.
+              </p>
+            </div>
+            <Button size="sm" onClick={handlePay}>Pay Now</Button>
+          </div>
+        )}
+
+        {showFundFlow && (
+          <div className="flex flex-col gap-4 rounded-lg border border-[var(--border-dark)] bg-[hsl(var(--bg-surface-alt))] px-4 py-4">
+            <p className="text-sm font-semibold text-[var(--text-primary)]">Paying invoice</p>
+            <TransactionProgress steps={FUND_FLOW_STEPS} currentStep={fundFlow.currentStep} />
+            {fundFlow.inProgress && !fundFlow.error && (
+              <div className="flex items-center gap-2 rounded-[var(--radius-subtle)] bg-[var(--accent-blue-bg)] px-4 py-3">
+                <svg className="h-4 w-4 animate-spin text-[var(--accent-blue)]" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                <p className="text-sm text-[var(--accent-blue)]">Processing on-chain… please wait</p>
+              </div>
+            )}
+            {fundFlow.error && (
+              <div className="flex flex-col gap-3">
+                <div className="rounded-[var(--radius-subtle)] border border-[hsl(var(--danger-border))] bg-[hsl(var(--danger-bg))] px-4 py-3">
+                  <p className="text-sm text-[var(--status-error)]">{fundFlow.error}</p>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button size="sm" variant="secondary" onClick={() => { fundFlow.reset(); setShowFundFlow(false); }}>
+                    Cancel
+                  </Button>
+                  <Button size="sm" onClick={handlePay}>Try Again</Button>
+                </div>
+              </div>
+            )}
+            {!fundFlow.inProgress && !fundFlow.error && fundFlow.currentStep === 6 && (
+              <p className="text-sm text-[var(--status-success)]">Payment sent successfully.</p>
             )}
           </div>
         )}

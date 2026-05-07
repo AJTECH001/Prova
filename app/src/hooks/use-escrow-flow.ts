@@ -110,7 +110,12 @@ export function useEscrowFlow() {
       setCurrentStep(4);
       return escrow.public_id;
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Escrow creation failed');
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(
+        msg.toLowerCase().includes('0x3aadb858')
+          ? 'This invoice already exists on-chain (same buyer, amount, and due date). Check your transaction list — it may already be there. To create a new one, change the due date.'
+          : msg || 'Escrow creation failed',
+      );
       return null;
     } finally {
       setInProgress(false);

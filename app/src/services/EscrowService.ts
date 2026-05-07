@@ -33,4 +33,15 @@ export class EscrowService {
     );
     return data;
   }
+
+  static async reportFunded(
+    onChainId: string,
+    txHash: string,
+  ): Promise<{ on_chain_id: string; tx_hash: string; status: string }> {
+    const { data } = await httpClient.post<{ on_chain_id: string; tx_hash: string; status: string }>(
+      '/v1/transactions/escrows/funded',
+      { on_chain_id: onChainId, tx_hash: txHash },
+    );
+    return data;
+  }
 }

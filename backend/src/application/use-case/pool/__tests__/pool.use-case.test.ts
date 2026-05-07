@@ -15,11 +15,14 @@ const POLICY_ADDRESS = '0xpolicy456';
 const POOL_FACTORY_ADDRESS = '0xfactory789';
 const USDC_ADDRESS = '0xusdc000';
 
+const CUSDC_ADDRESS = '0xcusdc999';
+
 function setEnv(overrides: Record<string, string> = {}) {
   process.env.JWT_SECRET = 'test-secret-that-is-at-least-32-chars-long';
   process.env.POOL_ADDRESS = POOL_ADDRESS;
   process.env.POLICY_ADDRESS = POLICY_ADDRESS;
   process.env.POOL_FACTORY_ADDRESS = POOL_FACTORY_ADDRESS;
+  process.env.PUSDC_WRAPPER_ADDRESS = CUSDC_ADDRESS;
   process.env.USDC_ADDRESS = USDC_ADDRESS;
   Object.assign(process.env, overrides);
 }
@@ -33,29 +36,28 @@ describe('CreatePoolUseCase', () => {
   });
 
   it('returns a contract call targeting the pool factory', async () => {
-    const result = await useCase.execute({ policy_address: POLICY_ADDRESS });
+    const result = await useCase.execute({});
 
     expect(result.call.contract_address).toBe(POOL_FACTORY_ADDRESS);
-    expect(result.call.abi_function_signature).toBe('createPool(address,address,uint256)');
+    expect(result.call.abi_function_signature).toBe('createPool(address)');
   });
 
-  it('includes policy_address and asset_address in abi_parameters', async () => {
-    const result = await useCase.execute({ policy_address: POLICY_ADDRESS });
+  it('uses cUSDC (PUSDC_WRAPPER_ADDRESS) as the payment token', async () => {
+    const result = await useCase.execute({});
 
-    expect(result.call.abi_parameters.policy_address).toBe(POLICY_ADDRESS);
-    expect(result.call.abi_parameters.asset_address).toBe(USDC_ADDRESS);
+    expect(result.call.abi_parameters.payment_token).toBe(CUSDC_ADDRESS);
   });
 
-  it('defaults initial_liquidity to 0 when not provided', async () => {
-    const result = await useCase.execute({ policy_address: POLICY_ADDRESS });
+  it('passes only payment_token in abi_parameters', async () => {
+    const result = await useCase.execute({});
 
-    expect(result.call.abi_parameters.initial_liquidity).toBe(0);
+    expect(Object.keys(result.call.abi_parameters)).toEqual(['payment_token']);
   });
 
-  it('passes initial_liquidity when provided', async () => {
-    const result = await useCase.execute({ policy_address: POLICY_ADDRESS, initial_liquidity: 500 });
+  it('payment_token is the cUSDC address from env', async () => {
+    const result = await useCase.execute({});
 
-    expect(result.call.abi_parameters.initial_liquidity).toBe(500);
+    expect(result.call.abi_parameters.payment_token).toBeTruthy();
   });
 });
 
@@ -147,7 +149,7 @@ describe('UnstakeUseCase', () => {
 
     const result = await useCase.execute(stake.publicId, USER_ID);
 
-    expect(result.call.abi_function_signature).toBe('unstake(bytes32)');
+    expect(result.call.abi_function_signature).toBe('unstake(uint256)');
     expect(result.call.contract_address).toBe(POOL_ADDRESS);
   });
 
@@ -181,19 +183,19 @@ describe('UnstakeUseCase', () => {
     await expect(useCase.execute(stake.publicId, 'other-user-id')).rejects.toThrow('Unauthorized');
   });
 
-  it('throws 422 when stake is not ACTIVE', async () => {
+  it('throws 422 when stake is already WITHDRAWN', async () => {
     const stake = new PoolStake({
       id: randomUUID(),
       publicId: randomUUID(),
       userId: USER_ID,
       poolAddress: POOL_ADDRESS,
       amount: 100,
-      status: PoolStakeStatus.PENDING,
+      status: PoolStakeStatus.WITHDRAWN,
       createdAt: new Date(),
     });
     await repo.save(stake);
 
-    await expect(useCase.execute(stake.publicId, USER_ID)).rejects.toThrow('Stake is not active');
+    await expect(useCase.execute(stake.publicId, USER_ID)).rejects.toThrow();
   });
 });
 

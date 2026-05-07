@@ -1,13 +1,14 @@
 import { useCallback, useState } from 'react';
-import { encodeFunctionData } from 'viem';
+import { encodeFunctionData, parseEventLogs } from 'viem';
 import { WithdrawalService, type CreateWithdrawalRequest, type WithdrawalCall } from '@/services/WithdrawalService';
 import { useWalletStore } from '@/stores/wallet-store';
 import { useWithdrawalStore } from '@/stores/withdrawal-store';
+import { publicClient } from '@/lib/public-client';
 import { ConfidentialEscrowABI, cUSDCABI } from '@/lib/contracts';
 
 const ABI_MAP = {
   redeemMultiple: ConfidentialEscrowABI,
-  unwrap: cUSDCABI,
+  unshield: cUSDCABI,
 } as const;
 
 export const WITHDRAWAL_FLOW_STEPS = [
@@ -68,6 +69,27 @@ export function useWithdrawalFlow() {
       const txHash = await useWalletStore.getState().sendUserOperation(encodedCalls);
 
       setCurrentStep(2);
+      // Parse EscrowBatchRedeemed to confirm which IDs were actually redeemed on-chain.
+      // Falls back gracefully if the receipt or event is unavailable.
+      try {
+        const receipt = await publicClient.getTransactionReceipt({ hash: txHash as `0x${string}` });
+        const batchEvents = parseEventLogs({
+          abi: ConfidentialEscrowABI,
+          logs: receipt.logs,
+          eventName: 'EscrowBatchRedeemed',
+        });
+        if (batchEvents.length > 0) {
+          const redeemedIds = batchEvents[0].args.escrowIds.map(String);
+          const requestedIds = dto.escrow_ids.map(String);
+          const unredeemed = requestedIds.filter((id) => !redeemedIds.includes(id));
+          if (unredeemed.length > 0) {
+            throw new Error(`Partial redemption — escrow IDs not redeemed: ${unredeemed.join(', ')}`);
+          }
+        }
+      } catch (parseErr) {
+        if (parseErr instanceof Error && parseErr.message.startsWith('Partial redemption')) throw parseErr;
+        // receipt not available yet — proceed, backend will reconcile
+      }
       await WithdrawalService.reportTransaction(txHash, 'redeem', response.public_id);
 
       setCurrentStep(3);

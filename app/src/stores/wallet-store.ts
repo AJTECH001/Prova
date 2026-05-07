@@ -19,6 +19,7 @@ interface WalletState {
   signMessage: (message: string) => Promise<string>;
   sendUserOperation: (calls: Array<{ to: string; data: string; value?: bigint }>) => Promise<string>;
   ensureConnected: () => Promise<void>;
+  getViemWalletClient: () => unknown;
 }
 
 async function reconnect(): Promise<void> {
@@ -91,6 +92,8 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     _provider = null;
     set({ activeProviderType: null, address: null });
   },
+
+  getViemWalletClient: () => _provider?.getViemWalletClient?.() ?? null,
 
   signMessage: async (message) => {
     await useWalletStore.getState().ensureConnected();

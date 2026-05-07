@@ -40,6 +40,7 @@ export interface BuyCoverageResponse {
   coverage_amount_smallest_unit: string;
   expiry: number;
   risk_proof: string;
+  policy_data: string;
   contract_address: string;
   abi_function_signature: string;
 }
@@ -77,5 +78,12 @@ export class PoolService {
       req,
     );
     return data;
+  }
+
+  static async confirmCoverage(escrowPublicId: string, coverageId: string, txHash?: string): Promise<void> {
+    await httpClient.patch(`/v1/escrows/${escrowPublicId}/coverage`, {
+      coverage_id: coverageId,
+      tx_hash: txHash,
+    });
   }
 }

@@ -57,7 +57,7 @@ describe('CreateWithdrawalUseCase', () => {
     expect(result.public_id).toMatch(/^WD-/);
   });
 
-  it('returns calls array with redeemMultiple and unwrap', async () => {
+  it('returns calls array with only redeemMultiple — unshield is handled separately', async () => {
     await escrowRepo.save(makeSettledEscrow('1'));
 
     const result = await useCase.execute(
@@ -66,9 +66,8 @@ describe('CreateWithdrawalUseCase', () => {
       WALLET,
     );
 
-    expect(result.calls).toHaveLength(2);
+    expect(result.calls).toHaveLength(1);
     expect(result.calls[0]!.abi_function_signature).toBe('redeemMultiple(uint256[])');
-    expect(result.calls[1]!.abi_function_signature).toBe('unwrap(uint256)');
   });
 
   it('sums estimated amount from multiple escrows', async () => {

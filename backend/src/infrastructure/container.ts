@@ -26,6 +26,7 @@ import { NonceService } from './auth/nonce.service.js';
 import { SiweVerifier } from './auth/siwe-verifier.js';
 import { FheService } from './fhe/fhe.service.js';
 import { QuickNodeVerifier } from './webhook/quicknode-verifier.js';
+import { PolicyAdminService } from './chain/policy-admin.service.js';
 import { ComputeCreditScoreUseCase } from '../application/use-case/credit-score/compute-credit-score.use-case.js';
 import { getEnv } from '../core/config.js';
 import type { INonceRepository } from '../domain/nonce/repository/nonce.repository.js';
@@ -92,6 +93,7 @@ function getRepos(): Repositories {
 const jwtService = new JwtService();
 const siweVerifier = new SiweVerifier();
 const fheService = new FheService();
+const policyAdminService = new PolicyAdminService();
 
 function getComputeCreditScoreUseCase(): ComputeCreditScoreUseCase {
   return new ComputeCreditScoreUseCase(getRepos().escrowRepo, fheService);
@@ -140,4 +142,5 @@ export const container = {
   get computeCreditScoreUseCase() {
     return getComputeCreditScoreUseCase();
   },
+  policyAdminService,
 };

@@ -24,7 +24,7 @@ export function TransactionForm({ onSubmit }: TransactionFormProps) {
   const minDate = getTomorrowDate();
 
   const buyerAddressValid = buyerAddress === '' || ETH_ADDRESS_REGEX.test(buyerAddress);
-  const canSubmit = !!amount && buyerAddress !== '' && ETH_ADDRESS_REGEX.test(buyerAddress);
+  const canSubmit = !!amount && !!deadline && buyerAddress !== '' && ETH_ADDRESS_REGEX.test(buyerAddress);
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -63,7 +63,7 @@ export function TransactionForm({ onSubmit }: TransactionFormProps) {
           onChange={(e) => setAmount(e.target.value)}
         />
         <Input
-          label="Due Date"
+          label="Due Date *"
           type="date"
           min={minDate}
           value={deadline}

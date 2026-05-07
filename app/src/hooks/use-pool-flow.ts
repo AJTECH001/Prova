@@ -6,9 +6,27 @@ import { publicClient } from '@/lib/public-client';
 import { usePoolStore } from '@/stores/pool-store';
 import { useWalletStore } from '@/stores/wallet-store';
 import { useAuthStore } from '@/stores/auth-store';
+import { useRefreshStore } from '@/stores/refresh-store';
 import { InsurancePoolABI, ConfidentialCoverageManagerABI, cUSDCABI, ERC20ApproveABI, ADDRESSES } from '@/lib/contracts';
 
-const USDC_DECIMALS = 6;
+// Maps on-chain error selectors to user-readable messages.
+const CONTRACT_ERROR_MESSAGES: Record<string, string> = {
+  '0xe2e43053': 'Coverage has already been purchased for this escrow. Refresh the page to see the updated status.',
+  '0x3aadb858': 'Invoice conflict detected on-chain. This can happen if coverage was already partially processed. Please try again or contact support.',
+  '0xd06b96b1': 'Policy not approved by the insurance pool. This is a one-time setup issue — please try again in a few seconds.',
+  '0xea7a154b': 'Concentration cap not configured for this buyer. The system is setting it up — please try again in a few seconds.',
+  '0x1fa47a1c': 'The escrow does not exist on-chain yet. Wait for the on-chain confirmation and try again.',
+  '0xaa0b79a6': 'Policy data not found on-chain. Please try again.',
+};
+
+function decodeCoverageError(e: unknown): string {
+  const msg = e instanceof Error ? e.message : String(e);
+  for (const [selector, readable] of Object.entries(CONTRACT_ERROR_MESSAGES)) {
+    if (msg.toLowerCase().includes(selector.toLowerCase())) return readable;
+  }
+  return msg || 'Coverage purchase failed';
+}
+
 // one year operator approval
 const OPERATOR_TTL = () => Math.floor(Date.now() / 1000) + 365 * 24 * 60 * 60;
 
@@ -25,7 +43,6 @@ export const POOL_FLOW_STEPS = [
 export const UNSTAKE_FLOW_STEPS = [
   { label: 'Preparing transaction' },
   { label: 'Unstaking from pool' },
-  { label: 'Unwrapping cUSDC → USDC' },
   { label: 'Done' },
 ];
 
@@ -141,6 +158,7 @@ export function useStakeFlow() {
         on_chain_stake_id: onChainStakeId,
       });
       await usePoolStore.getState().fetchStatus();
+      useRefreshStore.getState().triggerBalanceRefresh();
 
       return true;
     } catch (e) {
@@ -230,22 +248,6 @@ export function useUnstakeFlow() {
       });
       await useWalletStore.getState().sendUserOperation([{ to: poolAddress, data: unstakeData }]);
 
-      // Step 2 — unwrap cUSDC → USDC so the LP's USDC balance is restored
-      setCurrentStep(2);
-      const walletAddress = useAuthStore.getState().walletAddress;
-      const localStake = usePoolStore.getState().stakes.find((s) => s.public_id === stakePublicId);
-      if (walletAddress && localStake) {
-        const amountSmallest = BigInt(Math.round(localStake.amount * 10 ** USDC_DECIMALS));
-        const unwrapData = encodeFunctionData({
-          abi: cUSDCABI,
-          functionName: 'unwrap',
-          args: [walletAddress as `0x${string}`, amountSmallest],
-        });
-        await useWalletStore.getState().sendUserOperation([
-          { to: ADDRESSES.cUSDC as `0x${string}`, data: unwrapData },
-        ]);
-      }
-
       // Mark withdrawn in backend (best-effort — ignore if backend has no record)
       try {
         await PoolService.confirmUnstake(stakePublicId);
@@ -253,8 +255,9 @@ export function useUnstakeFlow() {
 
       usePoolStore.getState().removeStake(stakePublicId);
       await usePoolStore.getState().fetchStatus();
+      useRefreshStore.getState().triggerBalanceRefresh();
 
-      setCurrentStep(3);
+      setCurrentStep(2);
       return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unstake failed');
@@ -321,20 +324,36 @@ export function useCoverageFlow() {
             signature: encryptedCoverage.inputProof as `0x${string}`,
           },
           BigInt(response.expiry),
-          '0x' as `0x${string}`,
+          response.policy_data as `0x${string}`,
           response.risk_proof as `0x${string}`,
         ],
       });
 
-      await useWalletStore.getState().sendUserOperation([{ to: response.contract_address, data }]);
+      const txHash = await useWalletStore.getState().sendUserOperation([{ to: response.contract_address, data }]);
 
+      // Parse CoveragePurchased event to record coverageId in backend
       setCurrentStep(3);
+      let coverageId: string | undefined;
+      try {
+        const receipt = await publicClient.getTransactionReceipt({ hash: txHash as `0x${string}` });
+        const events = parseEventLogs({
+          abi: ConfidentialCoverageManagerABI,
+          logs: receipt.logs,
+          eventName: 'CoveragePurchased',
+        });
+        if (events.length > 0) coverageId = (events[0].args as { coverageId: bigint }).coverageId.toString();
+      } catch { /* non-fatal */ }
+
+      if (coverageId) {
+        try { await PoolService.confirmCoverage(escrowPublicId, coverageId, txHash); } catch { /* non-fatal */ }
+      }
+
       await usePoolStore.getState().fetchStatus();
 
       setCurrentStep(4);
       return true;
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Coverage purchase failed');
+      setError(decodeCoverageError(e));
       return false;
     } finally {
       setInProgress(false);

@@ -1,3 +1,4 @@
+
 import { z } from 'zod';
 
 const EnvSchema = z.object({
@@ -28,6 +29,8 @@ const EnvSchema = z.object({
   POOL_FACTORY_ADDRESS: z.string().optional(),
   USDC_ADDRESS: z.string().optional(),
   FHE_WORKER_URL: z.string().default('http://localhost:3001'),
+  ADMIN_PRIVATE_KEY: z.string().optional(),
+  DEFAULT_CONCENTRATION_CAP_USDC: z.coerce.number().default(1000000),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import type { TransactionResponse } from '@/services/TransactionService';
 import type { CreateWithdrawalRequest } from '@/services/WithdrawalService';
+import { isClaimEligible } from '@/hooks/use-claim-eligibility';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -21,7 +22,12 @@ export function WithdrawalForm({ transactions, onSubmit }: WithdrawalFormProps) 
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [submitting, setSubmitting] = useState(false);
 
-  const settledTransactions = useMemo(() => transactions.filter((txn) => txn.status === 'SETTLED'), [transactions]);
+  const settledTransactions = useMemo(
+    () => transactions.filter(
+      (txn) => (txn.status === 'FUNDED' || txn.status === 'SETTLED') && isClaimEligible(txn),
+    ),
+    [transactions],
+  );
 
   const selectedTotal = useMemo(
     () =>
@@ -64,7 +70,7 @@ export function WithdrawalForm({ transactions, onSubmit }: WithdrawalFormProps) 
     <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
       {settledTransactions.length > 0 ? (
         <div className="flex flex-col gap-2">
-          <p className="text-sm font-medium text-[var(--text-primary)]">Select settled transactions to withdraw</p>
+          <p className="text-sm font-medium text-[var(--text-primary)]">Select funded escrows to redeem</p>
           <div className="max-h-48 overflow-y-auto rounded-lg border border-[var(--border-dark)]">
             {settledTransactions.map((txn) => (
               <label
@@ -91,7 +97,7 @@ export function WithdrawalForm({ transactions, onSubmit }: WithdrawalFormProps) 
           )}
         </div>
       ) : (
-        <p className="text-sm text-[var(--text-secondary)]">No settled transactions available for withdrawal.</p>
+        <p className="text-sm text-[var(--text-secondary)]">No redeemable escrows yet. Escrows become redeemable after the due date + 30-day waiting period.</p>
       )}
 
       <div className="grid gap-4 sm:grid-cols-2">

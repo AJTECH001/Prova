@@ -14,6 +14,7 @@ export interface BuyCoverageResponse {
   coverage_amount_smallest_unit: string;
   expiry: number;
   risk_proof: string;
+  policy_data: string;
   contract_address: string;
   abi_function_signature: string;
 }

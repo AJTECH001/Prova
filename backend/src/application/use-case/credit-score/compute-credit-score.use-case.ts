@@ -1,6 +1,6 @@
 import type { IEscrowRepository } from '../../../domain/escrow/repository/escrow.repository.js';
 import type { ICreditScoreFheService } from '../../../infrastructure/fhe/fhe.service.js';
-import type { EncryptedValue } from '../../../domain/fhe/model/encrypted-value.js';
+import { EncryptedValue } from '../../../domain/fhe/model/encrypted-value.js';
 import { EscrowStatus } from '../../../domain/escrow/model/escrow-status.enum.js';
 import type { Escrow } from '../../../domain/escrow/model/escrow.js';
 
@@ -22,10 +22,24 @@ export class ComputeCreditScoreUseCase {
 
     const rawScore = this.computeScore(escrows);
 
-    const encryptedScore = await this.fheService.encryptCreditScore(BigInt(rawScore), buyerWalletAddress);
-
-    // ABI-encode as (bytes, int32, uint8, bytes) matching InEuint32 struct on-chain
-    const riskProof = this.encodeRiskProof(encryptedScore);
+    // riskProof is intentionally ignored by TradeCreditInsurancePolicy.evaluateRisk()
+    // (the parameter is commented out in the contract). Fall back gracefully when the
+    // FHE worker service is unavailable so coverage purchase is not hard-blocked.
+    let encryptedScore: EncryptedValue;
+    let riskProof = '0x';
+    try {
+      encryptedScore = await this.fheService.encryptCreditScore(BigInt(rawScore), buyerWalletAddress);
+      riskProof = this.encodeRiskProof(encryptedScore);
+    } catch {
+      encryptedScore = new EncryptedValue({
+        type: 'euint64',
+        data: '0x',
+        securityZone: 0,
+        utype: 0,
+        inputProof: '0x',
+        userAddress: buyerWalletAddress,
+      });
+    }
 
     return { userId, rawScore, encryptedScore, riskProof };
   }

@@ -54,6 +54,14 @@ export class MemoryEscrowRepository implements IEscrowRepository {
     return null;
   }
 
+  async findPayableByCounterparty(walletAddress: string): Promise<Escrow[]> {
+    return [...this.store.values()].filter(
+      (e) =>
+        e.counterparty?.toLowerCase() === walletAddress.toLowerCase() &&
+        e.status === EscrowStatus.ON_CHAIN,
+    );
+  }
+
   async findSettledByUserId(userId: string): Promise<Escrow[]> {
     const terminalStatuses = [EscrowStatus.SETTLED, EscrowStatus.EXPIRED, EscrowStatus.FAILED];
     return [...this.store.values()].filter(

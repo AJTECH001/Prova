@@ -1,9 +1,59 @@
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { useEffect } from 'react';
+import { parseEventLogs } from 'viem';
 import { useTransactionStore } from '@/stores/transaction-store';
+import { EscrowService } from '@/services/EscrowService';
 import { TransactionDetail } from '@/components/features/transaction-detail';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { publicClient } from '@/lib/public-client';
+import { ConfidentialEscrowABI, ADDRESSES } from '@/lib/contracts';
+
+async function tryReconcileProcessing(txHash: string, publicId: string): Promise<boolean> {
+  try {
+    const receipt = await publicClient.getTransactionReceipt({ hash: txHash as `0x${string}` });
+    if (receipt.status === 'reverted') return false;
+    const events = parseEventLogs({
+      abi: ConfidentialEscrowABI,
+      logs: receipt.logs.filter(
+        (l) => l.address.toLowerCase() === ADDRESSES.ConfidentialEscrow.toLowerCase(),
+      ),
+      eventName: 'EscrowCreated',
+    });
+    if (events.length === 0) return false;
+    const onChainId = events[0].args.escrowId.toString();
+    await EscrowService.reportTransaction(txHash, publicId, onChainId);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function tryReconcileFunded(onChainId: string): Promise<boolean> {
+  try {
+    const latest = await publicClient.getBlockNumber();
+    const fromBlock = latest > 100000n ? latest - 100000n : 0n;
+    const logs = await publicClient.getLogs({
+      address: ADDRESSES.ConfidentialEscrow as `0x${string}`,
+      event: {
+        name: 'EscrowFunded',
+        type: 'event',
+        inputs: [
+          { indexed: true, name: 'escrowId', type: 'uint256' },
+          { indexed: true, name: 'payer',    type: 'address' },
+        ],
+      } as const,
+      args: { escrowId: BigInt(onChainId) },
+      fromBlock,
+      toBlock: 'latest',
+    });
+    if (logs.length === 0) return false;
+    await EscrowService.reportFunded(onChainId, logs[0].transactionHash!);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export function TransactionDetailPage() {
   const { id } = useParams({ strict: false }) as { id: string };
@@ -15,6 +65,28 @@ export function TransactionDetailPage() {
   useEffect(() => {
     fetchTransaction(id);
   }, [id, fetchTransaction]);
+
+  // Auto-reconcile PROCESSING transactions: check receipt on-chain and update backend
+  useEffect(() => {
+    if (
+      currentTransaction?.status === 'PROCESSING' &&
+      currentTransaction.tx_hash &&
+      !currentTransaction.on_chain_id
+    ) {
+      tryReconcileProcessing(currentTransaction.tx_hash, currentTransaction.public_id).then(
+        (reconciled) => { if (reconciled) fetchTransaction(id); },
+      );
+    }
+  }, [currentTransaction?.status, currentTransaction?.tx_hash, id, fetchTransaction]);
+
+  // Auto-reconcile ON_CHAIN → FUNDED: query chain for EscrowFunded event by escrowId
+  useEffect(() => {
+    if (currentTransaction?.status === 'ON_CHAIN' && currentTransaction.on_chain_id) {
+      tryReconcileFunded(currentTransaction.on_chain_id).then(
+        (reconciled) => { if (reconciled) fetchTransaction(id); },
+      );
+    }
+  }, [currentTransaction?.status, currentTransaction?.on_chain_id, id, fetchTransaction]);
 
   return (
     <div className="flex flex-col gap-6">

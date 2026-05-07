@@ -266,16 +266,16 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
 
     /// @notice Fetches the buyer's encrypted credit score, evaluates it against the
     ///         6-bucket FHE premium curve, and returns an encrypted premium in basis points.
-    /// @param  coverageId Unique identifier of the coverage being priced.
-    /// @return riskScore  Encrypted premium in basis points as a euint64.
-    function evaluateRisk(uint256 coverageId, bytes calldata /*riskProof*/)
+    /// @param  escrowId  The escrow being insured (passed as coverageId by ConfidentialCoverageManager).
+    /// @return riskScore Encrypted premium in basis points as a euint64.
+    function evaluateRisk(uint256 escrowId, bytes calldata /*riskProof*/)
         external
         override
-        onlyBoundManager(coverageId)
+        onlyBoundManager(escrowId)
         returns (euint64 riskScore)
     {
-        Policy memory p = _policies[coverageId];
-        if (!p.set) revert PolicyNotSet(coverageId);
+        Policy memory p = _policies[escrowId];
+        if (!p.set) revert PolicyNotSet(escrowId);
 
         // TODO: Enhance with zkTLS off-chain risk data (see TECH_DEBT.md)
         // Current: Only on-chain credit score

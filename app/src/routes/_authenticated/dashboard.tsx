@@ -1,19 +1,26 @@
 import type { ReactNode } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { parseEventLogs } from 'viem';
 import { useTransactionStore } from '@/stores/transaction-store';
 import { useWithdrawalStore } from '@/stores/withdrawal-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { useBalance } from '@/hooks/use-balance';
+import { useCUsdcBalance } from '@/hooks/use-cUsdc-balance';
 import { useContractRead } from '@/hooks/use-contract-read';
 import { useAdminFlow, strToBytes2, strToBytes4, parseUint32Array } from '@/hooks/use-admin-flow';
+import { useFundFlow, FUND_FLOW_STEPS } from '@/hooks/use-fund-flow';
 import { TransactionList } from '@/components/features/transaction-list';
+import { TransactionProgress } from '@/components/features/transaction-progress';
 import { WithdrawalList } from '@/components/features/withdrawal-list';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { isClaimEligible } from '@/hooks/use-claim-eligibility';
-import { ADDRESSES } from '@/lib/contracts';
+import { ADDRESSES, ConfidentialEscrowABI } from '@/lib/contracts';
+import { TransactionService, type TransactionResponse } from '@/services/TransactionService';
+import { EscrowService } from '@/services/EscrowService';
+import { publicClient } from '@/lib/public-client';
 
 const ARBISCAN = 'https://sepolia.arbiscan.io/address';
 
@@ -460,10 +467,110 @@ function AdminPanel() {
   );
 }
 
+// ── Payable invoices panel (buyer view) ──────────────────────────────────────
+function PayInvoiceRow({ invoice, onPaid }: { invoice: TransactionResponse; onPaid: () => void }) {
+  const fundFlow = useFundFlow();
+  const [active, setActive] = useState(false);
+
+  async function handlePay() {
+    setActive(true);
+    fundFlow.reset();
+    const ok = await fundFlow.execute(invoice.on_chain_id!, invoice.amount, invoice.public_id);
+    if (ok) onPaid();
+  }
+
+  return (
+    <div className="flex flex-col gap-3 border-b border-[var(--border-dark)] py-4 last:border-0">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-[var(--text-primary)]">
+            {invoice.external_reference || invoice.public_id.slice(0, 8)}
+            <span className="ml-2 text-xs text-[var(--text-muted)]">
+              — {invoice.amount.toFixed(2)} USDC due {invoice.deadline ? new Date(invoice.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+            </span>
+          </p>
+          <p className="mt-0.5 font-mono text-xs text-[var(--text-muted)]">{invoice.counterparty?.slice(0, 10)}…</p>
+        </div>
+        {!active && (
+          <Button size="sm" onClick={handlePay}>Pay Now</Button>
+        )}
+      </div>
+
+      {active && (
+        <div className="flex flex-col gap-3 rounded-[var(--radius-subtle)] border border-[var(--border-dark)] bg-[hsl(var(--bg-surface-alt))] px-4 py-3">
+          <TransactionProgress steps={FUND_FLOW_STEPS} currentStep={fundFlow.currentStep} />
+          {fundFlow.inProgress && !fundFlow.error && (
+            <div className="flex items-center gap-2">
+              <svg className="h-4 w-4 animate-spin text-[var(--accent-blue)]" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              <p className="text-xs text-[var(--accent-blue)]">Processing on-chain…</p>
+            </div>
+          )}
+          {fundFlow.error && (
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs text-[var(--status-error)]">{fundFlow.error}</p>
+              <div className="flex gap-2 shrink-0">
+                <Button size="sm" variant="secondary" onClick={() => { fundFlow.reset(); setActive(false); }}>Cancel</Button>
+                <Button size="sm" onClick={handlePay}>Retry</Button>
+              </div>
+            </div>
+          )}
+          {!fundFlow.inProgress && !fundFlow.error && fundFlow.currentStep === 6 && (
+            <p className="text-xs text-[var(--status-success)]">Payment sent.</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PayableInvoicesPanel() {
+  const [invoices, setInvoices] = useState<TransactionResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await TransactionService.listPayable();
+      setInvoices(data);
+    } catch { /* ignore */ } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  if (!loading && invoices.length === 0) return null;
+
+  return (
+    <div className="rounded-[var(--radius-block)] border border-[hsl(var(--warning-border,35_100%_80%))] bg-white shadow-[var(--shadow-sm)]">
+      <div className="border-b border-[var(--border-dark)] px-5 py-4">
+        <h2 className="text-sm font-semibold text-[var(--status-warning)]">Invoices to Pay</h2>
+        <p className="text-xs text-[var(--text-muted)]">Escrows awaiting your payment as buyer</p>
+      </div>
+      <div className="px-5">
+        {loading ? (
+          <div className="flex flex-col gap-3 py-4">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-3/4" />
+          </div>
+        ) : (
+          invoices.map((inv) => (
+            <PayInvoiceRow key={inv.public_id} invoice={inv} onPaid={load} />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Dashboard page ────────────────────────────────────────────────────────────
 export function DashboardPage() {
   const navigate       = useNavigate();
   const role           = useAuthStore((s) => s.role);
+  const walletAddress  = useAuthStore((s) => s.walletAddress);
   const transactions   = useTransactionStore((s) => s.transactions);
   const transactionLoading = useTransactionStore((s) => s.loading);
   const fetchTransactions  = useTransactionStore((s) => s.fetchTransactions);
@@ -471,13 +578,84 @@ export function DashboardPage() {
   const withdrawalLoading  = useWithdrawalStore((s) => s.loading);
   const fetchWithdrawals   = useWithdrawalStore((s) => s.fetchWithdrawals);
   const { balance, loading: balanceLoading, startPolling, stopPolling } = useBalance();
+  const {
+    balance: cUsdcBalance,
+    loading: cUsdcLoading,
+    startPolling: startCUsdcPolling,
+    stopPolling: stopCUsdcPolling,
+  } = useCUsdcBalance(walletAddress);
 
   useEffect(() => {
     fetchTransactions(true);
     fetchWithdrawals(true);
     startPolling();
-    return () => stopPolling();
-  }, [fetchTransactions, fetchWithdrawals, startPolling, stopPolling]);
+    startCUsdcPolling();
+    return () => { stopPolling(); stopCUsdcPolling(); };
+  }, [fetchTransactions, fetchWithdrawals, startPolling, stopPolling, startCUsdcPolling, stopCUsdcPolling]);
+
+  // Auto-reconcile PROCESSING transactions: check receipt on-chain, update backend
+  useEffect(() => {
+    const stuck = transactions.filter(
+      (t) => t.status === 'PROCESSING' && t.tx_hash && !t.on_chain_id,
+    );
+    if (stuck.length === 0) return;
+    let changed = false;
+    Promise.all(
+      stuck.map(async (t) => {
+        try {
+          const receipt = await publicClient.getTransactionReceipt({ hash: t.tx_hash as `0x${string}` });
+          if (receipt.status === 'reverted') return;
+          const events = parseEventLogs({
+            abi: ConfidentialEscrowABI,
+            logs: receipt.logs.filter(
+              (l) => l.address.toLowerCase() === ADDRESSES.ConfidentialEscrow.toLowerCase(),
+            ),
+            eventName: 'EscrowCreated',
+          });
+          if (events.length === 0) return;
+          const onChainId = events[0].args.escrowId.toString();
+          await EscrowService.reportTransaction(t.tx_hash!, t.public_id, onChainId);
+          changed = true;
+        } catch { /* non-fatal */ }
+      }),
+    ).then(() => { if (changed) fetchTransactions(true); });
+  }, [transactions, fetchTransactions]);
+
+  // Auto-reconcile ON_CHAIN transactions that may already be funded on-chain
+  useEffect(() => {
+    const onChain = transactions.filter(
+      (t) => t.status === 'ON_CHAIN' && t.on_chain_id,
+    );
+    if (onChain.length === 0) return;
+    let changed = false;
+    publicClient.getBlockNumber().then(async (latest) => {
+      const fromBlock = latest > 100000n ? latest - 100000n : 0n;
+      await Promise.all(
+        onChain.map(async (t) => {
+          try {
+            const logs = await publicClient.getLogs({
+              address: ADDRESSES.ConfidentialEscrow as `0x${string}`,
+              event: {
+                name: 'EscrowFunded',
+                type: 'event',
+                inputs: [
+                  { indexed: true, name: 'escrowId', type: 'uint256' },
+                  { indexed: true, name: 'payer', type: 'address' },
+                ],
+              } as const,
+              args: { escrowId: BigInt(t.on_chain_id!) },
+              fromBlock,
+              toBlock: 'latest',
+            });
+            if (logs.length === 0) return;
+            await EscrowService.reportFunded(t.on_chain_id!, logs[0].transactionHash!);
+            changed = true;
+          } catch { /* non-fatal */ }
+        }),
+      );
+      if (changed) fetchTransactions(true);
+    });
+  }, [transactions, fetchTransactions]);
 
   function handleSelectTransaction(transaction: { public_id: string }) {
     navigate({ to: '/transactions/$id', params: { id: transaction.public_id } });
@@ -487,7 +665,7 @@ export function DashboardPage() {
     ['PENDING', 'ON_CHAIN', 'PROCESSING'].includes(t.status),
   ).length;
   const settledEscrows = transactions.filter((t) =>
-    ['SETTLED', 'REDEEMED'].includes(t.status),
+    ['FUNDED', 'SETTLED', 'REDEEMED'].includes(t.status),
   ).length;
   const activeWithdrawals = withdrawals.filter((w) =>
     ['PENDING_REDEEM', 'PENDING_BRIDGE', 'BRIDGING'].includes(w.status),
@@ -519,7 +697,7 @@ export function DashboardPage() {
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
         <StatCard
           label="Available Balance"
           value={balance ? `${balance.formatted_balance} ${balance.currency}` : '—'}
@@ -548,7 +726,7 @@ export function DashboardPage() {
         <StatCard
           label="Settled Escrows"
           value={transactionLoading && transactions.length === 0 ? '—' : settledEscrows}
-          sub="Completed"
+          sub="Funded or redeemed"
           loading={transactionLoading && transactions.length === 0}
           accent="green"
           icon={
@@ -578,6 +756,18 @@ export function DashboardPage() {
           icon={
             <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+          }
+        />
+        <StatCard
+          label="cUSDC Balance"
+          value={cUsdcBalance ? `${cUsdcBalance.formatted} cUSDC` : '—'}
+          sub="Confidential on-chain balance"
+          loading={cUsdcLoading && !cUsdcBalance}
+          accent="purple"
+          icon={
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
             </svg>
           }
         />
@@ -652,6 +842,9 @@ export function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Invoices awaiting buyer payment */}
+      <PayableInvoicesPanel />
 
       {/* Contract state + addresses */}
       <ContractStatusPanel />
