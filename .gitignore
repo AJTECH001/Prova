@@ -11,6 +11,8 @@ node_modules/
 dist/
 build/
 out/
+.next/
+.vercel/
 
 # Logs
 *.log
