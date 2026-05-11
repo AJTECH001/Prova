@@ -18617,18 +18617,23 @@ var Session = class {
 };
 
 // src/domain/auth/model/user.ts
-var User = class {
+var User = class _User {
   id;
   walletAddress;
   walletProvider;
   email;
+  role;
   createdAt;
   constructor(params) {
     this.id = params.id;
     this.walletAddress = params.walletAddress;
     this.walletProvider = params.walletProvider;
     this.email = params.email;
+    this.role = params.role;
     this.createdAt = params.createdAt;
+  }
+  withRole(role) {
+    return new _User({ ...this, role });
   }
 };
 
@@ -18704,7 +18709,8 @@ var VerifyWalletUseCase = class {
       sub: user.id,
       walletAddress: user.walletAddress,
       walletProvider: user.walletProvider,
-      email: user.email
+      email: user.email,
+      role: user.role
     });
     const session = new Session({
       id: randomUUID(),
@@ -18747,22 +18753,35 @@ import { SignJWT, jwtVerify } from "jose";
 // src/core/config.ts
 import { z } from "zod";
 var EnvSchema = z.object({
-  DB_PROVIDER: z.enum(["memory", "postgres"]).default("memory"),
+  DB_PROVIDER: z.enum(["memory", "postgres"]).default("postgres"),
   DATABASE_URL: z.string().optional(),
   JWT_SECRET: z.string().min(1),
+  JWT_REFRESH_SECRET: z.string().min(1),
   JWT_ISSUER: z.string().default("reineira.xyz"),
   ACCESS_TOKEN_TTL: z.coerce.number().default(3600),
   REFRESH_TOKEN_TTL: z.coerce.number().default(2592e3),
   CHAIN_ID: z.coerce.number().default(421614),
   RPC_URL: z.string().optional(),
-  ALLOWED_ORIGINS: z.string().default("http://localhost:5173"),
+  ALLOWED_ORIGINS: z.string().default("http://localhost:3000,http://localhost:4831"),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
   PORT: z.coerce.number().default(3e3),
   QUICKNODE_WEBHOOK_SECRET: z.string().optional(),
   RELAY_WEBHOOK_SECRET: z.string().optional(),
+  PRIVATE_KEY: z.string().optional(),
   ESCROW_CONTRACT_ADDRESS: z.string().optional(),
   PUSDC_WRAPPER_ADDRESS: z.string().optional(),
-  FHE_WORKER_URL: z.string().default("http://localhost:3001")
+  RESOLVER_ADDRESS: z.string().optional(),
+  POLICY_ADDRESS: z.string().optional(),
+  EXPOSURE_REGISTRY_ADDRESS: z.string().optional(),
+  CLAIMS_REGISTRY_ADDRESS: z.string().optional(),
+  MOCK_DEBTOR_PROOF_ADDRESS: z.string().optional(),
+  COVERAGE_MANAGER_ADDRESS: z.string().optional(),
+  POOL_ADDRESS: z.string().optional(),
+  POOL_FACTORY_ADDRESS: z.string().optional(),
+  USDC_ADDRESS: z.string().optional(),
+  FHE_WORKER_URL: z.string().default("http://localhost:3001"),
+  ADMIN_PRIVATE_KEY: z.string().optional(),
+  DEFAULT_CONCENTRATION_CAP_USDC: z.coerce.number().default(1e6)
 });
 var _env = null;
 function getEnv() {
@@ -18775,12 +18794,14 @@ function getEnv() {
 // src/infrastructure/auth/jwt.service.ts
 var JwtService = class {
   secret;
+  refreshSecret;
   issuer;
   accessTokenTtl;
   refreshTokenTtl;
   constructor() {
     const env = getEnv();
     this.secret = new TextEncoder().encode(env.JWT_SECRET);
+    this.refreshSecret = new TextEncoder().encode(env.JWT_REFRESH_SECRET ?? env.JWT_SECRET);
     this.issuer = env.JWT_ISSUER;
     this.accessTokenTtl = env.ACCESS_TOKEN_TTL;
     this.refreshTokenTtl = env.REFRESH_TOKEN_TTL;
@@ -18790,9 +18811,10 @@ var JwtService = class {
     const accessToken = await new SignJWT({
       walletAddress: payload.walletAddress,
       walletProvider: payload.walletProvider,
-      email: payload.email
+      email: payload.email,
+      role: payload.role
     }).setProtectedHeader({ alg: "HS256" }).setSubject(payload.sub).setIssuer(this.issuer).setIssuedAt(now3).setExpirationTime(now3 + this.accessTokenTtl).sign(this.secret);
-    const refreshToken = await new SignJWT({}).setProtectedHeader({ alg: "HS256" }).setSubject(payload.sub).setIssuer(this.issuer).setIssuedAt(now3).setExpirationTime(now3 + this.refreshTokenTtl).sign(this.secret);
+    const refreshToken = await new SignJWT({}).setProtectedHeader({ alg: "HS256" }).setSubject(payload.sub).setIssuer(this.issuer).setIssuedAt(now3).setExpirationTime(now3 + this.refreshTokenTtl).sign(this.refreshSecret);
     return {
       accessToken,
       refreshToken,
@@ -18807,11 +18829,12 @@ var JwtService = class {
       sub: payload.sub,
       walletAddress: payload.walletAddress,
       walletProvider: payload.walletProvider,
-      email: payload.email
+      email: payload.email,
+      role: payload.role
     };
   }
   async verifyRefreshToken(token) {
-    const { payload } = await jwtVerify(token, this.secret, {
+    const { payload } = await jwtVerify(token, this.refreshSecret, {
       issuer: this.issuer
     });
     return { sub: payload.sub };
@@ -18851,6 +18874,10 @@ var MemoryUserRepository = class {
   }
   async save(user) {
     this.store.set(user.id, user);
+  }
+  async updateRole(userId, role) {
+    const user = this.store.get(userId);
+    if (user) this.store.set(userId, user.withRole(role));
   }
 };
 

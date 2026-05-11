@@ -19,6 +19,10 @@ var MemoryUserRepository = class {
   async save(user) {
     this.store.set(user.id, user);
   }
+  async updateRole(userId, role) {
+    const user = this.store.get(userId);
+    if (user) this.store.set(userId, user.withRole(role));
+  }
 };
 
 // src/infrastructure/repository/memory/memory-session.repository.ts
@@ -85,6 +89,17 @@ var MemoryEscrowRepository = class {
       if (escrow.onChainEscrowId === onChainId) return escrow;
     }
     return null;
+  }
+  async findPayableByCounterparty(walletAddress) {
+    return [...this.store.values()].filter(
+      (e) => e.counterparty?.toLowerCase() === walletAddress.toLowerCase() && e.status === "ON_CHAIN" /* ON_CHAIN */
+    );
+  }
+  async findSettledByUserId(userId) {
+    const terminalStatuses = ["SETTLED" /* SETTLED */, "EXPIRED" /* EXPIRED */, "FAILED" /* FAILED */];
+    return [...this.store.values()].filter(
+      (e) => e.userId === userId && terminalStatuses.includes(e.status)
+    );
   }
   async save(escrow) {
     this.store.set(escrow.id, escrow);
@@ -200,22 +215,53 @@ var MemoryNonceRepository = class {
   }
 };
 
+// src/infrastructure/repository/memory/memory-pool-stake.repository.ts
+var MemoryPoolStakeRepository = class {
+  store = /* @__PURE__ */ new Map();
+  async findById(id) {
+    return this.store.get(id) ?? null;
+  }
+  async findByPublicId(publicId) {
+    for (const stake of this.store.values()) {
+      if (stake.publicId === publicId) return stake;
+    }
+    return null;
+  }
+  async findByUserId(userId) {
+    return [...this.store.values()].filter((s) => s.userId === userId).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+  async findByPoolAddress(poolAddress) {
+    return [...this.store.values()].filter((s) => s.poolAddress === poolAddress);
+  }
+  async save(stake) {
+    this.store.set(stake.id, stake);
+  }
+  async update(stake) {
+    this.store.set(stake.id, stake);
+  }
+};
+
 // src/infrastructure/repository/postgres/pg-user.repository.ts
 import { eq } from "drizzle-orm";
 
 // src/domain/auth/model/user.ts
-var User = class {
+var User = class _User {
   id;
   walletAddress;
   walletProvider;
   email;
+  role;
   createdAt;
   constructor(params) {
     this.id = params.id;
     this.walletAddress = params.walletAddress;
     this.walletProvider = params.walletProvider;
     this.email = params.email;
+    this.role = params.role;
     this.createdAt = params.createdAt;
+  }
+  withRole(role) {
+    return new _User({ ...this, role });
   }
 };
 
@@ -230,8 +276,12 @@ __export(schema_exports, {
   escrowEvents: () => escrowEvents,
   escrowStatusEnum: () => escrowStatusEnum,
   escrows: () => escrows,
+  kybStatusEnum: () => kybStatusEnum,
   nonces: () => nonces,
+  poolStakeStatusEnum: () => poolStakeStatusEnum,
+  poolStakes: () => poolStakes,
   sessions: () => sessions,
+  userRoleEnum: () => userRoleEnum,
   users: () => users,
   walletProviderEnum: () => walletProviderEnum,
   withdrawalStatusEnum: () => withdrawalStatusEnum,
@@ -252,6 +302,7 @@ var escrowStatusEnum = pgEnum("escrow_status", [
   "PENDING",
   "ON_CHAIN",
   "PROCESSING",
+  "FUNDED",
   "SETTLED",
   "REDEEMED",
   "EXPIRED",
@@ -270,13 +321,17 @@ var walletProviderEnum = pgEnum("wallet_provider", [
   "walletconnect"
 ]);
 var businessTypeEnum = pgEnum("business_type", ["RETAIL", "SERVICE"]);
+var kybStatusEnum = pgEnum("kyb_status", ["PENDING", "APPROVED", "REJECTED"]);
+var userRoleEnum = pgEnum("user_role", ["SELLER", "BUYER", "LP", "ADMIN"]);
 var credentialStatusEnum = pgEnum("credential_status", [
   "active",
   "revoked"
 ]);
 var escrowEventTypeEnum = pgEnum("escrow_event_type", [
   "EscrowCreated",
-  "EscrowSettled"
+  "EscrowFunded",
+  "EscrowSettled",
+  "EscrowRedeemed"
 ]);
 var users = pgTable(
   "users",
@@ -285,6 +340,7 @@ var users = pgTable(
     walletAddress: text("wallet_address").unique().notNull(),
     walletProvider: walletProviderEnum("wallet_provider").notNull(),
     email: text("email"),
+    role: userRoleEnum("role"),
     createdAt: timestamp("created_at").notNull().defaultNow()
   },
   (t) => [index("users_wallet_address_idx").on(t.walletAddress)]
@@ -332,7 +388,12 @@ var escrows = pgTable(
     metadata: jsonb("metadata"),
     onChainEscrowId: text("on_chain_escrow_id"),
     txHash: text("tx_hash"),
-    createdAt: timestamp("created_at").notNull().defaultNow()
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    settledAt: timestamp("settled_at"),
+    resolverAddress: text("resolver_address"),
+    poolAddress: text("pool_address"),
+    policyAddress: text("policy_address"),
+    coverageId: text("coverage_id")
   },
   (t) => [
     index("escrows_public_id_idx").on(t.publicId),
@@ -378,7 +439,10 @@ var businessProfiles = pgTable(
     businessName: text("business_name").notNull(),
     businessType: businessTypeEnum("business_type").notNull(),
     businessAddress: text("business_address"),
-    taxId: text("tax_id")
+    taxId: text("tax_id"),
+    country: text("country"),
+    registrationNumber: text("registration_number"),
+    kybStatus: kybStatusEnum("kyb_status").notNull().default("PENDING")
   },
   (t) => [index("business_profiles_user_id_idx").on(t.userId)]
 );
@@ -397,6 +461,32 @@ var apiCredentials = pgTable(
   (t) => [
     index("api_credentials_client_id_idx").on(t.clientId),
     index("api_credentials_user_id_idx").on(t.userId)
+  ]
+);
+var poolStakeStatusEnum = pgEnum("pool_stake_status", [
+  "PENDING",
+  "ACTIVE",
+  "UNSTAKING",
+  "WITHDRAWN",
+  "FAILED"
+]);
+var poolStakes = pgTable(
+  "pool_stakes",
+  {
+    id: text("id").primaryKey(),
+    publicId: text("public_id").unique().notNull(),
+    userId: text("user_id").references(() => users.id).notNull(),
+    poolAddress: text("pool_address").notNull(),
+    amount: numeric("amount").notNull(),
+    status: poolStakeStatusEnum("status").notNull().default("PENDING"),
+    txHash: text("tx_hash"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    withdrawnAt: timestamp("withdrawn_at")
+  },
+  (t) => [
+    index("pool_stakes_public_id_idx").on(t.publicId),
+    index("pool_stakes_user_id_idx").on(t.userId),
+    index("pool_stakes_pool_address_idx").on(t.poolAddress)
   ]
 );
 var escrowEvents = pgTable(
@@ -438,15 +528,20 @@ var PgUserRepository = class {
       walletAddress: user.walletAddress,
       walletProvider: user.walletProvider,
       email: user.email,
+      role: user.role,
       createdAt: user.createdAt
     }).onConflictDoUpdate({
       target: users.id,
       set: {
         walletAddress: user.walletAddress,
         walletProvider: user.walletProvider,
-        email: user.email
+        email: user.email,
+        role: user.role
       }
     });
+  }
+  async updateRole(userId, role) {
+    await this.db.update(users).set({ role }).where(eq(users.id, userId));
   }
   toDomain(row) {
     return new User({
@@ -454,6 +549,7 @@ var PgUserRepository = class {
       walletAddress: row.walletAddress,
       walletProvider: row.walletProvider,
       email: row.email ?? void 0,
+      role: row.role ?? void 0,
       createdAt: row.createdAt
     });
   }
@@ -567,7 +663,7 @@ var PgNonceRepository = class {
 };
 
 // src/infrastructure/repository/postgres/pg-escrow.repository.ts
-import { and as and2, eq as eq4, lt, desc } from "drizzle-orm";
+import { and as and2, eq as eq4, lt, desc, inArray } from "drizzle-orm";
 
 // src/domain/escrow/model/escrow.ts
 var Escrow = class {
@@ -586,6 +682,11 @@ var Escrow = class {
   onChainEscrowId;
   txHash;
   createdAt;
+  settledAt;
+  resolverAddress;
+  poolAddress;
+  policyAddress;
+  coverageId;
   constructor(params) {
     this.id = params.id;
     this.publicId = params.publicId;
@@ -602,6 +703,11 @@ var Escrow = class {
     this.onChainEscrowId = params.onChainEscrowId;
     this.txHash = params.txHash;
     this.createdAt = params.createdAt;
+    this.settledAt = params.settledAt;
+    this.resolverAddress = params.resolverAddress;
+    this.poolAddress = params.poolAddress;
+    this.policyAddress = params.policyAddress;
+    this.coverageId = params.coverageId;
   }
   markAsOnChain() {
     this.status = "ON_CHAIN" /* ON_CHAIN */;
@@ -613,10 +719,15 @@ var Escrow = class {
   }
   markAsSettled() {
     this.status = "SETTLED" /* SETTLED */;
+    this.settledAt = /* @__PURE__ */ new Date();
     return this;
   }
   markAsExpired() {
     this.status = "EXPIRED" /* EXPIRED */;
+    return this;
+  }
+  markAsFunded() {
+    this.status = "FUNDED" /* FUNDED */;
     return this;
   }
   markAsCanceled() {
@@ -699,6 +810,26 @@ var PgEscrowRepository = class {
     });
     return row ? this.toDomain(row) : null;
   }
+  async findPayableByCounterparty(walletAddress) {
+    const rows = await this.db.query.escrows.findMany({
+      where: and2(
+        eq4(escrows.counterparty, walletAddress.toLowerCase()),
+        eq4(escrows.status, "ON_CHAIN" /* ON_CHAIN */)
+      ),
+      orderBy: [desc(escrows.createdAt)]
+    });
+    return rows.map((r) => this.toDomain(r));
+  }
+  async findSettledByUserId(userId) {
+    const rows = await this.db.query.escrows.findMany({
+      where: and2(
+        eq4(escrows.userId, userId),
+        inArray(escrows.status, ["SETTLED", "EXPIRED", "FAILED"])
+      ),
+      orderBy: [desc(escrows.createdAt)]
+    });
+    return rows.map((r) => this.toDomain(r));
+  }
   async save(escrow) {
     await this.db.insert(escrows).values(this.toRow(escrow));
   }
@@ -707,7 +838,9 @@ var PgEscrowRepository = class {
       status: escrow.status,
       onChainEscrowId: escrow.onChainEscrowId,
       txHash: escrow.txHash,
-      metadata: escrow.metadata
+      metadata: escrow.metadata,
+      settledAt: escrow.settledAt,
+      coverageId: escrow.coverageId
     }).where(eq4(escrows.id, escrow.id));
   }
   toRow(escrow) {
@@ -727,7 +860,12 @@ var PgEscrowRepository = class {
       metadata: escrow.metadata,
       onChainEscrowId: escrow.onChainEscrowId,
       txHash: escrow.txHash,
-      createdAt: escrow.createdAt
+      createdAt: escrow.createdAt,
+      settledAt: escrow.settledAt,
+      resolverAddress: escrow.resolverAddress ?? null,
+      poolAddress: escrow.poolAddress ?? null,
+      policyAddress: escrow.policyAddress ?? null,
+      coverageId: escrow.coverageId ?? null
     };
   }
   toDomain(row) {
@@ -749,7 +887,12 @@ var PgEscrowRepository = class {
       metadata: row.metadata ?? void 0,
       onChainEscrowId: row.onChainEscrowId ?? void 0,
       txHash: row.txHash ?? void 0,
-      createdAt: row.createdAt
+      createdAt: row.createdAt,
+      settledAt: row.settledAt ?? void 0,
+      resolverAddress: row.resolverAddress ?? void 0,
+      poolAddress: row.poolAddress ?? void 0,
+      policyAddress: row.policyAddress ?? void 0,
+      coverageId: row.coverageId ?? void 0
     });
   }
 };
@@ -955,6 +1098,9 @@ var BusinessProfile = class {
   businessType;
   businessAddress;
   taxId;
+  country;
+  registrationNumber;
+  kybStatus;
   constructor(params) {
     this.id = params.id;
     this.userId = params.userId;
@@ -962,6 +1108,9 @@ var BusinessProfile = class {
     this.businessType = params.businessType;
     this.businessAddress = params.businessAddress;
     this.taxId = params.taxId;
+    this.country = params.country;
+    this.registrationNumber = params.registrationNumber;
+    this.kybStatus = params.kybStatus ?? "PENDING";
   }
 };
 
@@ -984,14 +1133,19 @@ var PgBusinessProfileRepository = class {
       businessName: profile.businessName,
       businessType: profile.businessType,
       businessAddress: profile.businessAddress,
-      taxId: profile.taxId
+      taxId: profile.taxId,
+      country: profile.country ?? null,
+      registrationNumber: profile.registrationNumber ?? null,
+      kybStatus: profile.kybStatus
     }).onConflictDoUpdate({
       target: businessProfiles.userId,
       set: {
         businessName: profile.businessName,
         businessType: profile.businessType,
         businessAddress: profile.businessAddress,
-        taxId: profile.taxId
+        taxId: profile.taxId,
+        country: profile.country ?? null,
+        registrationNumber: profile.registrationNumber ?? null
       }
     });
   }
@@ -1002,7 +1156,10 @@ var PgBusinessProfileRepository = class {
       businessName: row.businessName,
       businessType: row.businessType,
       businessAddress: row.businessAddress ?? void 0,
-      taxId: row.taxId ?? void 0
+      taxId: row.taxId ?? void 0,
+      country: row.country ?? void 0,
+      registrationNumber: row.registrationNumber ?? void 0,
+      kybStatus: row.kybStatus
     });
   }
 };
@@ -1165,6 +1322,111 @@ var PgEscrowEventRepository = class {
   }
 };
 
+// src/infrastructure/repository/postgres/pg-pool-stake.repository.ts
+import { eq as eq9 } from "drizzle-orm";
+
+// src/domain/pool/model/pool-stake.ts
+var PoolStake = class {
+  id;
+  publicId;
+  userId;
+  poolAddress;
+  amount;
+  status;
+  txHash;
+  onChainStakeId;
+  createdAt;
+  withdrawnAt;
+  constructor(params) {
+    this.id = params.id;
+    this.publicId = params.publicId;
+    this.userId = params.userId;
+    this.poolAddress = params.poolAddress;
+    this.amount = params.amount;
+    this.status = params.status;
+    this.txHash = params.txHash;
+    this.onChainStakeId = params.onChainStakeId;
+    this.createdAt = params.createdAt;
+    this.withdrawnAt = params.withdrawnAt;
+  }
+  markAsActive() {
+    this.status = "ACTIVE" /* ACTIVE */;
+    return this;
+  }
+  markAsUnstaking() {
+    this.status = "UNSTAKING" /* UNSTAKING */;
+    return this;
+  }
+  markAsWithdrawn() {
+    this.status = "WITHDRAWN" /* WITHDRAWN */;
+    this.withdrawnAt = /* @__PURE__ */ new Date();
+    return this;
+  }
+  markAsFailed() {
+    this.status = "FAILED" /* FAILED */;
+    return this;
+  }
+};
+
+// src/infrastructure/repository/postgres/pg-pool-stake.repository.ts
+var PgPoolStakeRepository = class {
+  constructor(db) {
+    this.db = db;
+  }
+  db;
+  async findById(id) {
+    const row = await this.db.query.poolStakes.findFirst({ where: eq9(poolStakes.id, id) });
+    return row ? this.toDomain(row) : null;
+  }
+  async findByPublicId(publicId) {
+    const row = await this.db.query.poolStakes.findFirst({
+      where: eq9(poolStakes.publicId, publicId)
+    });
+    return row ? this.toDomain(row) : null;
+  }
+  async findByUserId(userId) {
+    const rows = await this.db.select().from(poolStakes).where(eq9(poolStakes.userId, userId));
+    return rows.map((r) => this.toDomain(r));
+  }
+  async findByPoolAddress(poolAddress) {
+    const rows = await this.db.select().from(poolStakes).where(eq9(poolStakes.poolAddress, poolAddress));
+    return rows.map((r) => this.toDomain(r));
+  }
+  async save(stake) {
+    await this.db.insert(poolStakes).values({
+      id: stake.id,
+      publicId: stake.publicId,
+      userId: stake.userId,
+      poolAddress: stake.poolAddress,
+      amount: stake.amount.toString(),
+      status: stake.status,
+      txHash: stake.txHash ?? null,
+      createdAt: stake.createdAt,
+      withdrawnAt: stake.withdrawnAt ?? null
+    });
+  }
+  async update(stake) {
+    await this.db.update(poolStakes).set({
+      status: stake.status,
+      txHash: stake.txHash ?? null,
+      withdrawnAt: stake.withdrawnAt ?? null
+    }).where(eq9(poolStakes.id, stake.id));
+  }
+  toDomain(row) {
+    return new PoolStake({
+      id: row.id,
+      publicId: row.publicId,
+      userId: row.userId,
+      poolAddress: row.poolAddress,
+      amount: parseFloat(row.amount),
+      status: row.status,
+      txHash: row.txHash ?? void 0,
+      createdAt: row.createdAt,
+      withdrawnAt: row.withdrawnAt ?? void 0
+    });
+  }
+};
+
 // src/infrastructure/repository/postgres/db.ts
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
@@ -1172,22 +1434,35 @@ import { drizzle } from "drizzle-orm/neon-http";
 // src/core/config.ts
 import { z } from "zod";
 var EnvSchema = z.object({
-  DB_PROVIDER: z.enum(["memory", "postgres"]).default("memory"),
+  DB_PROVIDER: z.enum(["memory", "postgres"]).default("postgres"),
   DATABASE_URL: z.string().optional(),
   JWT_SECRET: z.string().min(1),
+  JWT_REFRESH_SECRET: z.string().min(1),
   JWT_ISSUER: z.string().default("reineira.xyz"),
   ACCESS_TOKEN_TTL: z.coerce.number().default(3600),
   REFRESH_TOKEN_TTL: z.coerce.number().default(2592e3),
   CHAIN_ID: z.coerce.number().default(421614),
   RPC_URL: z.string().optional(),
-  ALLOWED_ORIGINS: z.string().default("http://localhost:5173"),
+  ALLOWED_ORIGINS: z.string().default("http://localhost:3000,http://localhost:4831"),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
   PORT: z.coerce.number().default(3e3),
   QUICKNODE_WEBHOOK_SECRET: z.string().optional(),
   RELAY_WEBHOOK_SECRET: z.string().optional(),
+  PRIVATE_KEY: z.string().optional(),
   ESCROW_CONTRACT_ADDRESS: z.string().optional(),
   PUSDC_WRAPPER_ADDRESS: z.string().optional(),
-  FHE_WORKER_URL: z.string().default("http://localhost:3001")
+  RESOLVER_ADDRESS: z.string().optional(),
+  POLICY_ADDRESS: z.string().optional(),
+  EXPOSURE_REGISTRY_ADDRESS: z.string().optional(),
+  CLAIMS_REGISTRY_ADDRESS: z.string().optional(),
+  MOCK_DEBTOR_PROOF_ADDRESS: z.string().optional(),
+  COVERAGE_MANAGER_ADDRESS: z.string().optional(),
+  POOL_ADDRESS: z.string().optional(),
+  POOL_FACTORY_ADDRESS: z.string().optional(),
+  USDC_ADDRESS: z.string().optional(),
+  FHE_WORKER_URL: z.string().default("http://localhost:3001"),
+  ADMIN_PRIVATE_KEY: z.string().optional(),
+  DEFAULT_CONCENTRATION_CAP_USDC: z.coerce.number().default(1e6)
 });
 var _env = null;
 function getEnv() {
@@ -1214,12 +1489,14 @@ function getDb() {
 import { SignJWT, jwtVerify } from "jose";
 var JwtService = class {
   secret;
+  refreshSecret;
   issuer;
   accessTokenTtl;
   refreshTokenTtl;
   constructor() {
     const env = getEnv();
     this.secret = new TextEncoder().encode(env.JWT_SECRET);
+    this.refreshSecret = new TextEncoder().encode(env.JWT_REFRESH_SECRET ?? env.JWT_SECRET);
     this.issuer = env.JWT_ISSUER;
     this.accessTokenTtl = env.ACCESS_TOKEN_TTL;
     this.refreshTokenTtl = env.REFRESH_TOKEN_TTL;
@@ -1229,9 +1506,10 @@ var JwtService = class {
     const accessToken = await new SignJWT({
       walletAddress: payload.walletAddress,
       walletProvider: payload.walletProvider,
-      email: payload.email
+      email: payload.email,
+      role: payload.role
     }).setProtectedHeader({ alg: "HS256" }).setSubject(payload.sub).setIssuer(this.issuer).setIssuedAt(now).setExpirationTime(now + this.accessTokenTtl).sign(this.secret);
-    const refreshToken = await new SignJWT({}).setProtectedHeader({ alg: "HS256" }).setSubject(payload.sub).setIssuer(this.issuer).setIssuedAt(now).setExpirationTime(now + this.refreshTokenTtl).sign(this.secret);
+    const refreshToken = await new SignJWT({}).setProtectedHeader({ alg: "HS256" }).setSubject(payload.sub).setIssuer(this.issuer).setIssuedAt(now).setExpirationTime(now + this.refreshTokenTtl).sign(this.refreshSecret);
     return {
       accessToken,
       refreshToken,
@@ -1246,11 +1524,12 @@ var JwtService = class {
       sub: payload.sub,
       walletAddress: payload.walletAddress,
       walletProvider: payload.walletProvider,
-      email: payload.email
+      email: payload.email,
+      role: payload.role
     };
   }
   async verifyRefreshToken(token) {
-    const { payload } = await jwtVerify(token, this.secret, {
+    const { payload } = await jwtVerify(token, this.refreshSecret, {
       issuer: this.issuer
     });
     return { sub: payload.sub };
@@ -1539,6 +1818,21 @@ var FheService = class {
       plaintextOwner: ownerAddress
     });
   }
+  async encryptCreditScore(score, userAddress) {
+    await this.ensureInitialized();
+    const response = await this.client.encryptBatch(userAddress, [
+      { type: "euint64", value: score.toString() }
+    ]);
+    const [result] = response.results;
+    return new EncryptedValue({
+      type: "euint64",
+      data: result.data,
+      securityZone: result.securityZone,
+      utype: result.utype,
+      inputProof: result.inputProof,
+      userAddress
+    });
+  }
 };
 
 // src/infrastructure/webhook/quicknode-verifier.ts
@@ -1556,6 +1850,193 @@ var QuickNodeVerifier = class {
   }
 };
 
+// src/infrastructure/chain/policy-admin.service.ts
+import { createWalletClient, createPublicClient as createPublicClient2, http as http2, parseAbi } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { arbitrumSepolia as arbitrumSepolia2 } from "viem/chains";
+var POLICY_ABI = parseAbi([
+  "function setConcentrationCap(bytes32 debtorId, uint64 cap) external"
+]);
+var POLICY_REGISTRY_ABI = parseAbi([
+  "function isPolicy(address) view returns (bool)",
+  "function registerPolicy(address policy_) returns (uint256 policyId)"
+]);
+var INSURANCE_POOL_ABI = parseAbi([
+  "function isPolicy(address) view returns (bool)",
+  "function addPolicy(address policy_) external"
+]);
+var POLICY_REGISTRY_ADDRESS = "0x962A6c7Be4fC765B0E8B601ab4BB210938660190";
+var USDC_DECIMALS = 6;
+var PolicyAdminService = class {
+  logger = getLogger("PolicyAdminService");
+  // Per-debtor cache: debtorId → cap already set
+  registered = /* @__PURE__ */ new Set();
+  // Per-pool/policy pair cache: `${pool}:${policy}` → already configured
+  poolPolicyReady = /* @__PURE__ */ new Set();
+  buildClients() {
+    const env = getEnv();
+    if (!env.ADMIN_PRIVATE_KEY) {
+      throw ApplicationHttpError.internalError(
+        "ADMIN_PRIVATE_KEY is not configured \u2014 cannot send admin transactions"
+      );
+    }
+    if (!env.RPC_URL) {
+      throw ApplicationHttpError.internalError(
+        "RPC_URL is not configured \u2014 cannot send on-chain admin transactions"
+      );
+    }
+    const account = privateKeyToAccount(env.ADMIN_PRIVATE_KEY);
+    const walletClient = createWalletClient({
+      account,
+      chain: arbitrumSepolia2,
+      transport: http2(env.RPC_URL)
+    });
+    const publicClient = createPublicClient2({
+      chain: arbitrumSepolia2,
+      transport: http2(env.RPC_URL)
+    });
+    return { walletClient, publicClient };
+  }
+  /**
+   * Ensures TradeCreditInsurancePolicy is registered in PolicyRegistry and then
+   * whitelisted in the InsurancePool. Both are required before purchaseCoverage
+   * will succeed — CCM checks pool.isPolicy(policy) and pool validates via
+   * PolicyRegistry.isPolicy(policy) inside addPolicy.
+   *
+   * Called once per (pool, policy) pair per server process; idempotent on contract.
+   */
+  async ensurePolicyReady(poolAddress, policyAddress) {
+    const key = `${poolAddress.toLowerCase()}:${policyAddress.toLowerCase()}`;
+    if (this.poolPolicyReady.has(key)) return;
+    const { walletClient, publicClient } = this.buildClients();
+    const isInRegistry = await publicClient.readContract({
+      address: POLICY_REGISTRY_ADDRESS,
+      abi: POLICY_REGISTRY_ABI,
+      functionName: "isPolicy",
+      args: [policyAddress]
+    });
+    if (!isInRegistry) {
+      this.logger.info({ policyAddress }, "Policy not in PolicyRegistry \u2014 registering");
+      const hash = await walletClient.writeContract({
+        address: POLICY_REGISTRY_ADDRESS,
+        abi: POLICY_REGISTRY_ABI,
+        functionName: "registerPolicy",
+        args: [policyAddress]
+      });
+      await publicClient.waitForTransactionReceipt({ hash });
+      this.logger.info({ policyAddress, hash }, "Policy registered in PolicyRegistry");
+    }
+    const isInPool = await publicClient.readContract({
+      address: poolAddress,
+      abi: INSURANCE_POOL_ABI,
+      functionName: "isPolicy",
+      args: [policyAddress]
+    });
+    if (!isInPool) {
+      this.logger.info({ poolAddress, policyAddress }, "Policy not in pool \u2014 calling addPolicy");
+      const hash = await walletClient.writeContract({
+        address: poolAddress,
+        abi: INSURANCE_POOL_ABI,
+        functionName: "addPolicy",
+        args: [policyAddress]
+      });
+      await publicClient.waitForTransactionReceipt({ hash });
+      this.logger.info({ poolAddress, policyAddress, hash }, "Policy added to InsurancePool");
+    }
+    this.poolPolicyReady.add(key);
+  }
+  /**
+   * Ensures a concentration cap is set for the buyer's debtorId on
+   * TradeCreditInsurancePolicy. Called per debtor before their first coverage.
+   * Requires admin wallet to be the policy owner.
+   */
+  async ensureDebtorRegistered(policyAddress, debtorId) {
+    if (this.registered.has(debtorId)) return;
+    const env = getEnv();
+    const capSmallest = BigInt(env.DEFAULT_CONCENTRATION_CAP_USDC) * BigInt(10 ** USDC_DECIMALS);
+    const { walletClient, publicClient } = this.buildClients();
+    this.logger.info(
+      { debtorId, policyAddress, capUsdc: env.DEFAULT_CONCENTRATION_CAP_USDC },
+      "Registering buyer \u2014 sending setConcentrationCap"
+    );
+    const hash = await walletClient.writeContract({
+      address: policyAddress,
+      abi: POLICY_ABI,
+      functionName: "setConcentrationCap",
+      args: [debtorId, capSmallest]
+    });
+    await publicClient.waitForTransactionReceipt({ hash });
+    this.registered.add(debtorId);
+    this.logger.info({ debtorId, hash }, "Buyer registered \u2014 concentration cap set");
+  }
+};
+
+// src/application/use-case/credit-score/compute-credit-score.use-case.ts
+var ComputeCreditScoreUseCase = class {
+  constructor(escrowRepository, fheService2) {
+    this.escrowRepository = escrowRepository;
+    this.fheService = fheService2;
+  }
+  escrowRepository;
+  fheService;
+  async execute(userId, buyerWalletAddress) {
+    const escrows2 = await this.escrowRepository.findSettledByUserId(userId);
+    const rawScore = this.computeScore(escrows2);
+    let encryptedScore;
+    let riskProof = "0x";
+    try {
+      encryptedScore = await this.fheService.encryptCreditScore(BigInt(rawScore), buyerWalletAddress);
+      riskProof = this.encodeRiskProof(encryptedScore);
+    } catch {
+      encryptedScore = new EncryptedValue({
+        type: "euint64",
+        data: "0x",
+        securityZone: 0,
+        utype: 0,
+        inputProof: "0x",
+        userAddress: buyerWalletAddress
+      });
+    }
+    return { userId, rawScore, encryptedScore, riskProof };
+  }
+  computeScore(escrows2) {
+    if (escrows2.length === 0) return 500;
+    const total = escrows2.length;
+    const settled = escrows2.filter((e) => e.status === "SETTLED" /* SETTLED */);
+    const defaults = escrows2.filter(
+      (e) => e.status === "EXPIRED" /* EXPIRED */ || e.status === "FAILED" /* FAILED */
+    );
+    const paymentRate = settled.length / total;
+    const paymentScore = Math.round(paymentRate * 400);
+    const dsoScore = this.computeDsoScore(settled);
+    const totalVolume = settled.reduce((sum, e) => sum + e.amount, 0);
+    const volumeScore = Math.min(Math.round(totalVolume / 1e5 * 150), 150);
+    const defaultRate = defaults.length / total;
+    const defaultScore = Math.round((1 - defaultRate) * 100);
+    const tenureScore = Math.min(Math.round(settled.length / 20 * 50), 50);
+    const raw = paymentScore + dsoScore + volumeScore + defaultScore + tenureScore;
+    return Math.min(Math.max(raw, 0), 1e3);
+  }
+  computeDsoScore(settled) {
+    const withDso = settled.filter((e) => e.deadline && e.settledAt);
+    if (withDso.length === 0) return 150;
+    const avgDsoDays = withDso.reduce((sum, e) => {
+      const diffMs = e.settledAt.getTime() - e.deadline.getTime();
+      return sum + diffMs / (1e3 * 60 * 60 * 24);
+    }, 0) / withDso.length;
+    if (avgDsoDays <= 0) return 300;
+    if (avgDsoDays >= 30) return 0;
+    return Math.round((1 - avgDsoDays / 30) * 300);
+  }
+  encodeRiskProof(encrypted) {
+    const dataHex = encrypted.data.startsWith("0x") ? encrypted.data.slice(2) : encrypted.data;
+    const proofHex = encrypted.inputProof.startsWith("0x") ? encrypted.inputProof.slice(2) : encrypted.inputProof;
+    const securityZoneHex = encrypted.securityZone.toString(16).padStart(8, "0");
+    const utypeHex = encrypted.utype.toString(16).padStart(2, "0");
+    return `0x${dataHex}${securityZoneHex}${utypeHex}${proofHex}`;
+  }
+};
+
 // src/infrastructure/container.ts
 function createMemoryRepos() {
   return {
@@ -1566,7 +2047,8 @@ function createMemoryRepos() {
     withdrawalRepo: new MemoryWithdrawalRepository(),
     businessProfileRepo: new MemoryBusinessProfileRepository(),
     apiCredentialRepo: new MemoryApiCredentialRepository(),
-    escrowEventRepo: new MemoryEscrowEventRepository()
+    escrowEventRepo: new MemoryEscrowEventRepository(),
+    poolStakeRepo: new MemoryPoolStakeRepository()
   };
 }
 function createPostgresRepos() {
@@ -1579,7 +2061,8 @@ function createPostgresRepos() {
     withdrawalRepo: new PgWithdrawalRepository(db),
     businessProfileRepo: new PgBusinessProfileRepository(db),
     apiCredentialRepo: new PgApiCredentialRepository(db),
-    escrowEventRepo: new PgEscrowEventRepository(db)
+    escrowEventRepo: new PgEscrowEventRepository(db),
+    poolStakeRepo: new PgPoolStakeRepository(db)
   };
 }
 var _repos = null;
@@ -1593,6 +2076,10 @@ function getRepos() {
 var jwtService = new JwtService();
 var siweVerifier = new SiweVerifier();
 var fheService = new FheService();
+var policyAdminService = new PolicyAdminService();
+function getComputeCreditScoreUseCase() {
+  return new ComputeCreditScoreUseCase(getRepos().escrowRepo, fheService);
+}
 function getQuickNodeVerifier() {
   const secret = getEnv().QUICKNODE_WEBHOOK_SECRET;
   return secret ? new QuickNodeVerifier(secret) : null;
@@ -1622,13 +2109,20 @@ var container = {
   get escrowEventRepo() {
     return getRepos().escrowEventRepo;
   },
+  get poolStakeRepo() {
+    return getRepos().poolStakeRepo;
+  },
   get nonceService() {
     return new NonceService(getRepos().nonceRepo);
   },
   jwtService,
   siweVerifier,
   fheService,
-  getQuickNodeVerifier
+  getQuickNodeVerifier,
+  get computeCreditScoreUseCase() {
+    return getComputeCreditScoreUseCase();
+  },
+  policyAdminService
 };
 export {
   container

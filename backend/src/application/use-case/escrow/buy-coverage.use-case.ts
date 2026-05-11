@@ -1,6 +1,7 @@
 import { encodeAbiParameters } from 'viem';
 import { ApplicationHttpError } from '../../../core/errors.js';
 import { getEnv } from '../../../core/config.js';
+import { getLogger } from '../../../core/logger.js';
 import type { IEscrowRepository } from '../../../domain/escrow/repository/escrow.repository.js';
 import type { PolicyAdminService } from '../../../infrastructure/chain/policy-admin.service.js';
 import type { BuyCoverageDto, BuyCoverageResponse } from '../../dto/escrow/buy-coverage.dto.js';
@@ -13,6 +14,8 @@ const ABI_FUNCTION_SIGNATURE =
 const USDC_DECIMALS = 6;
 const DEFAULT_COVERAGE_DAYS = 90;
 const DEFAULT_COVERAGE_PERCENTAGE_BPS = 9000; // 90% — standard trade-credit coverage
+
+const logger = getLogger('BuyCoverageUseCase');
 
 export class BuyCoverageUseCase {
   constructor(
@@ -62,14 +65,21 @@ export class BuyCoverageUseCase {
     const debtorId = `0x${buyerAddr.padStart(64, '0')}` as `0x${string}`;
 
     // One-time setup: register the policy in ConfidentialPolicyRegistry and whitelist
-    // it in the InsurancePool. CCM.purchaseCoverage reverts with InvalidPolicy() if
-    // pool.isPolicy(policy) is false, and addPolicy requires the policy to be in
-    // PolicyRegistry first. Both checks are idempotent (cached after first run).
-    await this.policyAdminService.ensurePolicyReady(poolAddress, policyAddress);
+    // it in the InsurancePool. Non-fatal — if the admin key isn't the pool's underwriter,
+    // the contracts may already be configured and purchaseCoverage will still succeed.
+    try {
+      await this.policyAdminService.ensurePolicyReady(poolAddress, policyAddress);
+    } catch (e) {
+      logger.warn({ err: e instanceof Error ? e.message : String(e) }, 'ensurePolicyReady failed (non-fatal) — continuing with coverage params');
+    }
 
     // Per-buyer setup: set concentration cap so _registerExposure doesn't revert
-    // with ConcentrationCapNotSet. Cached per debtorId.
-    await this.policyAdminService.ensureDebtorRegistered(policyAddress, debtorId);
+    // with ConcentrationCapNotSet. Non-fatal — cap may already be set.
+    try {
+      await this.policyAdminService.ensureDebtorRegistered(policyAddress, debtorId);
+    } catch (e) {
+      logger.warn({ err: e instanceof Error ? e.message : String(e) }, 'ensureDebtorRegistered failed (non-fatal) — continuing with coverage params');
+    }
 
     const invoiceAmountSmallest = BigInt(Math.round(escrow.amount * 10 ** USDC_DECIMALS));
 

@@ -5,6 +5,15 @@ import { isClaimEligible } from '@/hooks/use-claim-eligibility';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
+// Voluntary redemption: buyer paid (FUNDED/SETTLED) and escrow has an on-chain ID.
+// Insurance claim: buyer defaulted (ON_CHAIN), escrow is covered, and waiting period has passed.
+function isRedeemable(txn: TransactionResponse): boolean {
+  if (!txn.on_chain_id) return false;
+  if (txn.status === 'FUNDED' || txn.status === 'SETTLED') return true;
+  if (txn.status === 'ON_CHAIN' && txn.coverage_id && isClaimEligible(txn)) return true;
+  return false;
+}
+
 interface WithdrawalFormProps {
   transactions: TransactionResponse[];
   onSubmit: (data: CreateWithdrawalRequest) => void;
@@ -23,9 +32,7 @@ export function WithdrawalForm({ transactions, onSubmit }: WithdrawalFormProps) 
   const [submitting, setSubmitting] = useState(false);
 
   const settledTransactions = useMemo(
-    () => transactions.filter(
-      (txn) => (txn.status === 'FUNDED' || txn.status === 'SETTLED') && isClaimEligible(txn),
-    ),
+    () => transactions.filter(isRedeemable),
     [transactions],
   );
 
@@ -70,7 +77,7 @@ export function WithdrawalForm({ transactions, onSubmit }: WithdrawalFormProps) 
     <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
       {settledTransactions.length > 0 ? (
         <div className="flex flex-col gap-2">
-          <p className="text-sm font-medium text-[var(--text-primary)]">Select funded escrows to redeem</p>
+          <p className="text-sm font-medium text-[var(--text-primary)]">Select escrows to redeem or claim</p>
           <div className="max-h-48 overflow-y-auto rounded-lg border border-[var(--border-dark)]">
             {settledTransactions.map((txn) => (
               <label
@@ -97,7 +104,7 @@ export function WithdrawalForm({ transactions, onSubmit }: WithdrawalFormProps) 
           )}
         </div>
       ) : (
-        <p className="text-sm text-[var(--text-secondary)]">No redeemable escrows yet. Escrows become redeemable after the due date + 30-day waiting period.</p>
+        <p className="text-sm text-[var(--text-secondary)]">No redeemable escrows yet. Funded escrows are available immediately; insurance claims open after the waiting period passes.</p>
       )}
 
       <div className="grid gap-4 sm:grid-cols-2">

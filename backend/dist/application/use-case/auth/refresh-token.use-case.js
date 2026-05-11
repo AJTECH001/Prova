@@ -87,7 +87,8 @@ var RefreshTokenUseCase = class {
       sub: user.id,
       walletAddress: user.walletAddress,
       walletProvider: user.walletProvider,
-      email: user.email
+      email: user.email,
+      role: user.role
     });
     const newSession = new Session({
       id: randomUUID(),

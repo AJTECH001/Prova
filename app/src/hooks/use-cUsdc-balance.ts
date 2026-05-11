@@ -27,6 +27,9 @@ export function useCUsdcBalance(walletAddress: string | null, pollingInterval = 
   const [loading, setLoading]   = useState(false);
   const [error,   setError]     = useState<string | null>(null);
   const balanceRefreshKey = useRefreshStore((s) => s.balanceRefreshKey);
+  // Re-fetch whenever the wallet (re)connects — walletStoreAddress becomes non-null
+  // after ensureConnected() resolves, giving us the real kernel client for decryption.
+  const walletStoreAddress = useWalletStore((s) => s.address);
 
   const fetchBalance = useCallback(async () => {
     if (!walletAddress) return;
@@ -73,6 +76,13 @@ export function useCUsdcBalance(walletAddress: string | null, pollingInterval = 
   useEffect(() => {
     if (balanceRefreshKey > 0) fetchBalance();
   }, [balanceRefreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // re-fetch when the wallet reconnects (walletStoreAddress goes from null → address)
+  // This is the trigger for the post-reload path: layout fires ensureConnected(),
+  // which sets walletStore.address, which fires this effect with the kernel client ready.
+  useEffect(() => {
+    if (walletStoreAddress && walletAddress) fetchBalance();
+  }, [walletStoreAddress]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const startPolling = useCallback(async () => {
     await fetchBalance();

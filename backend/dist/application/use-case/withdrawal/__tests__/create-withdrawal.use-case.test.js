@@ -18705,22 +18705,35 @@ var ApplicationHttpError = class _ApplicationHttpError extends Error {
 // src/core/config.ts
 import { z } from "zod";
 var EnvSchema = z.object({
-  DB_PROVIDER: z.enum(["memory", "postgres"]).default("memory"),
+  DB_PROVIDER: z.enum(["memory", "postgres"]).default("postgres"),
   DATABASE_URL: z.string().optional(),
   JWT_SECRET: z.string().min(1),
+  JWT_REFRESH_SECRET: z.string().min(1),
   JWT_ISSUER: z.string().default("reineira.xyz"),
   ACCESS_TOKEN_TTL: z.coerce.number().default(3600),
   REFRESH_TOKEN_TTL: z.coerce.number().default(2592e3),
   CHAIN_ID: z.coerce.number().default(421614),
   RPC_URL: z.string().optional(),
-  ALLOWED_ORIGINS: z.string().default("http://localhost:5173"),
+  ALLOWED_ORIGINS: z.string().default("http://localhost:3000,http://localhost:4831"),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
   PORT: z.coerce.number().default(3e3),
   QUICKNODE_WEBHOOK_SECRET: z.string().optional(),
   RELAY_WEBHOOK_SECRET: z.string().optional(),
+  PRIVATE_KEY: z.string().optional(),
   ESCROW_CONTRACT_ADDRESS: z.string().optional(),
   PUSDC_WRAPPER_ADDRESS: z.string().optional(),
-  FHE_WORKER_URL: z.string().default("http://localhost:3001")
+  RESOLVER_ADDRESS: z.string().optional(),
+  POLICY_ADDRESS: z.string().optional(),
+  EXPOSURE_REGISTRY_ADDRESS: z.string().optional(),
+  CLAIMS_REGISTRY_ADDRESS: z.string().optional(),
+  MOCK_DEBTOR_PROOF_ADDRESS: z.string().optional(),
+  COVERAGE_MANAGER_ADDRESS: z.string().optional(),
+  POOL_ADDRESS: z.string().optional(),
+  POOL_FACTORY_ADDRESS: z.string().optional(),
+  USDC_ADDRESS: z.string().optional(),
+  FHE_WORKER_URL: z.string().default("http://localhost:3001"),
+  ADMIN_PRIVATE_KEY: z.string().optional(),
+  DEFAULT_CONCENTRATION_CAP_USDC: z.coerce.number().default(1e6)
 });
 var _env = null;
 function getEnv() {
@@ -18762,8 +18775,9 @@ var CreateWithdrawalUseCase = class {
       if (escrow.userId !== userId) {
         throw ApplicationHttpError.forbidden("Escrow does not belong to user");
       }
-      if (escrow.status !== "SETTLED" /* SETTLED */) {
-        throw ApplicationHttpError.badRequest(`Escrow ${escrowId} is not in SETTLED status`);
+      const redeemable = ["FUNDED" /* FUNDED */, "SETTLED" /* SETTLED */, "REDEEMED" /* REDEEMED */];
+      if (!redeemable.includes(escrow.status)) {
+        throw ApplicationHttpError.badRequest(`Escrow ${escrowId} is not redeemable (status: ${escrow.status})`);
       }
       estimatedAmount += escrow.amount;
       onChainIds.push(escrowId);
@@ -18795,11 +18809,6 @@ var CreateWithdrawalUseCase = class {
           contract_address: escrowContract,
           abi_function_signature: "redeemMultiple(uint256[])",
           abi_parameters: { escrow_ids: onChainIds }
-        },
-        {
-          contract_address: getEnv().PUSDC_WRAPPER_ADDRESS ?? "",
-          abi_function_signature: "unwrap(uint256)",
-          abi_parameters: { amount: estimatedAmount }
         }
       ],
       status: withdrawal.status,
@@ -18844,6 +18853,17 @@ var MemoryEscrowRepository = class {
       if (escrow.onChainEscrowId === onChainId) return escrow;
     }
     return null;
+  }
+  async findPayableByCounterparty(walletAddress) {
+    return [...this.store.values()].filter(
+      (e) => e.counterparty?.toLowerCase() === walletAddress.toLowerCase() && e.status === "ON_CHAIN" /* ON_CHAIN */
+    );
+  }
+  async findSettledByUserId(userId) {
+    const terminalStatuses = ["SETTLED" /* SETTLED */, "EXPIRED" /* EXPIRED */, "FAILED" /* FAILED */];
+    return [...this.store.values()].filter(
+      (e) => e.userId === userId && terminalStatuses.includes(e.status)
+    );
   }
   async save(escrow) {
     this.store.set(escrow.id, escrow);
@@ -18903,6 +18923,11 @@ var Escrow = class {
   onChainEscrowId;
   txHash;
   createdAt;
+  settledAt;
+  resolverAddress;
+  poolAddress;
+  policyAddress;
+  coverageId;
   constructor(params) {
     this.id = params.id;
     this.publicId = params.publicId;
@@ -18919,6 +18944,11 @@ var Escrow = class {
     this.onChainEscrowId = params.onChainEscrowId;
     this.txHash = params.txHash;
     this.createdAt = params.createdAt;
+    this.settledAt = params.settledAt;
+    this.resolverAddress = params.resolverAddress;
+    this.poolAddress = params.poolAddress;
+    this.policyAddress = params.policyAddress;
+    this.coverageId = params.coverageId;
   }
   markAsOnChain() {
     this.status = "ON_CHAIN" /* ON_CHAIN */;
@@ -18930,10 +18960,15 @@ var Escrow = class {
   }
   markAsSettled() {
     this.status = "SETTLED" /* SETTLED */;
+    this.settledAt = /* @__PURE__ */ new Date();
     return this;
   }
   markAsExpired() {
     this.status = "EXPIRED" /* EXPIRED */;
+    return this;
+  }
+  markAsFunded() {
+    this.status = "FUNDED" /* FUNDED */;
     return this;
   }
   markAsCanceled() {
@@ -19001,16 +19036,15 @@ describe("CreateWithdrawalUseCase", () => {
     globalExpect(result.status).toBe("PENDING_REDEEM" /* PENDING_REDEEM */);
     globalExpect(result.public_id).toMatch(/^WD-/);
   });
-  it("returns calls array with redeemMultiple and unwrap", async () => {
+  it("returns calls array with only redeemMultiple \u2014 unshield is handled separately", async () => {
     await escrowRepo.save(makeSettledEscrow("1"));
     const result = await useCase.execute(
       { escrow_ids: [1], destination_chain: "ETH", recipient_address: RECIPIENT },
       USER_ID,
       WALLET
     );
-    globalExpect(result.calls).toHaveLength(2);
+    globalExpect(result.calls).toHaveLength(1);
     globalExpect(result.calls[0].abi_function_signature).toBe("redeemMultiple(uint256[])");
-    globalExpect(result.calls[1].abi_function_signature).toBe("unwrap(uint256)");
   });
   it("sums estimated amount from multiple escrows", async () => {
     const esc1 = makeSettledEscrow("10");

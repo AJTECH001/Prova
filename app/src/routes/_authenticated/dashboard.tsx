@@ -6,6 +6,7 @@ import { parseEventLogs } from 'viem';
 import { useTransactionStore } from '@/stores/transaction-store';
 import { useWithdrawalStore } from '@/stores/withdrawal-store';
 import { useAuthStore } from '@/stores/auth-store';
+import { usePoolStore } from '@/stores/pool-store';
 import { useBalance } from '@/hooks/use-balance';
 import { useCUsdcBalance } from '@/hooks/use-cUsdc-balance';
 import { useContractRead } from '@/hooks/use-contract-read';
@@ -29,7 +30,7 @@ const ARBISCAN = 'https://sepolia.arbiscan.io/address';
 
 function fmtDays(seconds: bigint | null) {
   if (seconds === null) return '—';
-  return `${Number(seconds) / 86400} days`;
+  return `${Math.floor(Number(seconds) / 86400)} days`;
 }
 
 function shortAddr(addr: string | null) {
@@ -309,9 +310,8 @@ function AdminPanel() {
   const [scoreCtHash, setScoreCtHash]     = useState('');
   const [defaultCtHash, setDefaultCtHash] = useState('');
 
-  async function submit(fn: () => Promise<unknown>, label: string) {
-    try { await fn(); }
-    catch (e) { console.error(`${label} failed:`, e); }
+  async function submit(fn: () => Promise<unknown>) {
+    await fn();
   }
 
   return (
@@ -345,7 +345,7 @@ function AdminPanel() {
           label="setEscrowContract(address _escrowContract)"
           disabled={admin.loading}
           fields={[{ id: 'esc', placeholder: '0x… ConfidentialEscrow address', value: escrowContractAddr, onChange: setEscrowContractAddr }]}
-          onSubmit={() => submit(() => admin.setEscrowContract(escrowContractAddr), 'setEscrowContract')}
+          onSubmit={() => submit(() => admin.setEscrowContract(escrowContractAddr))}
         />
       </AdminSection>
 
@@ -358,12 +358,7 @@ function AdminPanel() {
             { id: 'cdid', placeholder: '0x… debtorId (bytes32)', value: capDebtorId, onChange: setCapDebtorId },
             { id: 'cap',  placeholder: 'cap (uint64, e.g. 500000)', value: capValue, onChange: setCapValue },
           ]}
-          onSubmit={() =>
-            submit(
-              () => admin.setConcentrationCap(capDebtorId as `0x${string}`, BigInt(capValue)),
-              'setConcentrationCap',
-            )
-          }
+          onSubmit={() => submit(() => admin.setConcentrationCap(capDebtorId as `0x${string}`, BigInt(capValue)))}
         />
         <AdminForm
           label="setCountryRisk(bytes2 countryCode, uint16 bps)  — e.g. NG, 300"
@@ -372,12 +367,7 @@ function AdminPanel() {
             { id: 'cc',  placeholder: 'ISO code e.g. NG', value: countryCode, onChange: setCountryCode },
             { id: 'cbps', placeholder: 'bps 0–500',       value: countryBps,  onChange: setCountryBps },
           ]}
-          onSubmit={() =>
-            submit(
-              () => admin.setCountryRisk(strToBytes2(countryCode), parseInt(countryBps, 10)),
-              'setCountryRisk',
-            )
-          }
+          onSubmit={() => submit(() => admin.setCountryRisk(strToBytes2(countryCode), parseInt(countryBps, 10)))}
         />
         <AdminForm
           label="setIndustryRisk(bytes4 industryCode, uint16 bps)  — e.g. 6419, 200"
@@ -386,12 +376,7 @@ function AdminPanel() {
             { id: 'ic',  placeholder: 'NACE/SIC e.g. 6419', value: industryCode, onChange: setIndustryCode },
             { id: 'ibps', placeholder: 'bps 0–500',          value: industryBps,  onChange: setIndustryBps },
           ]}
-          onSubmit={() =>
-            submit(
-              () => admin.setIndustryRisk(strToBytes4(industryCode), parseInt(industryBps, 10)),
-              'setIndustryRisk',
-            )
-          }
+          onSubmit={() => submit(() => admin.setIndustryRisk(strToBytes4(industryCode), parseInt(industryBps, 10)))}
         />
         <AdminForm
           label="setCurve(uint32[6] thresholds, uint32[6] premiums)  — 6 comma-separated values each"
@@ -400,18 +385,13 @@ function AdminPanel() {
             { id: 'thr', placeholder: 'thresholds e.g. 800,720,650,580,500,0',   value: curveThresholds, onChange: setCurveThresholds },
             { id: 'prm', placeholder: 'premiums bps e.g. 150,200,280,400,600,1000', value: curvePremiums,   onChange: setCurvePremiums },
           ]}
-          onSubmit={() =>
-            submit(
-              () => admin.setCurve(parseUint32Array(curveThresholds, 6), parseUint32Array(curvePremiums, 6)),
-              'setCurve',
-            )
-          }
+          onSubmit={() => submit(() => admin.setCurve(parseUint32Array(curveThresholds, 6), parseUint32Array(curvePremiums, 6)))}
         />
         <AdminForm
           label="setProtocolCaller(address caller)"
           disabled={admin.loading}
           fields={[{ id: 'pc', placeholder: '0x… ConfidentialCoverageManager', value: newProtocolCaller, onChange: setNewProtocolCaller }]}
-          onSubmit={() => submit(() => admin.setProtocolCaller(newProtocolCaller), 'setProtocolCaller')}
+          onSubmit={() => submit(() => admin.setProtocolCaller(newProtocolCaller))}
         />
       </AdminSection>
 
@@ -421,13 +401,13 @@ function AdminPanel() {
           label="registerContract(address prova)"
           disabled={admin.loading}
           fields={[{ id: 'rc', placeholder: '0x… contract to whitelist', value: regContractAddr, onChange: setRegContractAddr }]}
-          onSubmit={() => submit(() => admin.registerContract(regContractAddr), 'registerContract')}
+          onSubmit={() => submit(() => admin.registerContract(regContractAddr))}
         />
         <AdminForm
           label="deregisterContract(address prova)"
           disabled={admin.loading}
           fields={[{ id: 'dc', placeholder: '0x… contract to remove', value: deregContractAddr, onChange: setDeregContractAddr }]}
-          onSubmit={() => submit(() => admin.deregisterContract(deregContractAddr), 'deregisterContract')}
+          onSubmit={() => submit(() => admin.deregisterContract(deregContractAddr))}
         />
       </AdminSection>
 
@@ -437,7 +417,7 @@ function AdminPanel() {
           label="registerPolicy(address policy)"
           disabled={admin.loading}
           fields={[{ id: 'rp', placeholder: '0x… policy contract', value: regPolicyAddr, onChange: setRegPolicyAddr }]}
-          onSubmit={() => submit(() => admin.registerPolicy(regPolicyAddr), 'registerPolicy')}
+          onSubmit={() => submit(() => admin.registerPolicy(regPolicyAddr))}
         />
       </AdminSection>
 
@@ -450,18 +430,13 @@ function AdminPanel() {
             { id: 'sdid', placeholder: '0x… debtorId (bytes32)', value: scoreDebtorId, onChange: setScoreDebtorId },
             { id: 'sct',  placeholder: 'ctHash (uint256 decimal)', value: scoreCtHash,  onChange: setScoreCtHash },
           ]}
-          onSubmit={() =>
-            submit(
-              () => admin.setScore(scoreDebtorId as `0x${string}`, BigInt(scoreCtHash)),
-              'setScore',
-            )
-          }
+          onSubmit={() => submit(() => admin.setScore(scoreDebtorId as `0x${string}`, BigInt(scoreCtHash)))}
         />
         <AdminForm
           label="setDefaultScore(uint256 ctHash)"
           disabled={admin.loading}
           fields={[{ id: 'dct', placeholder: 'ctHash (uint256 decimal)', value: defaultCtHash, onChange: setDefaultCtHash }]}
-          onSubmit={() => submit(() => admin.setDefaultScore(BigInt(defaultCtHash)), 'setDefaultScore')}
+          onSubmit={() => submit(() => admin.setDefaultScore(BigInt(defaultCtHash)))}
         />
       </AdminSection>
     </div>
@@ -528,6 +503,7 @@ function PayInvoiceRow({ invoice, onPaid }: { invoice: TransactionResponse; onPa
 }
 
 function PayableInvoicesPanel() {
+  const role = useAuthStore((s) => s.role);
   const [invoices, setInvoices] = useState<TransactionResponse[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -543,7 +519,7 @@ function PayableInvoicesPanel() {
 
   useEffect(() => { load(); }, [load]);
 
-  if (!loading && invoices.length === 0) return null;
+  if (!loading && invoices.length === 0 && role !== 'BUYER') return null;
 
   return (
     <div className="rounded-[var(--radius-block)] border border-[hsl(var(--warning-border,35_100%_80%))] bg-white shadow-[var(--shadow-sm)]">
@@ -557,6 +533,11 @@ function PayableInvoicesPanel() {
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-3/4" />
           </div>
+        ) : invoices.length === 0 ? (
+          <EmptyState
+            title="No pending invoices"
+            desc="When a seller creates an escrow and assigns it to your wallet, it will appear here for payment."
+          />
         ) : (
           invoices.map((inv) => (
             <PayInvoiceRow key={inv.public_id} invoice={inv} onPaid={load} />
@@ -578,6 +559,10 @@ export function DashboardPage() {
   const withdrawals    = useWithdrawalStore((s) => s.withdrawals);
   const withdrawalLoading  = useWithdrawalStore((s) => s.loading);
   const fetchWithdrawals   = useWithdrawalStore((s) => s.fetchWithdrawals);
+  const poolStakes = usePoolStore((s) => s.stakes);
+  const poolStatus = usePoolStore((s) => s.status);
+  const fetchPoolStatus = usePoolStore((s) => s.fetchStatus);
+
   const { balance, loading: balanceLoading, startPolling, stopPolling } = useBalance();
   const {
     balance: cUsdcBalance,
@@ -587,12 +572,16 @@ export function DashboardPage() {
   } = useCUsdcBalance(walletAddress);
 
   useEffect(() => {
-    fetchTransactions(true);
-    fetchWithdrawals(true);
+    if (role === 'LP') {
+      fetchPoolStatus();
+    } else {
+      fetchTransactions(true);
+      fetchWithdrawals(true);
+    }
     startPolling();
     startCUsdcPolling();
     return () => { stopPolling(); stopCUsdcPolling(); };
-  }, [fetchTransactions, fetchWithdrawals, startPolling, stopPolling, startCUsdcPolling, stopCUsdcPolling]);
+  }, [role, fetchTransactions, fetchWithdrawals, fetchPoolStatus, startPolling, stopPolling, startCUsdcPolling, stopCUsdcPolling]);
 
   // Auto-reconcile PROCESSING transactions: check receipt on-chain, update backend
   useEffect(() => {
@@ -688,17 +677,78 @@ export function DashboardPage() {
           <p className="mt-0.5 text-sm text-[var(--text-muted)]">{today}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" asChild>
-            <Link href="/withdrawals">New Withdrawal</Link>
-          </Button>
-          <Button size="sm" asChild>
-            <Link href="/transactions">New Transaction</Link>
-          </Button>
+          {(role === 'SELLER' || role === 'ADMIN') && (
+            <>
+              <Button variant="secondary" size="sm" asChild>
+                <Link href="/withdrawals">New Withdrawal</Link>
+              </Button>
+              <Button size="sm" asChild>
+                <Link href="/transactions">New Transaction</Link>
+              </Button>
+            </>
+          )}
+          {role === 'LP' && (
+            <Button size="sm" asChild>
+              <Link href="/pool">Liquidity Pool</Link>
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* Stats row */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
+      {/* Stats row — LP */}
+      {role === 'LP' && (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <StatCard
+            label="Total Staked"
+            value={poolStakes.length > 0 ? `${poolStakes.reduce((s, k) => s + k.amount, 0).toFixed(2)} USDC` : '—'}
+            sub="Across all active stakes"
+            accent="blue"
+            icon={
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" />
+                <path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd" />
+              </svg>
+            }
+          />
+          <StatCard
+            label="Active Stakes"
+            value={poolStakes.length}
+            sub="Local records"
+            accent="green"
+            icon={
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+            }
+          />
+          <StatCard
+            label="Pool Stakers"
+            value={poolStatus ? poolStatus.active_stakers : '—'}
+            sub="Total in pool"
+            accent="purple"
+            icon={
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+              </svg>
+            }
+          />
+          <StatCard
+            label="cUSDC Balance"
+            value={cUsdcBalance ? `${cUsdcBalance.formatted} cUSDC` : '—'}
+            sub="Confidential on-chain balance"
+            loading={cUsdcLoading && !cUsdcBalance}
+            accent="blue"
+            icon={
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+              </svg>
+            }
+          />
+        </div>
+      )}
+
+      {/* Stats row — seller / admin / buyer */}
+      {role !== 'LP' && <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
         <StatCard
           label="Available Balance"
           value={balance ? `${balance.formatted_balance} ${balance.currency}` : '—'}
@@ -772,10 +822,10 @@ export function DashboardPage() {
             </svg>
           }
         />
-      </div>
+      </div>}
 
-      {/* Activity */}
-      <div className="grid gap-6 xl:grid-cols-2">
+      {/* Activity — seller / admin / buyer */}
+      {role !== 'LP' && <div className="grid gap-6 xl:grid-cols-2">
         {/* Recent transactions */}
         <div className="rounded-[var(--radius-block)] border border-[var(--border-dark)] bg-white shadow-[var(--shadow-sm)]">
           <div className="flex items-center justify-between border-b border-[var(--border-dark)] px-5 py-4">
@@ -842,14 +892,56 @@ export function DashboardPage() {
             )}
           </div>
         </div>
-      </div>
+      </div>}
+
+      {/* LP activity — my stakes */}
+      {role === 'LP' && (
+        <div className="rounded-[var(--radius-block)] border border-[var(--border-dark)] bg-white shadow-[var(--shadow-sm)]">
+          <div className="flex items-center justify-between border-b border-[var(--border-dark)] px-5 py-4">
+            <div>
+              <h2 className="text-sm font-semibold text-[var(--text-primary)]">My Stakes</h2>
+              <p className="text-xs text-[var(--text-muted)]">Positions in the insurance pool</p>
+            </div>
+            <Link href="/pool" className="text-xs font-medium text-[var(--accent-blue)] hover:text-[var(--accent-blue-hover)] transition-colors">
+              Manage →
+            </Link>
+          </div>
+          <div className="px-5 py-4">
+            {poolStakes.length === 0 ? (
+              <EmptyState
+                title="No active stakes"
+                desc="Provide liquidity to the insurance pool to start earning premiums"
+                action={<Button size="sm" asChild><Link href="/pool">Provide Liquidity</Link></Button>}
+              />
+            ) : (
+              <div className="flex flex-col">
+                {poolStakes.slice(0, 5).map((stake) => (
+                  <div key={stake.public_id} className="flex items-center justify-between border-b border-[var(--border-dark)] py-3 last:border-0">
+                    <div>
+                      <p className="text-sm font-medium text-[var(--text-primary)]">{stake.amount.toFixed(2)} USDC</p>
+                      <p className="text-xs text-[var(--text-muted)]">{new Date(stake.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                    </div>
+                    {stake.on_chain_stake_id && (
+                      <p className="font-mono text-xs text-[var(--text-muted)]">ID: {stake.on_chain_stake_id}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Invoices awaiting buyer payment */}
-      <PayableInvoicesPanel />
+      {role !== 'LP' && <PayableInvoicesPanel />}
 
-      {/* Contract state + addresses */}
-      <ContractStatusPanel />
-      <ContractAddressesPanel />
+      {/* Contract state + addresses — seller / admin */}
+      {(role === 'SELLER' || role === 'ADMIN') && (
+        <>
+          <ContractStatusPanel />
+          <ContractAddressesPanel />
+        </>
+      )}
 
       {/* Admin panel — ADMIN role only */}
       {role === 'ADMIN' && <AdminPanel />}

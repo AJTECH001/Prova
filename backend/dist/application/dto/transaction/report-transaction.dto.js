@@ -11,7 +11,8 @@ var txHashSchema = z.string().regex(TX_HASH_REGEX, "Invalid transaction hash");
 // src/application/dto/transaction/report-transaction.dto.ts
 var ReportEscrowTransactionDtoSchema = z2.object({
   tx_hash: txHashSchema,
-  entity_id: z2.string().min(1)
+  entity_id: z2.string().min(1),
+  on_chain_id: z2.string().optional()
 });
 var ReportWithdrawalTransactionDtoSchema = z2.object({
   tx_hash: txHashSchema,

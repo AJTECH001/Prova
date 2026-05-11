@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { getEnv } from '../../../core/config.js';
+import { ApplicationHttpError } from '../../../core/errors.js';
 import type { IPoolStakeRepository } from '../../../domain/pool/repository/pool-stake.repository.js';
 import { PoolStake } from '../../../domain/pool/model/pool-stake.js';
 import { PoolStakeStatus } from '../../../domain/pool/model/pool-stake-status.enum.js';
@@ -14,6 +15,10 @@ export class StakeUseCase {
   async execute(dto: StakeDto, userId: string): Promise<StakeResponse> {
     const env = getEnv();
     const poolAddress = dto.pool_address ?? env.POOL_ADDRESS ?? '';
+
+    if (!poolAddress) {
+      throw new ApplicationHttpError(422, 'Pool address is not configured. Set POOL_ADDRESS in environment or pass pool_address in the request.');
+    }
 
     const stake = new PoolStake({
       id: randomUUID(),

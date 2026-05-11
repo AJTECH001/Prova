@@ -7,6 +7,7 @@ export interface StakeRecord {
   pool_address: string;
   created_at: string;
   on_chain_stake_id?: string;
+  tx_hash?: string;
 }
 
 const STAKES_KEY = 'prova_pool_stakes';

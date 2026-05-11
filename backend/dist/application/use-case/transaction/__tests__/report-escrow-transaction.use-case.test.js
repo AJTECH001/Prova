@@ -18640,11 +18640,16 @@ var ReportEscrowTransactionUseCase = class {
     }
     escrow.markAsProcessing();
     escrow.txHash = dto.tx_hash;
-    const bufferedEvent = await this.escrowEventRepository.findByTxHash(dto.tx_hash);
-    if (bufferedEvent && bufferedEvent.eventType === "EscrowCreated") {
+    if (dto.on_chain_id) {
       escrow.markAsOnChain();
-      escrow.onChainEscrowId = bufferedEvent.escrowId;
-      await this.escrowEventRepository.delete(bufferedEvent.txHash);
+      escrow.onChainEscrowId = dto.on_chain_id;
+    } else {
+      const bufferedEvent = await this.escrowEventRepository.findByTxHash(dto.tx_hash);
+      if (bufferedEvent && bufferedEvent.eventType === "EscrowCreated") {
+        escrow.markAsOnChain();
+        escrow.onChainEscrowId = bufferedEvent.escrowId;
+        await this.escrowEventRepository.delete(bufferedEvent.txHash);
+      }
     }
     await this.escrowRepository.update(escrow);
     return {
@@ -18692,6 +18697,17 @@ var MemoryEscrowRepository = class {
     }
     return null;
   }
+  async findPayableByCounterparty(walletAddress) {
+    return [...this.store.values()].filter(
+      (e) => e.counterparty?.toLowerCase() === walletAddress.toLowerCase() && e.status === "ON_CHAIN" /* ON_CHAIN */
+    );
+  }
+  async findSettledByUserId(userId) {
+    const terminalStatuses = ["SETTLED" /* SETTLED */, "EXPIRED" /* EXPIRED */, "FAILED" /* FAILED */];
+    return [...this.store.values()].filter(
+      (e) => e.userId === userId && terminalStatuses.includes(e.status)
+    );
+  }
   async save(escrow) {
     this.store.set(escrow.id, escrow);
   }
@@ -18737,6 +18753,11 @@ var Escrow = class {
   onChainEscrowId;
   txHash;
   createdAt;
+  settledAt;
+  resolverAddress;
+  poolAddress;
+  policyAddress;
+  coverageId;
   constructor(params) {
     this.id = params.id;
     this.publicId = params.publicId;
@@ -18753,6 +18774,11 @@ var Escrow = class {
     this.onChainEscrowId = params.onChainEscrowId;
     this.txHash = params.txHash;
     this.createdAt = params.createdAt;
+    this.settledAt = params.settledAt;
+    this.resolverAddress = params.resolverAddress;
+    this.poolAddress = params.poolAddress;
+    this.policyAddress = params.policyAddress;
+    this.coverageId = params.coverageId;
   }
   markAsOnChain() {
     this.status = "ON_CHAIN" /* ON_CHAIN */;
@@ -18764,10 +18790,15 @@ var Escrow = class {
   }
   markAsSettled() {
     this.status = "SETTLED" /* SETTLED */;
+    this.settledAt = /* @__PURE__ */ new Date();
     return this;
   }
   markAsExpired() {
     this.status = "EXPIRED" /* EXPIRED */;
+    return this;
+  }
+  markAsFunded() {
+    this.status = "FUNDED" /* FUNDED */;
     return this;
   }
   markAsCanceled() {

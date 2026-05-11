@@ -13,7 +13,11 @@ function toEscrowResponse(escrow) {
     on_chain_id: escrow.onChainEscrowId,
     tx_hash: escrow.txHash,
     metadata: escrow.metadata,
-    created_at: escrow.createdAt.toISOString()
+    created_at: escrow.createdAt.toISOString(),
+    resolver_address: escrow.resolverAddress,
+    pool_address: escrow.poolAddress,
+    policy_address: escrow.policyAddress,
+    coverage_id: escrow.coverageId
   };
 }
 var GetEscrowsUseCase = class {

@@ -47,6 +47,7 @@ var GetCurrentUserUseCase = class {
       wallet_address: user.walletAddress,
       wallet_provider: user.walletProvider,
       email: user.email,
+      role: user.role,
       created_at: user.createdAt.toISOString()
     };
   }

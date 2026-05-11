@@ -39,7 +39,11 @@ var EscrowResponseSchema = z.object({
   on_chain_id: z.string().optional(),
   tx_hash: z.string().optional(),
   metadata: z.record(z.unknown()).optional(),
-  created_at: z.string()
+  created_at: z.string(),
+  resolver_address: z.string().optional(),
+  pool_address: z.string().optional(),
+  policy_address: z.string().optional(),
+  coverage_id: z.string().optional()
 });
 var PaginatedEscrowsResponseSchema = z.object({
   items: z.array(EscrowResponseSchema),

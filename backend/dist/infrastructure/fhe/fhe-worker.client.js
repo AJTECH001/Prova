@@ -1,22 +1,35 @@
 // src/core/config.ts
 import { z } from "zod";
 var EnvSchema = z.object({
-  DB_PROVIDER: z.enum(["memory", "postgres"]).default("memory"),
+  DB_PROVIDER: z.enum(["memory", "postgres"]).default("postgres"),
   DATABASE_URL: z.string().optional(),
   JWT_SECRET: z.string().min(1),
+  JWT_REFRESH_SECRET: z.string().min(1),
   JWT_ISSUER: z.string().default("reineira.xyz"),
   ACCESS_TOKEN_TTL: z.coerce.number().default(3600),
   REFRESH_TOKEN_TTL: z.coerce.number().default(2592e3),
   CHAIN_ID: z.coerce.number().default(421614),
   RPC_URL: z.string().optional(),
-  ALLOWED_ORIGINS: z.string().default("http://localhost:5173"),
+  ALLOWED_ORIGINS: z.string().default("http://localhost:3000,http://localhost:4831"),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
   PORT: z.coerce.number().default(3e3),
   QUICKNODE_WEBHOOK_SECRET: z.string().optional(),
   RELAY_WEBHOOK_SECRET: z.string().optional(),
+  PRIVATE_KEY: z.string().optional(),
   ESCROW_CONTRACT_ADDRESS: z.string().optional(),
   PUSDC_WRAPPER_ADDRESS: z.string().optional(),
-  FHE_WORKER_URL: z.string().default("http://localhost:3001")
+  RESOLVER_ADDRESS: z.string().optional(),
+  POLICY_ADDRESS: z.string().optional(),
+  EXPOSURE_REGISTRY_ADDRESS: z.string().optional(),
+  CLAIMS_REGISTRY_ADDRESS: z.string().optional(),
+  MOCK_DEBTOR_PROOF_ADDRESS: z.string().optional(),
+  COVERAGE_MANAGER_ADDRESS: z.string().optional(),
+  POOL_ADDRESS: z.string().optional(),
+  POOL_FACTORY_ADDRESS: z.string().optional(),
+  USDC_ADDRESS: z.string().optional(),
+  FHE_WORKER_URL: z.string().default("http://localhost:3001"),
+  ADMIN_PRIVATE_KEY: z.string().optional(),
+  DEFAULT_CONCENTRATION_CAP_USDC: z.coerce.number().default(1e6)
 });
 var _env = null;
 function getEnv() {

@@ -18604,6 +18604,10 @@ var MemoryUserRepository = class {
   async save(user) {
     this.store.set(user.id, user);
   }
+  async updateRole(userId, role) {
+    const user = this.store.get(userId);
+    if (user) this.store.set(userId, user.withRole(role));
+  }
 };
 
 // src/infrastructure/repository/memory/memory-session.repository.ts
@@ -18670,6 +18674,17 @@ var MemoryEscrowRepository = class {
       if (escrow.onChainEscrowId === onChainId) return escrow;
     }
     return null;
+  }
+  async findPayableByCounterparty(walletAddress) {
+    return [...this.store.values()].filter(
+      (e) => e.counterparty?.toLowerCase() === walletAddress.toLowerCase() && e.status === "ON_CHAIN" /* ON_CHAIN */
+    );
+  }
+  async findSettledByUserId(userId) {
+    const terminalStatuses = ["SETTLED" /* SETTLED */, "EXPIRED" /* EXPIRED */, "FAILED" /* FAILED */];
+    return [...this.store.values()].filter(
+      (e) => e.userId === userId && terminalStatuses.includes(e.status)
+    );
   }
   async save(escrow) {
     this.store.set(escrow.id, escrow);
@@ -18786,18 +18801,23 @@ var MemoryNonceRepository = class {
 };
 
 // src/domain/auth/model/user.ts
-var User = class {
+var User = class _User {
   id;
   walletAddress;
   walletProvider;
   email;
+  role;
   createdAt;
   constructor(params) {
     this.id = params.id;
     this.walletAddress = params.walletAddress;
     this.walletProvider = params.walletProvider;
     this.email = params.email;
+    this.role = params.role;
     this.createdAt = params.createdAt;
+  }
+  withRole(role) {
+    return new _User({ ...this, role });
   }
 };
 
@@ -18844,6 +18864,11 @@ var Escrow = class {
   onChainEscrowId;
   txHash;
   createdAt;
+  settledAt;
+  resolverAddress;
+  poolAddress;
+  policyAddress;
+  coverageId;
   constructor(params) {
     this.id = params.id;
     this.publicId = params.publicId;
@@ -18860,6 +18885,11 @@ var Escrow = class {
     this.onChainEscrowId = params.onChainEscrowId;
     this.txHash = params.txHash;
     this.createdAt = params.createdAt;
+    this.settledAt = params.settledAt;
+    this.resolverAddress = params.resolverAddress;
+    this.poolAddress = params.poolAddress;
+    this.policyAddress = params.policyAddress;
+    this.coverageId = params.coverageId;
   }
   markAsOnChain() {
     this.status = "ON_CHAIN" /* ON_CHAIN */;
@@ -18871,10 +18901,15 @@ var Escrow = class {
   }
   markAsSettled() {
     this.status = "SETTLED" /* SETTLED */;
+    this.settledAt = /* @__PURE__ */ new Date();
     return this;
   }
   markAsExpired() {
     this.status = "EXPIRED" /* EXPIRED */;
+    return this;
+  }
+  markAsFunded() {
+    this.status = "FUNDED" /* FUNDED */;
     return this;
   }
   markAsCanceled() {
@@ -18986,6 +19021,9 @@ var BusinessProfile = class {
   businessType;
   businessAddress;
   taxId;
+  country;
+  registrationNumber;
+  kybStatus;
   constructor(params) {
     this.id = params.id;
     this.userId = params.userId;
@@ -18993,6 +19031,9 @@ var BusinessProfile = class {
     this.businessType = params.businessType;
     this.businessAddress = params.businessAddress;
     this.taxId = params.taxId;
+    this.country = params.country;
+    this.registrationNumber = params.registrationNumber;
+    this.kybStatus = params.kybStatus ?? "PENDING";
   }
 };
 

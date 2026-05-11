@@ -27,7 +27,7 @@ function decodeCoverageError(e: unknown): string {
   return msg || 'Coverage purchase failed';
 }
 
-// one year operator approval
+// one year operator approval (uint48 — viem maps this to number, not bigint)
 const OPERATOR_TTL = () => Math.floor(Date.now() / 1000) + 365 * 24 * 60 * 60;
 
 export const POOL_FLOW_STEPS = [
@@ -150,6 +150,7 @@ export function useStakeFlow() {
         pool_address: response.pool_address,
         created_at: new Date().toISOString(),
         on_chain_stake_id: onChainStakeId,
+        tx_hash: txHash,
       });
       await usePoolStore.getState().fetchStatus();
       useRefreshStore.getState().triggerBalanceRefresh();
@@ -204,32 +205,50 @@ export function useUnstakeFlow() {
 
       setCurrentStep(1);
 
-      // Recovery scan: if no stakeId is known, scan the pool's events to find the most
-      // recent active (not yet unstaked) stakeId belonging to this pool.
+      // Recovery: if no stakeId is known, try the fastest path first (tx receipt),
+      // then fall back to event log scanning with a wide window.
       if (stakeIdRaw == null || stakeIdRaw === '') {
-        const [stakedLogs, unstakedLogs] = await Promise.all([
-          publicClient.getLogs({
-            address: poolAddress as `0x${string}`,
-            event: { name: 'Staked', type: 'event', anonymous: false, inputs: [{ indexed: true, name: 'stakeId', type: 'uint256' }] },
-            fromBlock: 0n,
-          }),
-          publicClient.getLogs({
-            address: poolAddress as `0x${string}`,
-            event: { name: 'Unstaked', type: 'event', anonymous: false, inputs: [{ indexed: true, name: 'stakeId', type: 'uint256' }] },
-            fromBlock: 0n,
-          }),
-        ]);
+        // Path A: we have the tx_hash from when the stake was submitted — parse
+        // the Staked event directly from the receipt (no block range limit).
+        const localStake = usePoolStore.getState().stakes.find((s) => s.public_id === stakePublicId);
+        if (localStake?.tx_hash) {
+          try {
+            const receipt = await publicClient.getTransactionReceipt({ hash: localStake.tx_hash as `0x${string}` });
+            const events = parseEventLogs({ abi: InsurancePoolABI, logs: receipt.logs, eventName: 'Staked' });
+            if (events.length > 0) stakeIdRaw = events[0].args.stakeId.toString();
+          } catch { /* fall through to scan */ }
+        }
 
-        const unstaked = new Set(
-          unstakedLogs.map((l) => BigInt(l.topics[1] as string).toString()),
-        );
-        const active = stakedLogs
-          .map((l) => BigInt(l.topics[1] as string).toString())
-          .filter((id) => !unstaked.has(id))
-          .reverse(); // most recent first
+        // Path B: event log scan. On Arbitrum Sepolia blocks are ~0.25s apart so
+        // 15_000_000 blocks ≈ 43 days. Use this as the ceiling to avoid timeouts.
+        if (stakeIdRaw == null || stakeIdRaw === '') {
+          const latest = await publicClient.getBlockNumber();
+          const SCAN_WINDOW = 15_000_000n;
+          const fromBlock = latest > SCAN_WINDOW ? latest - SCAN_WINDOW : 0n;
+          const [stakedLogs, unstakedLogs] = await Promise.all([
+            publicClient.getLogs({
+              address: poolAddress as `0x${string}`,
+              event: { name: 'Staked', type: 'event', anonymous: false, inputs: [{ indexed: true, name: 'stakeId', type: 'uint256' }] },
+              fromBlock,
+            }),
+            publicClient.getLogs({
+              address: poolAddress as `0x${string}`,
+              event: { name: 'Unstaked', type: 'event', anonymous: false, inputs: [{ indexed: true, name: 'stakeId', type: 'uint256' }] },
+              fromBlock,
+            }),
+          ]);
 
-        if (active.length === 0) throw new Error('No active stakes found on pool — nothing to unstake');
-        stakeIdRaw = active[0];
+          const unstaked = new Set(
+            unstakedLogs.map((l) => BigInt(l.topics[1] as string).toString()),
+          );
+          const active = stakedLogs
+            .map((l) => BigInt(l.topics[1] as string).toString())
+            .filter((id) => !unstaked.has(id))
+            .reverse(); // most recent first
+
+          if (active.length === 0) throw new Error('No active stakes found on pool. If you staked recently, please wait a moment and try again.');
+          stakeIdRaw = active[0];
+        }
       }
 
       if (stakeIdRaw == null) throw new Error('Could not determine on-chain stakeId');

@@ -115,6 +115,10 @@ export class ZeroDevProvider implements IWalletProvider {
     this._address = null;
   }
 
+  getViemWalletClient(): unknown {
+    return this.kernelClient;
+  }
+
   async signMessage(message: string): Promise<string> {
     if (!this.kernelClient?.account) throw new Error('Not connected');
     await WindowHelper.ensureFocus();

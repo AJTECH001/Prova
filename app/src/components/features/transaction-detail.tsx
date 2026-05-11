@@ -61,10 +61,10 @@ export function TransactionDetail({ transaction }: TransactionDetailProps) {
   const isSeller = !isBuyer;
 
   const eligible = isClaimEligible(transaction);
-  const openAt = transaction.on_chain_id ? claimOpenAt(transaction.deadline) : null;
+  const openAt = transaction.on_chain_id && transaction.deadline ? claimOpenAt(transaction.deadline) : null;
   const claimPending = !eligible && openAt !== null && openAt > Date.now();
   // Buyer paid and waiting period passed → seller can redeem
-  const canRedeem = isSeller && eligible && transaction.status === 'FUNDED';
+  const canRedeem = isSeller && eligible && (transaction.status === 'FUNDED' || transaction.status === 'SETTLED');
   // Buyer never paid and waiting period passed → seller can only claim insurance (if covered)
   const buyerDefaulted = isSeller && eligible && transaction.status === 'ON_CHAIN';
 

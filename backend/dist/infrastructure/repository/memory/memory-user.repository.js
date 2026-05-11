@@ -13,6 +13,10 @@ var MemoryUserRepository = class {
   async save(user) {
     this.store.set(user.id, user);
   }
+  async updateRole(userId, role) {
+    const user = this.store.get(userId);
+    if (user) this.store.set(userId, user.withRole(role));
+  }
 };
 export {
   MemoryUserRepository

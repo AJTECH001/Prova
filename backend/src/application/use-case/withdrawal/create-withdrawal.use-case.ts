@@ -43,8 +43,9 @@ export class CreateWithdrawalUseCase {
       if (escrow.userId !== userId) {
         throw ApplicationHttpError.forbidden('Escrow does not belong to user');
       }
-      if (escrow.status !== EscrowStatus.SETTLED) {
-        throw ApplicationHttpError.badRequest(`Escrow ${escrowId} is not in SETTLED status`);
+      const redeemable = [EscrowStatus.FUNDED, EscrowStatus.SETTLED, EscrowStatus.REDEEMED];
+      if (!redeemable.includes(escrow.status)) {
+        throw ApplicationHttpError.badRequest(`Escrow ${escrowId} is not redeemable (status: ${escrow.status})`);
       }
       estimatedAmount += escrow.amount;
       onChainIds.push(escrowId);

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { usePoolStore, type StakeRecord } from '@/stores/pool-store';
+import { useAuthStore } from '@/stores/auth-store';
+import { useCUsdcBalance } from '@/hooks/use-cUsdc-balance';
 import { useStakeFlow, useUnstakeFlow, POOL_FLOW_STEPS } from '@/hooks/use-pool-flow';
 import { TransactionProgress } from '@/components/features/transaction-progress';
 import { Button } from '@/components/ui/button';
@@ -83,6 +85,8 @@ export function PoolPage() {
   const stakes = usePoolStore((s) => s.stakes);
   const loading = usePoolStore((s) => s.loading);
   const fetchStatus = usePoolStore((s) => s.fetchStatus);
+  const walletAddress = useAuthStore((s) => s.walletAddress);
+  const { balance: cUsdcBalance, loading: cUsdcLoading, startPolling: startCUsdcPolling, stopPolling: stopCUsdcPolling } = useCUsdcBalance(walletAddress);
 
   const stakeFlow = useStakeFlow();
   const unstakeFlow = useUnstakeFlow();
@@ -92,7 +96,9 @@ export function PoolPage() {
 
   useEffect(() => {
     fetchStatus();
-  }, [fetchStatus]);
+    startCUsdcPolling();
+    return () => stopCUsdcPolling();
+  }, [fetchStatus, startCUsdcPolling, stopCUsdcPolling]);
 
   async function handleStake(amount: number) {
     const ok = await stakeFlow.execute(amount);
@@ -103,7 +109,8 @@ export function PoolPage() {
     setUnstakingId(publicId);
     await unstakeFlow.execute(publicId);
     setUnstakingId(null);
-    unstakeFlow.reset();
+    // Do NOT reset here — if execute() failed, the error must stay visible so
+    // the user can see it and retry. reset() is called by the retry button below.
   }
 
   return (
@@ -127,11 +134,17 @@ export function PoolPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <StatCard
+          label="Your cUSDC Balance"
+          value={cUsdcBalance ? `${cUsdcBalance.formatted} cUSDC` : '—'}
+          sub={cUsdcLoading && !cUsdcBalance ? 'Decrypting…' : 'Confidential on-chain'}
+          loading={cUsdcLoading && !cUsdcBalance}
+        />
         <StatCard
           label="Total Pool Liquidity"
           value={status ? `${status.total_staked} USDC` : '—'}
-          sub="Encrypted on-chain"
+          sub="All active stakes"
           loading={loading && !status}
         />
         <StatCard
@@ -179,8 +192,16 @@ export function PoolPage() {
 
       {/* Unstake error */}
       {unstakeFlow.error && (
-        <div className="rounded-[var(--radius-subtle)] border border-[hsl(var(--danger-border))] bg-[hsl(var(--danger-bg))] px-4 py-3">
+        <div className="flex items-start justify-between gap-4 rounded-[var(--radius-subtle)] border border-[hsl(var(--danger-border))] bg-[hsl(var(--danger-bg))] px-4 py-3">
           <p className="text-sm text-[var(--status-error)]">{unstakeFlow.error}</p>
+          <Button
+            size="sm"
+            variant="secondary"
+            className="shrink-0"
+            onClick={() => { setUnstakingId(null); unstakeFlow.reset(); }}
+          >
+            Dismiss
+          </Button>
         </div>
       )}
 

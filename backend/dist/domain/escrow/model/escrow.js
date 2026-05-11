@@ -15,6 +15,11 @@ var Escrow = class {
   onChainEscrowId;
   txHash;
   createdAt;
+  settledAt;
+  resolverAddress;
+  poolAddress;
+  policyAddress;
+  coverageId;
   constructor(params) {
     this.id = params.id;
     this.publicId = params.publicId;
@@ -31,6 +36,11 @@ var Escrow = class {
     this.onChainEscrowId = params.onChainEscrowId;
     this.txHash = params.txHash;
     this.createdAt = params.createdAt;
+    this.settledAt = params.settledAt;
+    this.resolverAddress = params.resolverAddress;
+    this.poolAddress = params.poolAddress;
+    this.policyAddress = params.policyAddress;
+    this.coverageId = params.coverageId;
   }
   markAsOnChain() {
     this.status = "ON_CHAIN" /* ON_CHAIN */;
@@ -42,10 +52,15 @@ var Escrow = class {
   }
   markAsSettled() {
     this.status = "SETTLED" /* SETTLED */;
+    this.settledAt = /* @__PURE__ */ new Date();
     return this;
   }
   markAsExpired() {
     this.status = "EXPIRED" /* EXPIRED */;
+    return this;
+  }
+  markAsFunded() {
+    this.status = "FUNDED" /* FUNDED */;
     return this;
   }
   markAsCanceled() {

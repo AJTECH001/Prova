@@ -4,7 +4,8 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
-const API_DIR = join(__dirname, '..', 'api');
+// Handlers live in src/handlers/ and are served under /api/v1/
+const API_DIR = join(__dirname, 'handlers');
 
 interface Route {
   pattern: RegExp;
@@ -43,10 +44,10 @@ function scanRoutes(dir: string, base = ''): Route[] {
       .join('/');
 
     routes.push({
-      pattern: new RegExp(`^/api${patternStr}$`),
+      pattern: new RegExp(`^/api/v1${patternStr}$`),
       paramNames,
       filePath: fullPath,
-      displayPath: `/api${routePath}`,
+      displayPath: `/api/v1${routePath}`,
     });
   }
 

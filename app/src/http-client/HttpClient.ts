@@ -1,4 +1,5 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios';
+import { useAuthStore } from '@/stores/auth-store';
 
 class HttpClient {
   private client: AxiosInstance;
@@ -40,16 +41,14 @@ class HttpClient {
             const { data } = await axios.post(`${this.client.defaults.baseURL}/v1/auth/tokens/refresh`, {
               refresh_token: refreshToken,
             });
-            localStorage.setItem('access_token', data.access_token);
-            localStorage.setItem('refresh_token', data.refresh_token);
+            useAuthStore.getState().setTokens(data.access_token, data.refresh_token);
             this.refreshSubscribers.forEach((cb) => cb(data.access_token));
             this.refreshSubscribers = [];
             originalRequest.headers.Authorization = `Bearer ${data.access_token}`;
             return this.client(originalRequest);
           } catch {
-            localStorage.removeItem('access_token');
-            localStorage.removeItem('refresh_token');
-            window.location.href = '/';
+            useAuthStore.getState().logout();
+            window.location.href = '/auth';
             return Promise.reject(error);
           } finally {
             this.isRefreshing = false;

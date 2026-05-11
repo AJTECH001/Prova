@@ -13,6 +13,10 @@ var MemoryUserRepository = class {
   async save(user) {
     this.store.set(user.id, user);
   }
+  async updateRole(userId, role) {
+    const user = this.store.get(userId);
+    if (user) this.store.set(userId, user.withRole(role));
+  }
 };
 
 // src/infrastructure/repository/memory/memory-session.repository.ts
@@ -79,6 +83,17 @@ var MemoryEscrowRepository = class {
       if (escrow.onChainEscrowId === onChainId) return escrow;
     }
     return null;
+  }
+  async findPayableByCounterparty(walletAddress) {
+    return [...this.store.values()].filter(
+      (e) => e.counterparty?.toLowerCase() === walletAddress.toLowerCase() && e.status === "ON_CHAIN" /* ON_CHAIN */
+    );
+  }
+  async findSettledByUserId(userId) {
+    const terminalStatuses = ["SETTLED" /* SETTLED */, "EXPIRED" /* EXPIRED */, "FAILED" /* FAILED */];
+    return [...this.store.values()].filter(
+      (e) => e.userId === userId && terminalStatuses.includes(e.status)
+    );
   }
   async save(escrow) {
     this.store.set(escrow.id, escrow);
@@ -193,12 +208,39 @@ var MemoryNonceRepository = class {
     return true;
   }
 };
+
+// src/infrastructure/repository/memory/memory-pool-stake.repository.ts
+var MemoryPoolStakeRepository = class {
+  store = /* @__PURE__ */ new Map();
+  async findById(id) {
+    return this.store.get(id) ?? null;
+  }
+  async findByPublicId(publicId) {
+    for (const stake of this.store.values()) {
+      if (stake.publicId === publicId) return stake;
+    }
+    return null;
+  }
+  async findByUserId(userId) {
+    return [...this.store.values()].filter((s) => s.userId === userId).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+  async findByPoolAddress(poolAddress) {
+    return [...this.store.values()].filter((s) => s.poolAddress === poolAddress);
+  }
+  async save(stake) {
+    this.store.set(stake.id, stake);
+  }
+  async update(stake) {
+    this.store.set(stake.id, stake);
+  }
+};
 export {
   MemoryApiCredentialRepository,
   MemoryBusinessProfileRepository,
   MemoryEscrowEventRepository,
   MemoryEscrowRepository,
   MemoryNonceRepository,
+  MemoryPoolStakeRepository,
   MemorySessionRepository,
   MemoryUserRepository,
   MemoryWithdrawalRepository

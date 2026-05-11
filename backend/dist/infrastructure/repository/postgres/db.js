@@ -19,8 +19,12 @@ __export(schema_exports, {
   escrowEvents: () => escrowEvents,
   escrowStatusEnum: () => escrowStatusEnum,
   escrows: () => escrows,
+  kybStatusEnum: () => kybStatusEnum,
   nonces: () => nonces,
+  poolStakeStatusEnum: () => poolStakeStatusEnum,
+  poolStakes: () => poolStakes,
   sessions: () => sessions,
+  userRoleEnum: () => userRoleEnum,
   users: () => users,
   walletProviderEnum: () => walletProviderEnum,
   withdrawalStatusEnum: () => withdrawalStatusEnum,
@@ -41,6 +45,7 @@ var escrowStatusEnum = pgEnum("escrow_status", [
   "PENDING",
   "ON_CHAIN",
   "PROCESSING",
+  "FUNDED",
   "SETTLED",
   "REDEEMED",
   "EXPIRED",
@@ -59,13 +64,17 @@ var walletProviderEnum = pgEnum("wallet_provider", [
   "walletconnect"
 ]);
 var businessTypeEnum = pgEnum("business_type", ["RETAIL", "SERVICE"]);
+var kybStatusEnum = pgEnum("kyb_status", ["PENDING", "APPROVED", "REJECTED"]);
+var userRoleEnum = pgEnum("user_role", ["SELLER", "BUYER", "LP", "ADMIN"]);
 var credentialStatusEnum = pgEnum("credential_status", [
   "active",
   "revoked"
 ]);
 var escrowEventTypeEnum = pgEnum("escrow_event_type", [
   "EscrowCreated",
-  "EscrowSettled"
+  "EscrowFunded",
+  "EscrowSettled",
+  "EscrowRedeemed"
 ]);
 var users = pgTable(
   "users",
@@ -74,6 +83,7 @@ var users = pgTable(
     walletAddress: text("wallet_address").unique().notNull(),
     walletProvider: walletProviderEnum("wallet_provider").notNull(),
     email: text("email"),
+    role: userRoleEnum("role"),
     createdAt: timestamp("created_at").notNull().defaultNow()
   },
   (t) => [index("users_wallet_address_idx").on(t.walletAddress)]
@@ -121,7 +131,12 @@ var escrows = pgTable(
     metadata: jsonb("metadata"),
     onChainEscrowId: text("on_chain_escrow_id"),
     txHash: text("tx_hash"),
-    createdAt: timestamp("created_at").notNull().defaultNow()
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    settledAt: timestamp("settled_at"),
+    resolverAddress: text("resolver_address"),
+    poolAddress: text("pool_address"),
+    policyAddress: text("policy_address"),
+    coverageId: text("coverage_id")
   },
   (t) => [
     index("escrows_public_id_idx").on(t.publicId),
@@ -167,7 +182,10 @@ var businessProfiles = pgTable(
     businessName: text("business_name").notNull(),
     businessType: businessTypeEnum("business_type").notNull(),
     businessAddress: text("business_address"),
-    taxId: text("tax_id")
+    taxId: text("tax_id"),
+    country: text("country"),
+    registrationNumber: text("registration_number"),
+    kybStatus: kybStatusEnum("kyb_status").notNull().default("PENDING")
   },
   (t) => [index("business_profiles_user_id_idx").on(t.userId)]
 );
@@ -188,6 +206,32 @@ var apiCredentials = pgTable(
     index("api_credentials_user_id_idx").on(t.userId)
   ]
 );
+var poolStakeStatusEnum = pgEnum("pool_stake_status", [
+  "PENDING",
+  "ACTIVE",
+  "UNSTAKING",
+  "WITHDRAWN",
+  "FAILED"
+]);
+var poolStakes = pgTable(
+  "pool_stakes",
+  {
+    id: text("id").primaryKey(),
+    publicId: text("public_id").unique().notNull(),
+    userId: text("user_id").references(() => users.id).notNull(),
+    poolAddress: text("pool_address").notNull(),
+    amount: numeric("amount").notNull(),
+    status: poolStakeStatusEnum("status").notNull().default("PENDING"),
+    txHash: text("tx_hash"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    withdrawnAt: timestamp("withdrawn_at")
+  },
+  (t) => [
+    index("pool_stakes_public_id_idx").on(t.publicId),
+    index("pool_stakes_user_id_idx").on(t.userId),
+    index("pool_stakes_pool_address_idx").on(t.poolAddress)
+  ]
+);
 var escrowEvents = pgTable(
   "escrow_events",
   {
@@ -206,22 +250,35 @@ var escrowEvents = pgTable(
 // src/core/config.ts
 import { z } from "zod";
 var EnvSchema = z.object({
-  DB_PROVIDER: z.enum(["memory", "postgres"]).default("memory"),
+  DB_PROVIDER: z.enum(["memory", "postgres"]).default("postgres"),
   DATABASE_URL: z.string().optional(),
   JWT_SECRET: z.string().min(1),
+  JWT_REFRESH_SECRET: z.string().min(1),
   JWT_ISSUER: z.string().default("reineira.xyz"),
   ACCESS_TOKEN_TTL: z.coerce.number().default(3600),
   REFRESH_TOKEN_TTL: z.coerce.number().default(2592e3),
   CHAIN_ID: z.coerce.number().default(421614),
   RPC_URL: z.string().optional(),
-  ALLOWED_ORIGINS: z.string().default("http://localhost:5173"),
+  ALLOWED_ORIGINS: z.string().default("http://localhost:3000,http://localhost:4831"),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
   PORT: z.coerce.number().default(3e3),
   QUICKNODE_WEBHOOK_SECRET: z.string().optional(),
   RELAY_WEBHOOK_SECRET: z.string().optional(),
+  PRIVATE_KEY: z.string().optional(),
   ESCROW_CONTRACT_ADDRESS: z.string().optional(),
   PUSDC_WRAPPER_ADDRESS: z.string().optional(),
-  FHE_WORKER_URL: z.string().default("http://localhost:3001")
+  RESOLVER_ADDRESS: z.string().optional(),
+  POLICY_ADDRESS: z.string().optional(),
+  EXPOSURE_REGISTRY_ADDRESS: z.string().optional(),
+  CLAIMS_REGISTRY_ADDRESS: z.string().optional(),
+  MOCK_DEBTOR_PROOF_ADDRESS: z.string().optional(),
+  COVERAGE_MANAGER_ADDRESS: z.string().optional(),
+  POOL_ADDRESS: z.string().optional(),
+  POOL_FACTORY_ADDRESS: z.string().optional(),
+  USDC_ADDRESS: z.string().optional(),
+  FHE_WORKER_URL: z.string().default("http://localhost:3001"),
+  ADMIN_PRIVATE_KEY: z.string().optional(),
+  DEFAULT_CONCENTRATION_CAP_USDC: z.coerce.number().default(1e6)
 });
 var _env = null;
 function getEnv() {

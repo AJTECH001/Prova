@@ -9,6 +9,9 @@ var BusinessProfile = class {
   businessType;
   businessAddress;
   taxId;
+  country;
+  registrationNumber;
+  kybStatus;
   constructor(params) {
     this.id = params.id;
     this.userId = params.userId;
@@ -16,6 +19,9 @@ var BusinessProfile = class {
     this.businessType = params.businessType;
     this.businessAddress = params.businessAddress;
     this.taxId = params.taxId;
+    this.country = params.country;
+    this.registrationNumber = params.registrationNumber;
+    this.kybStatus = params.kybStatus ?? "PENDING";
   }
 };
 
@@ -35,6 +41,7 @@ var escrowStatusEnum = pgEnum("escrow_status", [
   "PENDING",
   "ON_CHAIN",
   "PROCESSING",
+  "FUNDED",
   "SETTLED",
   "REDEEMED",
   "EXPIRED",
@@ -53,13 +60,17 @@ var walletProviderEnum = pgEnum("wallet_provider", [
   "walletconnect"
 ]);
 var businessTypeEnum = pgEnum("business_type", ["RETAIL", "SERVICE"]);
+var kybStatusEnum = pgEnum("kyb_status", ["PENDING", "APPROVED", "REJECTED"]);
+var userRoleEnum = pgEnum("user_role", ["SELLER", "BUYER", "LP", "ADMIN"]);
 var credentialStatusEnum = pgEnum("credential_status", [
   "active",
   "revoked"
 ]);
 var escrowEventTypeEnum = pgEnum("escrow_event_type", [
   "EscrowCreated",
-  "EscrowSettled"
+  "EscrowFunded",
+  "EscrowSettled",
+  "EscrowRedeemed"
 ]);
 var users = pgTable(
   "users",
@@ -68,6 +79,7 @@ var users = pgTable(
     walletAddress: text("wallet_address").unique().notNull(),
     walletProvider: walletProviderEnum("wallet_provider").notNull(),
     email: text("email"),
+    role: userRoleEnum("role"),
     createdAt: timestamp("created_at").notNull().defaultNow()
   },
   (t) => [index("users_wallet_address_idx").on(t.walletAddress)]
@@ -115,7 +127,12 @@ var escrows = pgTable(
     metadata: jsonb("metadata"),
     onChainEscrowId: text("on_chain_escrow_id"),
     txHash: text("tx_hash"),
-    createdAt: timestamp("created_at").notNull().defaultNow()
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    settledAt: timestamp("settled_at"),
+    resolverAddress: text("resolver_address"),
+    poolAddress: text("pool_address"),
+    policyAddress: text("policy_address"),
+    coverageId: text("coverage_id")
   },
   (t) => [
     index("escrows_public_id_idx").on(t.publicId),
@@ -161,7 +178,10 @@ var businessProfiles = pgTable(
     businessName: text("business_name").notNull(),
     businessType: businessTypeEnum("business_type").notNull(),
     businessAddress: text("business_address"),
-    taxId: text("tax_id")
+    taxId: text("tax_id"),
+    country: text("country"),
+    registrationNumber: text("registration_number"),
+    kybStatus: kybStatusEnum("kyb_status").notNull().default("PENDING")
   },
   (t) => [index("business_profiles_user_id_idx").on(t.userId)]
 );
@@ -180,6 +200,32 @@ var apiCredentials = pgTable(
   (t) => [
     index("api_credentials_client_id_idx").on(t.clientId),
     index("api_credentials_user_id_idx").on(t.userId)
+  ]
+);
+var poolStakeStatusEnum = pgEnum("pool_stake_status", [
+  "PENDING",
+  "ACTIVE",
+  "UNSTAKING",
+  "WITHDRAWN",
+  "FAILED"
+]);
+var poolStakes = pgTable(
+  "pool_stakes",
+  {
+    id: text("id").primaryKey(),
+    publicId: text("public_id").unique().notNull(),
+    userId: text("user_id").references(() => users.id).notNull(),
+    poolAddress: text("pool_address").notNull(),
+    amount: numeric("amount").notNull(),
+    status: poolStakeStatusEnum("status").notNull().default("PENDING"),
+    txHash: text("tx_hash"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    withdrawnAt: timestamp("withdrawn_at")
+  },
+  (t) => [
+    index("pool_stakes_public_id_idx").on(t.publicId),
+    index("pool_stakes_user_id_idx").on(t.userId),
+    index("pool_stakes_pool_address_idx").on(t.poolAddress)
   ]
 );
 var escrowEvents = pgTable(
@@ -216,14 +262,19 @@ var PgBusinessProfileRepository = class {
       businessName: profile.businessName,
       businessType: profile.businessType,
       businessAddress: profile.businessAddress,
-      taxId: profile.taxId
+      taxId: profile.taxId,
+      country: profile.country ?? null,
+      registrationNumber: profile.registrationNumber ?? null,
+      kybStatus: profile.kybStatus
     }).onConflictDoUpdate({
       target: businessProfiles.userId,
       set: {
         businessName: profile.businessName,
         businessType: profile.businessType,
         businessAddress: profile.businessAddress,
-        taxId: profile.taxId
+        taxId: profile.taxId,
+        country: profile.country ?? null,
+        registrationNumber: profile.registrationNumber ?? null
       }
     });
   }
@@ -234,7 +285,10 @@ var PgBusinessProfileRepository = class {
       businessName: row.businessName,
       businessType: row.businessType,
       businessAddress: row.businessAddress ?? void 0,
-      taxId: row.taxId ?? void 0
+      taxId: row.taxId ?? void 0,
+      country: row.country ?? void 0,
+      registrationNumber: row.registrationNumber ?? void 0,
+      kybStatus: row.kybStatus
     });
   }
 };

@@ -1,5 +1,5 @@
 // src/infrastructure/repository/postgres/pg-escrow.repository.ts
-import { and, eq, lt, desc } from "drizzle-orm";
+import { and, eq, lt, desc, inArray } from "drizzle-orm";
 
 // src/domain/escrow/model/escrow.ts
 var Escrow = class {
@@ -18,6 +18,11 @@ var Escrow = class {
   onChainEscrowId;
   txHash;
   createdAt;
+  settledAt;
+  resolverAddress;
+  poolAddress;
+  policyAddress;
+  coverageId;
   constructor(params) {
     this.id = params.id;
     this.publicId = params.publicId;
@@ -34,6 +39,11 @@ var Escrow = class {
     this.onChainEscrowId = params.onChainEscrowId;
     this.txHash = params.txHash;
     this.createdAt = params.createdAt;
+    this.settledAt = params.settledAt;
+    this.resolverAddress = params.resolverAddress;
+    this.poolAddress = params.poolAddress;
+    this.policyAddress = params.policyAddress;
+    this.coverageId = params.coverageId;
   }
   markAsOnChain() {
     this.status = "ON_CHAIN" /* ON_CHAIN */;
@@ -45,10 +55,15 @@ var Escrow = class {
   }
   markAsSettled() {
     this.status = "SETTLED" /* SETTLED */;
+    this.settledAt = /* @__PURE__ */ new Date();
     return this;
   }
   markAsExpired() {
     this.status = "EXPIRED" /* EXPIRED */;
+    return this;
+  }
+  markAsFunded() {
+    this.status = "FUNDED" /* FUNDED */;
     return this;
   }
   markAsCanceled() {
@@ -91,6 +106,7 @@ var escrowStatusEnum = pgEnum("escrow_status", [
   "PENDING",
   "ON_CHAIN",
   "PROCESSING",
+  "FUNDED",
   "SETTLED",
   "REDEEMED",
   "EXPIRED",
@@ -109,13 +125,17 @@ var walletProviderEnum = pgEnum("wallet_provider", [
   "walletconnect"
 ]);
 var businessTypeEnum = pgEnum("business_type", ["RETAIL", "SERVICE"]);
+var kybStatusEnum = pgEnum("kyb_status", ["PENDING", "APPROVED", "REJECTED"]);
+var userRoleEnum = pgEnum("user_role", ["SELLER", "BUYER", "LP", "ADMIN"]);
 var credentialStatusEnum = pgEnum("credential_status", [
   "active",
   "revoked"
 ]);
 var escrowEventTypeEnum = pgEnum("escrow_event_type", [
   "EscrowCreated",
-  "EscrowSettled"
+  "EscrowFunded",
+  "EscrowSettled",
+  "EscrowRedeemed"
 ]);
 var users = pgTable(
   "users",
@@ -124,6 +144,7 @@ var users = pgTable(
     walletAddress: text("wallet_address").unique().notNull(),
     walletProvider: walletProviderEnum("wallet_provider").notNull(),
     email: text("email"),
+    role: userRoleEnum("role"),
     createdAt: timestamp("created_at").notNull().defaultNow()
   },
   (t) => [index("users_wallet_address_idx").on(t.walletAddress)]
@@ -171,7 +192,12 @@ var escrows = pgTable(
     metadata: jsonb("metadata"),
     onChainEscrowId: text("on_chain_escrow_id"),
     txHash: text("tx_hash"),
-    createdAt: timestamp("created_at").notNull().defaultNow()
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    settledAt: timestamp("settled_at"),
+    resolverAddress: text("resolver_address"),
+    poolAddress: text("pool_address"),
+    policyAddress: text("policy_address"),
+    coverageId: text("coverage_id")
   },
   (t) => [
     index("escrows_public_id_idx").on(t.publicId),
@@ -217,7 +243,10 @@ var businessProfiles = pgTable(
     businessName: text("business_name").notNull(),
     businessType: businessTypeEnum("business_type").notNull(),
     businessAddress: text("business_address"),
-    taxId: text("tax_id")
+    taxId: text("tax_id"),
+    country: text("country"),
+    registrationNumber: text("registration_number"),
+    kybStatus: kybStatusEnum("kyb_status").notNull().default("PENDING")
   },
   (t) => [index("business_profiles_user_id_idx").on(t.userId)]
 );
@@ -236,6 +265,32 @@ var apiCredentials = pgTable(
   (t) => [
     index("api_credentials_client_id_idx").on(t.clientId),
     index("api_credentials_user_id_idx").on(t.userId)
+  ]
+);
+var poolStakeStatusEnum = pgEnum("pool_stake_status", [
+  "PENDING",
+  "ACTIVE",
+  "UNSTAKING",
+  "WITHDRAWN",
+  "FAILED"
+]);
+var poolStakes = pgTable(
+  "pool_stakes",
+  {
+    id: text("id").primaryKey(),
+    publicId: text("public_id").unique().notNull(),
+    userId: text("user_id").references(() => users.id).notNull(),
+    poolAddress: text("pool_address").notNull(),
+    amount: numeric("amount").notNull(),
+    status: poolStakeStatusEnum("status").notNull().default("PENDING"),
+    txHash: text("tx_hash"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    withdrawnAt: timestamp("withdrawn_at")
+  },
+  (t) => [
+    index("pool_stakes_public_id_idx").on(t.publicId),
+    index("pool_stakes_user_id_idx").on(t.userId),
+    index("pool_stakes_pool_address_idx").on(t.poolAddress)
   ]
 );
 var escrowEvents = pgTable(
@@ -309,6 +364,26 @@ var PgEscrowRepository = class {
     });
     return row ? this.toDomain(row) : null;
   }
+  async findPayableByCounterparty(walletAddress) {
+    const rows = await this.db.query.escrows.findMany({
+      where: and(
+        eq(escrows.counterparty, walletAddress.toLowerCase()),
+        eq(escrows.status, "ON_CHAIN" /* ON_CHAIN */)
+      ),
+      orderBy: [desc(escrows.createdAt)]
+    });
+    return rows.map((r) => this.toDomain(r));
+  }
+  async findSettledByUserId(userId) {
+    const rows = await this.db.query.escrows.findMany({
+      where: and(
+        eq(escrows.userId, userId),
+        inArray(escrows.status, ["SETTLED", "EXPIRED", "FAILED"])
+      ),
+      orderBy: [desc(escrows.createdAt)]
+    });
+    return rows.map((r) => this.toDomain(r));
+  }
   async save(escrow) {
     await this.db.insert(escrows).values(this.toRow(escrow));
   }
@@ -317,7 +392,9 @@ var PgEscrowRepository = class {
       status: escrow.status,
       onChainEscrowId: escrow.onChainEscrowId,
       txHash: escrow.txHash,
-      metadata: escrow.metadata
+      metadata: escrow.metadata,
+      settledAt: escrow.settledAt,
+      coverageId: escrow.coverageId
     }).where(eq(escrows.id, escrow.id));
   }
   toRow(escrow) {
@@ -337,7 +414,12 @@ var PgEscrowRepository = class {
       metadata: escrow.metadata,
       onChainEscrowId: escrow.onChainEscrowId,
       txHash: escrow.txHash,
-      createdAt: escrow.createdAt
+      createdAt: escrow.createdAt,
+      settledAt: escrow.settledAt,
+      resolverAddress: escrow.resolverAddress ?? null,
+      poolAddress: escrow.poolAddress ?? null,
+      policyAddress: escrow.policyAddress ?? null,
+      coverageId: escrow.coverageId ?? null
     };
   }
   toDomain(row) {
@@ -359,7 +441,12 @@ var PgEscrowRepository = class {
       metadata: row.metadata ?? void 0,
       onChainEscrowId: row.onChainEscrowId ?? void 0,
       txHash: row.txHash ?? void 0,
-      createdAt: row.createdAt
+      createdAt: row.createdAt,
+      settledAt: row.settledAt ?? void 0,
+      resolverAddress: row.resolverAddress ?? void 0,
+      poolAddress: row.poolAddress ?? void 0,
+      policyAddress: row.policyAddress ?? void 0,
+      coverageId: row.coverageId ?? void 0
     });
   }
 };

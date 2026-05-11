@@ -6,6 +6,9 @@ var BusinessProfile = class {
   businessType;
   businessAddress;
   taxId;
+  country;
+  registrationNumber;
+  kybStatus;
   constructor(params) {
     this.id = params.id;
     this.userId = params.userId;
@@ -13,6 +16,9 @@ var BusinessProfile = class {
     this.businessType = params.businessType;
     this.businessAddress = params.businessAddress;
     this.taxId = params.taxId;
+    this.country = params.country;
+    this.registrationNumber = params.registrationNumber;
+    this.kybStatus = params.kybStatus ?? "PENDING";
   }
 };
 export {

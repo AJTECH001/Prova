@@ -11,4 +11,5 @@ export interface IWalletProvider {
   getAddress(): string | null;
   isConnected(): boolean;
   sendUserOperation(calls: Call[]): Promise<string>;
+  getViemWalletClient?(): unknown;
 }

@@ -29,18 +29,23 @@ var Session = class {
 };
 
 // src/domain/auth/model/user.ts
-var User = class {
+var User = class _User {
   id;
   walletAddress;
   walletProvider;
   email;
+  role;
   createdAt;
   constructor(params) {
     this.id = params.id;
     this.walletAddress = params.walletAddress;
     this.walletProvider = params.walletProvider;
     this.email = params.email;
+    this.role = params.role;
     this.createdAt = params.createdAt;
+  }
+  withRole(role) {
+    return new _User({ ...this, role });
   }
 };
 
@@ -116,7 +121,8 @@ var VerifyWalletUseCase = class {
       sub: user.id,
       walletAddress: user.walletAddress,
       walletProvider: user.walletProvider,
-      email: user.email
+      email: user.email,
+      role: user.role
     });
     const session = new Session({
       id: randomUUID(),
