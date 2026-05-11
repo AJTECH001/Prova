@@ -4,7 +4,7 @@ import { readdirSync, statSync } from "fs";
 import { join } from "path";
 import { fileURLToPath } from "url";
 var __dirname = fileURLToPath(new URL(".", import.meta.url));
-var API_DIR = join(__dirname, "..", "api");
+var API_DIR = join(__dirname, "handlers");
 function scanRoutes(dir, base = "") {
   const routes = [];
   for (const entry of readdirSync(dir)) {
@@ -26,10 +26,10 @@ function scanRoutes(dir, base = "") {
       return seg.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     }).join("/");
     routes.push({
-      pattern: new RegExp(`^/api${patternStr}$`),
+      pattern: new RegExp(`^/api/v1${patternStr}$`),
       paramNames,
       filePath: fullPath,
-      displayPath: `/api${routePath}`
+      displayPath: `/api/v1${routePath}`
     });
   }
   return routes;

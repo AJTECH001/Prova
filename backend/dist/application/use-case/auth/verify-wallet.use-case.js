@@ -82,7 +82,66 @@ var ApplicationHttpError = class _ApplicationHttpError extends Error {
   }
 };
 
+// src/core/logger.ts
+import pino from "pino";
+
+// src/core/config.ts
+import { z } from "zod";
+var EnvSchema = z.object({
+  DB_PROVIDER: z.enum(["memory", "postgres"]).default("postgres"),
+  DATABASE_URL: z.string().optional(),
+  JWT_SECRET: z.string().min(1),
+  JWT_REFRESH_SECRET: z.string().min(1),
+  JWT_ISSUER: z.string().default("reineira.xyz"),
+  ACCESS_TOKEN_TTL: z.coerce.number().default(3600),
+  REFRESH_TOKEN_TTL: z.coerce.number().default(2592e3),
+  CHAIN_ID: z.coerce.number().default(421614),
+  RPC_URL: z.string().optional(),
+  ALLOWED_ORIGINS: z.string().default("http://localhost:3000,http://localhost:4831"),
+  LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
+  PORT: z.coerce.number().default(3e3),
+  QUICKNODE_WEBHOOK_SECRET: z.string().optional(),
+  RELAY_WEBHOOK_SECRET: z.string().optional(),
+  PRIVATE_KEY: z.string().optional(),
+  ESCROW_CONTRACT_ADDRESS: z.string().optional(),
+  PUSDC_WRAPPER_ADDRESS: z.string().optional(),
+  RESOLVER_ADDRESS: z.string().optional(),
+  POLICY_ADDRESS: z.string().optional(),
+  EXPOSURE_REGISTRY_ADDRESS: z.string().optional(),
+  CLAIMS_REGISTRY_ADDRESS: z.string().optional(),
+  MOCK_DEBTOR_PROOF_ADDRESS: z.string().optional(),
+  COVERAGE_MANAGER_ADDRESS: z.string().optional(),
+  POOL_ADDRESS: z.string().optional(),
+  POOL_FACTORY_ADDRESS: z.string().optional(),
+  USDC_ADDRESS: z.string().optional(),
+  FHE_WORKER_URL: z.string().default("http://localhost:3001"),
+  ADMIN_PRIVATE_KEY: z.string().optional(),
+  DEFAULT_CONCENTRATION_CAP_USDC: z.coerce.number().default(1e6)
+});
+var _env = null;
+function getEnv() {
+  if (!_env) {
+    _env = EnvSchema.parse(process.env);
+  }
+  return _env;
+}
+
+// src/core/logger.ts
+var _logger = null;
+function getLogger(name) {
+  if (!_logger) {
+    _logger = pino({
+      level: getEnv().LOG_LEVEL,
+      formatters: {
+        level: (label) => ({ level: label })
+      }
+    });
+  }
+  return name ? _logger.child({ name }) : _logger;
+}
+
 // src/application/use-case/auth/verify-wallet.use-case.ts
+var logger = getLogger("VerifyWalletUseCase");
 var VerifyWalletUseCase = class {
   constructor(siweVerifier, nonceService, userRepository, sessionRepository, jwtService) {
     this.siweVerifier = siweVerifier;
@@ -101,7 +160,13 @@ var VerifyWalletUseCase = class {
     if (!result.valid) {
       throw ApplicationHttpError.unauthorized("Invalid SIWE signature");
     }
-    const siweMessage = new SiweMessage(dto.message);
+    let siweMessage;
+    try {
+      siweMessage = new SiweMessage(dto.message);
+    } catch (e) {
+      logger.error({ err: e instanceof Error ? e.message : String(e), message: dto.message }, "SiweMessage parse failed after valid sig");
+      throw ApplicationHttpError.badRequest("Invalid SIWE message format");
+    }
     const nonceValid = await this.nonceService.verifyNonce(dto.wallet_address, siweMessage.nonce);
     if (!nonceValid) {
       throw ApplicationHttpError.unauthorized("Invalid or expired nonce");
@@ -111,11 +176,16 @@ var VerifyWalletUseCase = class {
       user = new User({
         id: randomUUID(),
         walletAddress: dto.wallet_address,
-        walletProvider: "walletconnect",
+        walletProvider: "zerodev",
         email: dto.email,
         createdAt: /* @__PURE__ */ new Date()
       });
-      await this.userRepository.save(user);
+      try {
+        await this.userRepository.save(user);
+      } catch (e) {
+        logger.error({ err: e instanceof Error ? e.message : String(e), walletAddress: dto.wallet_address }, "Failed to save user");
+        throw e;
+      }
     }
     const tokenPair = await this.jwtService.generateTokenPair({
       sub: user.id,
@@ -131,7 +201,12 @@ var VerifyWalletUseCase = class {
       expiresAt: new Date(Date.now() + tokenPair.expiresIn * 1e3),
       createdAt: /* @__PURE__ */ new Date()
     });
-    await this.sessionRepository.save(session);
+    try {
+      await this.sessionRepository.save(session);
+    } catch (e) {
+      logger.error({ err: e instanceof Error ? e.message : String(e), userId: user.id }, "Failed to save session");
+      throw e;
+    }
     return {
       access_token: tokenPair.accessToken,
       refresh_token: tokenPair.refreshToken,

@@ -8,8 +8,11 @@ import type { JwtService } from '../../../infrastructure/auth/jwt.service.js';
 import type { NonceService } from '../../../infrastructure/auth/nonce.service.js';
 import type { SiweVerifier } from '../../../infrastructure/auth/siwe-verifier.js';
 import { ApplicationHttpError } from '../../../core/errors.js';
+import { getLogger } from '../../../core/logger.js';
 import type { VerifyWalletDto } from '../../dto/auth/verify-wallet.dto.js';
 import type { TokenResponse } from '../../dto/auth/verify-wallet.dto.js';
+
+const logger = getLogger('VerifyWalletUseCase');
 
 export class VerifyWalletUseCase {
   constructor(
@@ -26,7 +29,14 @@ export class VerifyWalletUseCase {
       throw ApplicationHttpError.unauthorized('Invalid SIWE signature');
     }
 
-    const siweMessage = new SiweMessage(dto.message);
+    let siweMessage: SiweMessage;
+    try {
+      siweMessage = new SiweMessage(dto.message);
+    } catch (e) {
+      logger.error({ err: e instanceof Error ? e.message : String(e), message: dto.message }, 'SiweMessage parse failed after valid sig');
+      throw ApplicationHttpError.badRequest('Invalid SIWE message format');
+    }
+
     const nonceValid = await this.nonceService.verifyNonce(dto.wallet_address, siweMessage.nonce);
     if (!nonceValid) {
       throw ApplicationHttpError.unauthorized('Invalid or expired nonce');
@@ -37,11 +47,16 @@ export class VerifyWalletUseCase {
       user = new User({
         id: randomUUID(),
         walletAddress: dto.wallet_address,
-        walletProvider: 'walletconnect',
+        walletProvider: 'zerodev',
         email: dto.email,
         createdAt: new Date(),
       });
-      await this.userRepository.save(user);
+      try {
+        await this.userRepository.save(user);
+      } catch (e) {
+        logger.error({ err: e instanceof Error ? e.message : String(e), walletAddress: dto.wallet_address }, 'Failed to save user');
+        throw e;
+      }
     }
 
     const tokenPair = await this.jwtService.generateTokenPair({
@@ -59,7 +74,12 @@ export class VerifyWalletUseCase {
       expiresAt: new Date(Date.now() + tokenPair.expiresIn * 1000),
       createdAt: new Date(),
     });
-    await this.sessionRepository.save(session);
+    try {
+      await this.sessionRepository.save(session);
+    } catch (e) {
+      logger.error({ err: e instanceof Error ? e.message : String(e), userId: user.id }, 'Failed to save session');
+      throw e;
+    }
 
     return {
       access_token: tokenPair.accessToken,

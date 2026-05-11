@@ -18670,85 +18670,8 @@ var ApplicationHttpError = class _ApplicationHttpError extends Error {
   }
 };
 
-// src/application/use-case/auth/verify-wallet.use-case.ts
-var VerifyWalletUseCase = class {
-  constructor(siweVerifier, nonceService, userRepository, sessionRepository, jwtService) {
-    this.siweVerifier = siweVerifier;
-    this.nonceService = nonceService;
-    this.userRepository = userRepository;
-    this.sessionRepository = sessionRepository;
-    this.jwtService = jwtService;
-  }
-  siweVerifier;
-  nonceService;
-  userRepository;
-  sessionRepository;
-  jwtService;
-  async execute(dto) {
-    const result = await this.siweVerifier.verify(dto.message, dto.signature);
-    if (!result.valid) {
-      throw ApplicationHttpError.unauthorized("Invalid SIWE signature");
-    }
-    const siweMessage = new SiweMessage(dto.message);
-    const nonceValid = await this.nonceService.verifyNonce(dto.wallet_address, siweMessage.nonce);
-    if (!nonceValid) {
-      throw ApplicationHttpError.unauthorized("Invalid or expired nonce");
-    }
-    let user = await this.userRepository.findByWalletAddress(dto.wallet_address);
-    if (!user) {
-      user = new User({
-        id: randomUUID(),
-        walletAddress: dto.wallet_address,
-        walletProvider: "walletconnect",
-        email: dto.email,
-        createdAt: /* @__PURE__ */ new Date()
-      });
-      await this.userRepository.save(user);
-    }
-    const tokenPair = await this.jwtService.generateTokenPair({
-      sub: user.id,
-      walletAddress: user.walletAddress,
-      walletProvider: user.walletProvider,
-      email: user.email,
-      role: user.role
-    });
-    const session = new Session({
-      id: randomUUID(),
-      userId: user.id,
-      refreshToken: tokenPair.refreshToken,
-      expiresAt: new Date(Date.now() + tokenPair.expiresIn * 1e3),
-      createdAt: /* @__PURE__ */ new Date()
-    });
-    await this.sessionRepository.save(session);
-    return {
-      access_token: tokenPair.accessToken,
-      refresh_token: tokenPair.refreshToken,
-      token_type: "Bearer",
-      expires_in: tokenPair.expiresIn
-    };
-  }
-};
-
-// src/infrastructure/auth/nonce.service.ts
-import { randomBytes } from "crypto";
-var NONCE_TTL_SECONDS = 300;
-var NonceService = class {
-  constructor(nonceRepository) {
-    this.nonceRepository = nonceRepository;
-  }
-  nonceRepository;
-  async generateNonce(walletAddress) {
-    const nonce = randomBytes(32).toString("hex");
-    await this.nonceRepository.save(walletAddress, nonce, NONCE_TTL_SECONDS);
-    return nonce;
-  }
-  async verifyNonce(walletAddress, nonce) {
-    return this.nonceRepository.findAndDelete(walletAddress, nonce);
-  }
-};
-
-// src/infrastructure/auth/jwt.service.ts
-import { SignJWT, jwtVerify } from "jose";
+// src/core/logger.ts
+import pino from "pino";
 
 // src/core/config.ts
 import { z } from "zod";
@@ -18791,7 +18714,116 @@ function getEnv() {
   return _env;
 }
 
+// src/core/logger.ts
+var _logger = null;
+function getLogger(name) {
+  if (!_logger) {
+    _logger = pino({
+      level: getEnv().LOG_LEVEL,
+      formatters: {
+        level: (label) => ({ level: label })
+      }
+    });
+  }
+  return name ? _logger.child({ name }) : _logger;
+}
+
+// src/application/use-case/auth/verify-wallet.use-case.ts
+var logger = getLogger("VerifyWalletUseCase");
+var VerifyWalletUseCase = class {
+  constructor(siweVerifier, nonceService, userRepository, sessionRepository, jwtService) {
+    this.siweVerifier = siweVerifier;
+    this.nonceService = nonceService;
+    this.userRepository = userRepository;
+    this.sessionRepository = sessionRepository;
+    this.jwtService = jwtService;
+  }
+  siweVerifier;
+  nonceService;
+  userRepository;
+  sessionRepository;
+  jwtService;
+  async execute(dto) {
+    const result = await this.siweVerifier.verify(dto.message, dto.signature);
+    if (!result.valid) {
+      throw ApplicationHttpError.unauthorized("Invalid SIWE signature");
+    }
+    let siweMessage;
+    try {
+      siweMessage = new SiweMessage(dto.message);
+    } catch (e) {
+      logger.error({ err: e instanceof Error ? e.message : String(e), message: dto.message }, "SiweMessage parse failed after valid sig");
+      throw ApplicationHttpError.badRequest("Invalid SIWE message format");
+    }
+    const nonceValid = await this.nonceService.verifyNonce(dto.wallet_address, siweMessage.nonce);
+    if (!nonceValid) {
+      throw ApplicationHttpError.unauthorized("Invalid or expired nonce");
+    }
+    let user = await this.userRepository.findByWalletAddress(dto.wallet_address);
+    if (!user) {
+      user = new User({
+        id: randomUUID(),
+        walletAddress: dto.wallet_address,
+        walletProvider: "zerodev",
+        email: dto.email,
+        createdAt: /* @__PURE__ */ new Date()
+      });
+      try {
+        await this.userRepository.save(user);
+      } catch (e) {
+        logger.error({ err: e instanceof Error ? e.message : String(e), walletAddress: dto.wallet_address }, "Failed to save user");
+        throw e;
+      }
+    }
+    const tokenPair = await this.jwtService.generateTokenPair({
+      sub: user.id,
+      walletAddress: user.walletAddress,
+      walletProvider: user.walletProvider,
+      email: user.email,
+      role: user.role
+    });
+    const session = new Session({
+      id: randomUUID(),
+      userId: user.id,
+      refreshToken: tokenPair.refreshToken,
+      expiresAt: new Date(Date.now() + tokenPair.expiresIn * 1e3),
+      createdAt: /* @__PURE__ */ new Date()
+    });
+    try {
+      await this.sessionRepository.save(session);
+    } catch (e) {
+      logger.error({ err: e instanceof Error ? e.message : String(e), userId: user.id }, "Failed to save session");
+      throw e;
+    }
+    return {
+      access_token: tokenPair.accessToken,
+      refresh_token: tokenPair.refreshToken,
+      token_type: "Bearer",
+      expires_in: tokenPair.expiresIn
+    };
+  }
+};
+
+// src/infrastructure/auth/nonce.service.ts
+import { randomBytes } from "crypto";
+var NONCE_TTL_SECONDS = 300;
+var NonceService = class {
+  constructor(nonceRepository) {
+    this.nonceRepository = nonceRepository;
+  }
+  nonceRepository;
+  async generateNonce(walletAddress) {
+    const nonce = randomBytes(32).toString("hex");
+    await this.nonceRepository.save(walletAddress, nonce, NONCE_TTL_SECONDS);
+    return nonce;
+  }
+  async verifyNonce(walletAddress, nonce) {
+    return this.nonceRepository.findAndDelete(walletAddress, nonce);
+  }
+};
+
 // src/infrastructure/auth/jwt.service.ts
+import { SignJWT, jwtVerify } from "jose";
 var JwtService = class {
   secret;
   refreshSecret;
