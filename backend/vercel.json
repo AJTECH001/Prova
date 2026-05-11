@@ -1,5 +1,16 @@
 {
   "installCommand": "pnpm install",
   "buildCommand": "pnpm run build",
-  "rewrites": [{ "source": "/api/(.*)", "destination": "/api/$1" }]
+  "rewrites": [{ "source": "/api/(.*)", "destination": "/api/$1" }],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin",      "value": "*" },
+        { "key": "Access-Control-Allow-Methods",     "value": "GET, POST, PUT, PATCH, DELETE, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers",     "value": "Content-Type, Authorization, x-coverage-signature, x-qn-signature, x-qn-nonce, x-qn-timestamp" },
+        { "key": "Access-Control-Allow-Credentials", "value": "true" }
+      ]
+    }
+  ]
 }

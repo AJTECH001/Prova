@@ -72,46 +72,40 @@ export function useStakeFlow() {
 
       const amountSmallest = BigInt(response.amount_smallest_unit);
 
-      // Step 1 — approve USDC for the cUSDC wrapper (only if needed)
+      // Steps 1-3 — approve + wrap + setOperator batched into a single UserOp
+      // to avoid sequential nonce conflicts on the bundler.
       setCurrentStep(1);
       const approveData = encodeFunctionData({
         abi: ERC20ApproveABI,
         functionName: 'approve',
         args: [ADDRESSES.cUSDC as `0x${string}`, amountSmallest],
       });
-      await useWalletStore.getState().sendUserOperation([
-        { to: ADDRESSES.USDC as `0x${string}`, data: approveData },
-      ]);
-
-      // Step 2 — wrap USDC → cUSDC
-      setCurrentStep(2);
       const wrapData = encodeFunctionData({
         abi: cUSDCABI,
         functionName: 'wrap',
         args: [walletAddress as `0x${string}`, amountSmallest],
       });
-      await useWalletStore.getState().sendUserOperation([
-        { to: ADDRESSES.cUSDC as `0x${string}`, data: wrapData },
-      ]);
-
-      // Step 3 — set pool as operator on cUSDC (allows pool to confidentialTransferFrom)
-      setCurrentStep(3);
       const isOp = await publicClient.readContract({
         address: ADDRESSES.cUSDC as `0x${string}`,
         abi: cUSDCABI,
         functionName: 'isOperator',
         args: [walletAddress as `0x${string}`, poolAddress],
       });
+      const setupCalls: { to: `0x${string}`; data: string }[] = [
+        { to: ADDRESSES.USDC as `0x${string}`, data: approveData },
+        { to: ADDRESSES.cUSDC as `0x${string}`, data: wrapData },
+      ];
       if (!isOp) {
         const setOpData = encodeFunctionData({
           abi: cUSDCABI,
           functionName: 'setOperator',
           args: [poolAddress, OPERATOR_TTL()],
         });
-        await useWalletStore.getState().sendUserOperation([
-          { to: ADDRESSES.cUSDC as `0x${string}`, data: setOpData },
-        ]);
+        setupCalls.push({ to: ADDRESSES.cUSDC as `0x${string}`, data: setOpData });
       }
+      setCurrentStep(2);
+      await useWalletStore.getState().sendUserOperation(setupCalls);
+      setCurrentStep(3);
 
       // Step 4 — FHE-encrypt the amount
       setCurrentStep(4);

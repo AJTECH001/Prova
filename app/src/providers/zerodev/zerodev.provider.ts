@@ -12,31 +12,25 @@ import { WindowHelper } from '@/helpers/WindowHelper';
 const ENTRY_POINT = { address: entryPoint07Address, version: '0.7' as const };
 const KERNEL_VERSION = constants.KERNEL_V3_1;
 
-function requireEnv(key: string): string {
-  const value = (process.env as Record<string, string | undefined>)[key];
-  if (!value) throw new Error(`Missing required env var: ${key}`);
-  return value;
-}
-
+const BUNDLER_URL   = process.env.NEXT_PUBLIC_ZERODEV_BUNDLER_URL!;
+const PAYMASTER_URL = process.env.NEXT_PUBLIC_ZERODEV_PAYMASTER_URL!;
+const PASSKEY_URL   = process.env.NEXT_PUBLIC_ZERODEV_PASSKEY_SERVER_URL!;
+const RPC_URL       = process.env.NEXT_PUBLIC_COFHE_RPC_URL!;
 
 function getChain() {
   return arbitrumSepolia;
 }
 
-// Public client uses the standard chain RPC — NOT the bundler URL.
-// The bundler URL only handles ERC-4337 methods; the public client needs eth_ methods.
 function buildPublicClient() {
   return createPublicClient({
     chain: getChain(),
-    transport: http(requireEnv('NEXT_PUBLIC_COFHE_RPC_URL')),
+    transport: http(RPC_URL),
   });
 }
 
 async function buildKernelClient(webAuthnKey: WebAuthnKey): Promise<KernelAccountClient> {
   const publicClient = buildPublicClient();
   const chain = getChain();
-  const bundlerUrl = requireEnv('NEXT_PUBLIC_ZERODEV_BUNDLER_URL');
-  const paymasterUrl = requireEnv('NEXT_PUBLIC_ZERODEV_PAYMASTER_URL');
 
   const passkeyValidator = await toPasskeyValidator(publicClient, {
     webAuthnKey,
@@ -51,16 +45,15 @@ async function buildKernelClient(webAuthnKey: WebAuthnKey): Promise<KernelAccoun
     kernelVersion: KERNEL_VERSION,
   });
 
-  // Paymaster uses its own dedicated URL — separate from the bundler
   const paymaster = createZeroDevPaymasterClient({
     chain,
-    transport: http(paymasterUrl),
+    transport: http(PAYMASTER_URL),
   });
 
   return createKernelAccountClient({
     account,
     chain,
-    bundlerTransport: http(bundlerUrl),
+    bundlerTransport: http(BUNDLER_URL),
     paymaster,
   });
 }
@@ -77,29 +70,19 @@ export class ZeroDevProvider implements IWalletProvider {
   async register(username: string): Promise<string> {
     await WindowHelper.ensureFocus();
 
-    const passkeyServerUrl = requireEnv('NEXT_PUBLIC_ZERODEV_PASSKEY_SERVER_URL');
-    const rpID = window.location.hostname;
-
-    let webAuthnKey: WebAuthnKey;
-    try {
-      webAuthnKey = await toWebAuthnKey({
-        passkeyName: username,
-        passkeyServerUrl,
-        rpID,
-        mode: WebAuthnMode.Register,
-        passkeyServerHeaders: { 'Content-Type': 'application/json' },
-      });
-    } catch (e) {
-      if (e instanceof TypeError && String(e.message).toLowerCase().includes('fetch')) {
-        throw new Error(`Cannot reach the ZeroDev passkey server. Possible causes:\n1. The Passkey Server feature is not enabled for this project in the ZeroDev dashboard (dashboard.zerodev.app).\n2. Check that NEXT_PUBLIC_ZERODEV_PASSKEY_SERVER_URL is set correctly.`);
-      }
-      throw e;
-    }
+    const webAuthnKey = await toWebAuthnKey({
+      passkeyName: username,
+      passkeyServerUrl: PASSKEY_URL,
+      rpID: window.location.hostname,
+      mode: WebAuthnMode.Register,
+    });
 
     this.kernelClient = await buildKernelClient(webAuthnKey);
     this.webAuthnKeyRef = webAuthnKey;
 
-    if (!this.kernelClient.account) throw new Error('Kernel account not initialised');
+    if (!this.kernelClient.account) {
+      throw new Error('Kernel account not found');
+    }
 
     this._address = this.kernelClient.account.address;
     return this._address;
@@ -108,29 +91,19 @@ export class ZeroDevProvider implements IWalletProvider {
   async login(): Promise<string> {
     await WindowHelper.ensureFocus();
 
-    const passkeyServerUrl = requireEnv('NEXT_PUBLIC_ZERODEV_PASSKEY_SERVER_URL');
-    const rpID = window.location.hostname;
-
-    let webAuthnKey: WebAuthnKey;
-    try {
-      webAuthnKey = await toWebAuthnKey({
-        passkeyName: '',
-        passkeyServerUrl,
-        rpID,
-        mode: WebAuthnMode.Login,
-        passkeyServerHeaders: { 'Content-Type': 'application/json' },
-      });
-    } catch (e) {
-      if (e instanceof TypeError && String(e.message).toLowerCase().includes('fetch')) {
-        throw new Error(`Cannot reach the ZeroDev passkey server. Possible causes:\n1. The Passkey Server feature is not enabled for this project in the ZeroDev dashboard (dashboard.zerodev.app).\n2. Check that NEXT_PUBLIC_ZERODEV_PASSKEY_SERVER_URL is set correctly.`);
-      }
-      throw e;
-    }
+    const webAuthnKey = await toWebAuthnKey({
+      passkeyName: '',
+      passkeyServerUrl: PASSKEY_URL,
+      rpID: window.location.hostname,
+      mode: WebAuthnMode.Login,
+    });
 
     this.kernelClient = await buildKernelClient(webAuthnKey);
     this.webAuthnKeyRef = webAuthnKey;
 
-    if (!this.kernelClient.account) throw new Error('Kernel account not initialised');
+    if (!this.kernelClient.account) {
+      throw new Error('Kernel account not found');
+    }
 
     this._address = this.kernelClient.account.address;
     return this._address;
@@ -155,10 +128,6 @@ export class ZeroDevProvider implements IWalletProvider {
     return this._address;
   }
 
-  getViemWalletClient(): unknown {
-    return this.kernelClient;
-  }
-
   isConnected(): boolean {
     return this._address !== null && this.kernelClient !== null;
   }
@@ -166,29 +135,16 @@ export class ZeroDevProvider implements IWalletProvider {
   async sendUserOperation(calls: Call[]): Promise<string> {
     if (!this.kernelClient?.account) throw new Error('Not connected');
 
-    const encodeCalls = async () =>
-      this.kernelClient!.account!.encodeCalls(
-        calls.map((c) => ({ to: c.to as Hex, data: c.data as Hex, value: c.value ?? 0n })),
-      );
+    const callData = await this.kernelClient.account.encodeCalls(
+      calls.map((c) => ({
+        to: c.to as Hex,
+        data: c.data as Hex,
+        value: c.value ?? 0n,
+      })),
+    );
 
-    const attempt = async (): Promise<string> => {
-      const callData = await encodeCalls();
-      const userOpHash = await this.kernelClient!.sendUserOperation({ callData });
-      const receipt = await this.kernelClient!.waitForUserOperationReceipt({ hash: userOpHash });
-      return receipt.receipt.transactionHash;
-    };
-
-    try {
-      return await attempt();
-    } catch (e: any) {
-      // AA25 means the bundler rejected the UserOp due to a stale nonce (prior tx advanced
-      // the on-chain nonce but the kernelClient still holds the old value). Rebuild the
-      // client so it re-fetches the current nonce, then retry once.
-      if (e?.message?.includes('AA25') && this.webAuthnKeyRef) {
-        this.kernelClient = await buildKernelClient(this.webAuthnKeyRef);
-        return await attempt();
-      }
-      throw e;
-    }
+    const userOpHash = await this.kernelClient.sendUserOperation({ callData });
+    const receipt = await this.kernelClient.waitForUserOperationReceipt({ hash: userOpHash });
+    return receipt.receipt.transactionHash;
   }
 }

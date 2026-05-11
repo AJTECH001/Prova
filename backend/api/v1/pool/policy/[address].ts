@@ -3,6 +3,7 @@ import { AddPolicyUseCase } from '../../../../src/application/use-case/pool/add-
 import { createGetHandler, sendResponse } from '../../../../src/interface/handler-factory.js';
 import { withAuth } from '../../../../src/interface/middleware/with-auth.js';
 import { withCors } from '../../../../src/interface/middleware/with-cors.js';
+import { withRole } from '../../../../src/interface/middleware/with-role.js';
 import { Response } from '../../../../src/interface/response.js';
 
 const addPolicyUseCase = new AddPolicyUseCase();
@@ -23,4 +24,4 @@ const handler = async (req: VercelRequest, res: VercelResponse): Promise<void> =
   sendResponse(res, Response.badRequest('Method not allowed'));
 };
 
-export default withCors(withAuth(handler));
+export default withCors(withAuth(withRole('ADMIN')(handler)));
