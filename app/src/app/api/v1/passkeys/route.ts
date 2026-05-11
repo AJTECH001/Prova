@@ -28,10 +28,14 @@ async function proxy(req: NextRequest): Promise<NextResponse> {
 
     const contentType = upstream.headers.get('content-type') ?? ''
     if (contentType.includes('application/json')) {
-      return NextResponse.json(JSON.parse(responseText), { status: upstream.status })
+      try {
+        return NextResponse.json(JSON.parse(responseText), { status: upstream.status })
+      } catch {
+        return NextResponse.json({ error: 'Upstream returned invalid JSON', body: responseText }, { status: upstream.status })
+      }
     }
 
-    return new NextResponse(responseText, { status: upstream.status })
+    return NextResponse.json({ error: responseText || 'Upstream error', status: upstream.status }, { status: upstream.status })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
     const cause = err instanceof Error && (err as any).cause
