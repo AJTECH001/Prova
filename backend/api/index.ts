@@ -50,6 +50,8 @@ interface Route {
 
 // Order matters: specific static routes before dynamic ones.
 const ROUTES: Route[] = [
+  // Health — unauthenticated, used by Railway healthcheck
+  { pattern: /^\/health$/, paramNames: [], handler: async (_req, res) => { res.status(200).json({ ok: true }); } },
   // Auth
   { pattern: /^\/api\/v1\/auth\/wallet\/nonce$/,    paramNames: [],           handler: authNonceHandler },
   { pattern: /^\/api\/v1\/auth\/wallet\/verify$/,   paramNames: [],           handler: authVerifyHandler },
