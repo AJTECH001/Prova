@@ -8,6 +8,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "dev": "tsx watch --env-file=.env src/dev-server.ts",
+    "start": "node dist/server.js",
     "build": "tsup && pnpm generate:openapi",
     "test": "vitest run",
     "test:unit": "vitest run",
