@@ -15,12 +15,14 @@ interface AuthState {
   logout: () => void;
 }
 
+const ls = (key: string) => typeof window !== 'undefined' ? localStorage.getItem(key) : null;
+
 export const useAuthStore = create<AuthState>((set, get) => ({
-  accessToken: localStorage.getItem('access_token'),
-  refreshToken: localStorage.getItem('refresh_token'),
-  walletAddress: localStorage.getItem('wallet_address'),
-  walletProvider: localStorage.getItem('wallet_provider'),
-  role: (localStorage.getItem('user_role') as UserRole | null),
+  accessToken: ls('access_token'),
+  refreshToken: ls('refresh_token'),
+  walletAddress: ls('wallet_address'),
+  walletProvider: ls('wallet_provider'),
+  role: (ls('user_role') as UserRole | null),
 
   isAuthorized: () => !!get().accessToken,
 

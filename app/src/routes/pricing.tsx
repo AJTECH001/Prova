@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from '@tanstack/react-router';
+import Link from 'next/link';
 import { LandingNavbar } from '@/components/landing/LandingNavbar';
 import { LandingFooter } from '@/components/landing/LandingFooter';
 
@@ -24,7 +24,7 @@ const FAQS = [
     answer:
       'When LPs deposit USDC into the insurance pool, their capital backs active trade credit policies. Every time a seller purchases coverage, a premium flows into the pool. LPs earn a proportional share of those premiums based on their stake weight, automatically diversified across all active policies.',
   },
-];
+]
 
 function CheckIcon() {
   return (
@@ -42,7 +42,6 @@ export function PricingPage() {
       <LandingNavbar />
       <main>
 
-        {/* Hero */}
         <section className="relative flex flex-col items-center justify-center overflow-hidden bg-white px-4 pb-20 pt-[120px] text-center sm:px-6 lg:px-8">
           <div className="pointer-events-none absolute inset-0 -z-10">
             <div className="absolute left-1/2 top-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[hsl(var(--brand-primary)/0.05)] blur-[120px]" />
@@ -62,12 +61,10 @@ export function PricingPage() {
           </p>
         </section>
 
-        {/* Pricing cards */}
         <section className="bg-[hsl(var(--bg-surface-alt))] py-24">
           <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
 
-              {/* Sellers */}
               <div className="flex flex-col rounded-2xl border border-[hsl(var(--border-default))] bg-white p-10">
                 <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-[hsl(var(--text-muted))]">
                   For sellers
@@ -100,14 +97,13 @@ export function PricingPage() {
                   ))}
                 </ul>
                 <Link
-                  to="/auth"
+                  href="/auth"
                   className="mt-10 flex w-full items-center justify-center rounded-full bg-[hsl(var(--brand-primary))] px-6 py-3 text-sm font-bold text-[hsl(var(--text-on-brand))] shadow-md shadow-[hsl(var(--brand-primary)/0.2)] transition-colors hover:bg-[hsl(var(--brand-primary-hover))]"
                 >
                   Get coverage
                 </Link>
               </div>
 
-              {/* LPs */}
               <div className="flex flex-col rounded-2xl border border-[hsl(var(--border-default))] bg-white p-10">
                 <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-[hsl(var(--text-muted))]">
                   For liquidity providers
@@ -139,7 +135,7 @@ export function PricingPage() {
                   ))}
                 </ul>
                 <Link
-                  to="/auth"
+                  href="/auth"
                   className="mt-10 flex w-full items-center justify-center rounded-full border border-[hsl(var(--border-strong))] px-6 py-3 text-sm font-bold text-[hsl(var(--text-primary))] transition-colors hover:border-[hsl(var(--brand-primary)/0.4)] hover:text-[hsl(var(--brand-primary))]"
                 >
                   Start earning
@@ -149,7 +145,6 @@ export function PricingPage() {
           </div>
         </section>
 
-        {/* Fee table */}
         <section className="bg-white py-24">
           <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
             <div className="mb-12 space-y-4 text-center">
@@ -167,12 +162,12 @@ export function PricingPage() {
                 </thead>
                 <tbody className="divide-y divide-[hsl(var(--border-subtle))]">
                   {[
-                    { item: 'Coverage premium',    rate: '0.5% – 5% per invoice', who: 'Seller' },
-                    { item: 'Monthly subscription', rate: 'None',                 who: '—' },
-                    { item: 'Setup / onboarding',   rate: 'None',                 who: '—' },
-                    { item: 'Claim processing fee',  rate: 'None',                 who: '—' },
-                    { item: 'LP management fee',     rate: 'None',                 who: '—' },
-                    { item: 'Gas fees (via AA)',      rate: 'Sponsored',            who: 'Prova' },
+                    { item: 'Coverage premium',     rate: '0.5% – 5% per invoice', who: 'Seller' },
+                    { item: 'Monthly subscription', rate: 'None',                   who: '—' },
+                    { item: 'Setup / onboarding',   rate: 'None',                   who: '—' },
+                    { item: 'Claim processing fee', rate: 'None',                   who: '—' },
+                    { item: 'LP management fee',    rate: 'None',                   who: '—' },
+                    { item: 'Gas fees (via AA)',     rate: 'Sponsored',              who: 'Prova' },
                   ].map((row) => (
                     <tr key={row.item} className="bg-white">
                       <td className="px-6 py-4 font-medium text-[hsl(var(--text-primary))]">{row.item}</td>
@@ -186,7 +181,6 @@ export function PricingPage() {
           </div>
         </section>
 
-        {/* FAQ */}
         <section className="bg-[hsl(var(--bg-surface-alt))] py-24">
           <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
             <div className="mb-12 space-y-4 text-center">
@@ -216,7 +210,6 @@ export function PricingPage() {
           </div>
         </section>
 
-        {/* CTA */}
         <section className="relative overflow-hidden bg-white px-4 py-24 text-center sm:px-6 lg:px-8">
           <div className="pointer-events-none absolute inset-0 -z-10">
             <div className="absolute left-1/2 top-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[hsl(var(--brand-primary)/0.06)] blur-[120px]" />
@@ -234,13 +227,13 @@ export function PricingPage() {
             </p>
             <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center sm:gap-4">
               <Link
-                to="/auth"
+                href="/auth"
                 className="flex w-full items-center justify-center rounded-full bg-[hsl(var(--brand-primary))] px-8 py-3 text-sm font-bold text-[hsl(var(--text-on-brand))] shadow-lg shadow-[hsl(var(--brand-primary)/0.2)] transition-colors hover:bg-[hsl(var(--brand-primary-hover))] sm:w-auto"
               >
                 Get started free
               </Link>
               <Link
-                to="/contact"
+                href="/contact"
                 className="flex w-full items-center justify-center rounded-full border border-[hsl(var(--border-strong))] px-8 py-3 text-sm font-semibold text-[hsl(var(--text-muted))] transition-colors hover:border-[hsl(var(--brand-primary)/0.4)] hover:text-[hsl(var(--text-primary))] sm:w-auto"
               >
                 Talk to sales

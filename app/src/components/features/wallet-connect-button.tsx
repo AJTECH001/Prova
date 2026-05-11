@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { useNavigate } from '@tanstack/react-router';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 
 export function WalletConnectButton() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { login, register } = useAuth();
 
   const [loading, setLoading] = useState(false);
@@ -17,7 +17,7 @@ export function WalletConnectButton() {
     setError(null);
     try {
       await login();
-      navigate({ to: '/dashboard' });
+      router.push('/dashboard');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Login failed');
     } finally {
@@ -34,7 +34,7 @@ export function WalletConnectButton() {
     setError(null);
     try {
       await register(username.trim());
-      navigate({ to: '/dashboard' });
+      router.push('/dashboard');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Registration failed');
     } finally {

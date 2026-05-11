@@ -7,7 +7,7 @@ class HttpClient {
 
   constructor() {
     this.client = axios.create({
-      baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+      baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || '/api',
       headers: { 'Content-Type': 'application/json' },
     });
 

@@ -1,4 +1,4 @@
-import { Link } from '@tanstack/react-router';
+import Link from 'next/link';
 import { LandingNavbar } from '@/components/landing/LandingNavbar';
 import { LandingFooter } from '@/components/landing/LandingFooter';
 
@@ -27,7 +27,7 @@ const POSTS = [
       'Invoice finance is a multi-trillion dollar market running on paper, email, and trust. ReineiraOS brings confidential settlement infrastructure to this market — programmable escrows that release automatically when payment conditions are met, secured by FHE.',
     readTime: '8 min read',
   },
-];
+]
 
 export function BlogPage() {
   return (
@@ -35,7 +35,6 @@ export function BlogPage() {
       <LandingNavbar />
       <main>
 
-        {/* Hero */}
         <section className="border-b border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-surface-alt))] px-4 pb-20 pt-[120px] sm:px-6 lg:px-8">
           <div className="mx-auto max-w-7xl">
             <div className="mb-6 flex items-center gap-2.5">
@@ -54,7 +53,6 @@ export function BlogPage() {
           </div>
         </section>
 
-        {/* Posts */}
         <section className="bg-white py-24">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
@@ -90,7 +88,6 @@ export function BlogPage() {
           </div>
         </section>
 
-        {/* CTA / newsletter */}
         <section className="relative overflow-hidden bg-[hsl(var(--bg-surface-alt))] px-4 py-24 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-xl text-center">
             <div className="mb-6 flex items-center justify-center gap-2.5">
@@ -116,7 +113,7 @@ export function BlogPage() {
                 Follow @Prova_TCI
               </a>
               <Link
-                to="/auth"
+                href="/auth"
                 className="flex w-full items-center justify-center rounded-full border border-[hsl(var(--border-strong))] px-8 py-3 text-sm font-semibold text-[hsl(var(--text-muted))] transition-colors hover:border-[hsl(var(--brand-primary)/0.4)] hover:text-[hsl(var(--text-primary))] sm:w-auto"
               >
                 Try the platform

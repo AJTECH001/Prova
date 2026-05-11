@@ -13,7 +13,7 @@ const ENTRY_POINT = { address: entryPoint07Address, version: '0.7' as const };
 const KERNEL_VERSION = constants.KERNEL_V3_1;
 
 function requireEnv(key: string): string {
-  const value = import.meta.env[key];
+  const value = (process.env as Record<string, string | undefined>)[key];
   if (!value) throw new Error(`Missing required env var: ${key}`);
   return value;
 }
@@ -28,15 +28,15 @@ function getChain() {
 function buildPublicClient() {
   return createPublicClient({
     chain: getChain(),
-    transport: http(requireEnv('VITE_COFHE_RPC_URL')),
+    transport: http(requireEnv('NEXT_PUBLIC_COFHE_RPC_URL')),
   });
 }
 
 async function buildKernelClient(webAuthnKey: WebAuthnKey): Promise<KernelAccountClient> {
   const publicClient = buildPublicClient();
   const chain = getChain();
-  const bundlerUrl = requireEnv('VITE_ZERODEV_BUNDLER_URL');
-  const paymasterUrl = requireEnv('VITE_ZERODEV_PAYMASTER_URL');
+  const bundlerUrl = requireEnv('NEXT_PUBLIC_ZERODEV_BUNDLER_URL');
+  const paymasterUrl = requireEnv('NEXT_PUBLIC_ZERODEV_PAYMASTER_URL');
 
   const passkeyValidator = await toPasskeyValidator(publicClient, {
     webAuthnKey,
@@ -77,7 +77,7 @@ export class ZeroDevProvider implements IWalletProvider {
   async register(username: string): Promise<string> {
     await WindowHelper.ensureFocus();
 
-    const passkeyServerUrl = requireEnv('VITE_ZERODEV_PASSKEY_SERVER_URL');
+    const passkeyServerUrl = requireEnv('NEXT_PUBLIC_ZERODEV_PASSKEY_SERVER_URL');
     const rpID = window.location.hostname;
 
     let webAuthnKey: WebAuthnKey;
@@ -91,7 +91,7 @@ export class ZeroDevProvider implements IWalletProvider {
       });
     } catch (e) {
       if (e instanceof TypeError && String(e.message).toLowerCase().includes('fetch')) {
-        throw new Error(`Cannot reach the ZeroDev passkey server. Possible causes:\n1. The Passkey Server feature is not enabled for this project in the ZeroDev dashboard (dashboard.zerodev.app).\n2. Check that VITE_ZERODEV_PASSKEY_SERVER_URL is set correctly.`);
+        throw new Error(`Cannot reach the ZeroDev passkey server. Possible causes:\n1. The Passkey Server feature is not enabled for this project in the ZeroDev dashboard (dashboard.zerodev.app).\n2. Check that NEXT_PUBLIC_ZERODEV_PASSKEY_SERVER_URL is set correctly.`);
       }
       throw e;
     }
@@ -108,7 +108,7 @@ export class ZeroDevProvider implements IWalletProvider {
   async login(): Promise<string> {
     await WindowHelper.ensureFocus();
 
-    const passkeyServerUrl = requireEnv('VITE_ZERODEV_PASSKEY_SERVER_URL');
+    const passkeyServerUrl = requireEnv('NEXT_PUBLIC_ZERODEV_PASSKEY_SERVER_URL');
     const rpID = window.location.hostname;
 
     let webAuthnKey: WebAuthnKey;
@@ -122,7 +122,7 @@ export class ZeroDevProvider implements IWalletProvider {
       });
     } catch (e) {
       if (e instanceof TypeError && String(e.message).toLowerCase().includes('fetch')) {
-        throw new Error(`Cannot reach the ZeroDev passkey server. Possible causes:\n1. The Passkey Server feature is not enabled for this project in the ZeroDev dashboard (dashboard.zerodev.app).\n2. Check that VITE_ZERODEV_PASSKEY_SERVER_URL is set correctly.`);
+        throw new Error(`Cannot reach the ZeroDev passkey server. Possible causes:\n1. The Passkey Server feature is not enabled for this project in the ZeroDev dashboard (dashboard.zerodev.app).\n2. Check that NEXT_PUBLIC_ZERODEV_PASSKEY_SERVER_URL is set correctly.`);
       }
       throw e;
     }

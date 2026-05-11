@@ -15,9 +15,9 @@ export function WalletAuthPage() {
       <main>
         <HeroSection />
         <PartnersBar />
-        <FeatureGrid />        {/* bg-white */}
-        <LiveFeedDemo />       {/* bg-[hsl(var(--bg-surface-alt))] */}
-        <ZKPrivacyShowcase />  {/* bg-white */}
+        <FeatureGrid />
+        <LiveFeedDemo />
+        <ZKPrivacyShowcase />
         <FAQSection />
         <CTASection />
       </main>

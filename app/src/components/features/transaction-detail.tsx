@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from '@tanstack/react-router';
+import { useRouter } from 'next/navigation';
 import type { TransactionResponse } from '@/services/TransactionService';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -52,7 +52,7 @@ function formatAmount(amount: number) {
 }
 
 export function TransactionDetail({ transaction }: TransactionDetailProps) {
-  const navigate = useNavigate();
+  const router = useRouter();
   const fetchTransaction = useTransactionStore((s) => s.fetchTransaction);
   const walletAddress = useAuthStore((s) => s.walletAddress);
 
@@ -103,7 +103,7 @@ export function TransactionDetail({ transaction }: TransactionDetailProps) {
               <p className="text-sm font-semibold text-[var(--status-success)]">Ready to redeem</p>
               <p className="text-xs text-[var(--text-secondary)]">The buyer has paid and the waiting period has passed. Go to Withdrawals to collect your funds.</p>
             </div>
-            <Button size="sm" onClick={() => navigate({ to: '/withdrawals' })}>
+            <Button size="sm" onClick={() => router.push('/withdrawals')}>
               Redeem Now
             </Button>
           </div>
@@ -121,7 +121,7 @@ export function TransactionDetail({ transaction }: TransactionDetailProps) {
               </p>
             </div>
             {hasCoverage && (
-              <Button size="sm" variant="secondary" onClick={() => navigate({ to: '/withdrawals' })}>
+              <Button size="sm" variant="secondary" onClick={() => router.push('/withdrawals')}>
                 File Claim
               </Button>
             )}

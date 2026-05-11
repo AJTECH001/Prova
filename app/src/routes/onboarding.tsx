@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from '@tanstack/react-router';
+import { useRouter } from 'next/navigation';
 import { useAuthStore, type UserRole } from '@/stores/auth-store';
 import { UserService } from '@/services/UserService';
 import { Button } from '@/components/ui/button';
@@ -47,7 +47,7 @@ const ROLE_OPTIONS: RoleOption[] = [
 ];
 
 export function OnboardingPage() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const setRole = useAuthStore((s) => s.setRole);
   const [selected, setSelected] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(false);
@@ -61,7 +61,7 @@ export function OnboardingPage() {
       await UserService.setRole(selected);
       setRole(selected);
       const destination = selected === 'LP' ? '/pool' : '/dashboard';
-      navigate({ to: destination });
+      router.push(destination);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save role. Please try again.');
     } finally {

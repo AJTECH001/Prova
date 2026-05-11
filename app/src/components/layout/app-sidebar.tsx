@@ -1,5 +1,8 @@
+'use client'
+
 import { useState } from 'react';
-import { Link, useLocation, useNavigate } from '@tanstack/react-router';
+import Link from 'next/link';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore, type UserRole } from '@/stores/auth-store';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -69,54 +72,53 @@ function CloseIcon() {
 }
 
 // ── Nav config per role ─────────────────────────────────────────────────────
-type NavLink = { name: string; to: '/dashboard' | '/transactions' | '/withdrawals' | '/pool' | '/profile'; icon: () => React.ReactElement };
+type NavLink = { name: string; href: '/dashboard' | '/transactions' | '/withdrawals' | '/pool' | '/profile'; icon: () => React.ReactElement };
 type NavSection = { label: string; links: NavLink[] };
 
 function getNavSections(role: UserRole | null): NavSection[] {
   const overview: NavSection = {
     label: 'Overview',
-    links: [{ name: 'Dashboard', to: '/dashboard', icon: HomeIcon }],
+    links: [{ name: 'Dashboard', href: '/dashboard', icon: HomeIcon }],
   };
   const payments: NavSection = {
     label: 'Payments',
     links: [
-      { name: 'Transactions', to: '/transactions', icon: ArrowsIcon },
-      { name: 'Withdrawals', to: '/withdrawals', icon: UploadIcon },
+      { name: 'Transactions', href: '/transactions', icon: ArrowsIcon },
+      { name: 'Withdrawals', href: '/withdrawals', icon: UploadIcon },
     ],
   };
   const earn: NavSection = {
     label: 'Earn',
-    links: [{ name: 'Liquidity Pool', to: '/pool', icon: PoolIcon }],
+    links: [{ name: 'Liquidity Pool', href: '/pool', icon: PoolIcon }],
   };
   const account: NavSection = {
     label: 'Account',
-    links: [{ name: 'Profile', to: '/profile', icon: UserIcon }],
+    links: [{ name: 'Profile', href: '/profile', icon: UserIcon }],
   };
 
   if (role === 'SELLER') return [overview, payments, account];
   if (role === 'BUYER')  return [overview, account];
   if (role === 'LP')     return [overview, earn, account];
   if (role === 'ADMIN')  return [overview, payments, earn, account];
-  // No role yet — minimal nav
   return [account];
 }
 
 // ── Sidebar content ────────────────────────────────────────────────────────
 function SidebarContent({ onClose }: { onClose?: () => void }) {
-  const location = useLocation();
-  const navigate = useNavigate();
+  const pathname = usePathname();
+  const router = useRouter();
   const walletAddress = useAuthStore((s) => s.walletAddress);
   const role = useAuthStore((s) => s.role);
   const navSections = getNavSections(role);
   const { logout } = useAuth();
 
   function isActive(path: string) {
-    return location.pathname === path || location.pathname.startsWith(path + '/');
+    return pathname === path || pathname.startsWith(path + '/');
   }
 
   async function handleLogout() {
     await logout();
-    navigate({ to: '/' });
+    router.push('/');
   }
 
   const truncated = walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : '';
@@ -125,7 +127,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
     <div className="flex h-full flex-col">
       {/* Logo row */}
       <div className="flex h-16 items-center justify-between px-5 border-b border-[var(--border-dark)]">
-        <Link to="/dashboard" className="flex items-center gap-2.5" onClick={onClose}>
+        <Link href="/dashboard" className="flex items-center gap-2.5" onClick={onClose}>
           <div className="flex h-7 w-7 items-center justify-center rounded-[var(--radius-subtle)] bg-[var(--accent-blue)]">
             <svg width="14" height="14" viewBox="0 0 20 20" fill="white">
               <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
@@ -152,11 +154,11 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             </p>
             <ul className="space-y-0.5">
               {section.links.map((link) => {
-                const active = isActive(link.to);
+                const active = isActive(link.href);
                 return (
-                  <li key={link.to}>
+                  <li key={link.href}>
                     <Link
-                      to={link.to}
+                      href={link.href}
                       onClick={onClose}
                       className={[
                         'flex items-center gap-3 rounded-[var(--radius-button)] px-3 py-2 text-sm font-medium transition-all',
@@ -182,7 +184,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
       <div className="border-t border-[var(--border-dark)] p-3 space-y-1">
         {walletAddress && (
           <Link
-            to="/profile"
+            href="/profile"
             onClick={onClose}
             className="flex items-center gap-3 rounded-[var(--radius-button)] px-3 py-2 transition-colors hover:bg-[hsl(var(--bg-hover))]"
           >

@@ -42,7 +42,7 @@ const DEPARTMENTS = [
       </svg>
     ),
   },
-];
+]
 
 const SOCIAL = [
   {
@@ -65,7 +65,7 @@ const SOCIAL = [
       </svg>
     ),
   },
-];
+]
 
 export function ContactPage() {
   return (
@@ -73,7 +73,6 @@ export function ContactPage() {
       <LandingNavbar />
       <main>
 
-        {/* Hero */}
         <section className="border-b border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-surface-alt))] px-4 pb-20 pt-[120px] sm:px-6 lg:px-8">
           <div className="mx-auto max-w-3xl text-center">
             <div className="mb-6 flex items-center justify-center gap-2.5">
@@ -92,7 +91,6 @@ export function ContactPage() {
           </div>
         </section>
 
-        {/* Departments */}
         <section className="bg-white py-24">
           <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
             <div className="mb-12 space-y-3">
@@ -111,7 +109,7 @@ export function ContactPage() {
                   </div>
                   <h3 className="mb-2 text-base font-black text-[hsl(var(--text-primary))]">{dept.name}</h3>
                   <p className="mb-5 text-sm leading-relaxed text-[hsl(var(--text-secondary))]">{dept.description}</p>
-                  <span className="mt-auto flex items-center gap-2 text-sm font-medium text-[hsl(var(--brand-primary))] transition-colors group-hover:underline underline-offset-2">
+                  <span className="mt-auto flex items-center gap-2 text-sm font-medium text-[hsl(var(--brand-primary))] underline-offset-2 transition-colors group-hover:underline">
                     {dept.email}
                     <svg className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <path d="M5 12h14M12 5l7 7-7 7" />
@@ -123,7 +121,6 @@ export function ContactPage() {
           </div>
         </section>
 
-        {/* Book a call */}
         <section className="bg-[hsl(var(--bg-surface-alt))] py-24">
           <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col items-start gap-10 rounded-2xl border border-[hsl(var(--border-default))] bg-white p-10 lg:flex-row lg:items-center lg:justify-between">
@@ -152,7 +149,6 @@ export function ContactPage() {
           </div>
         </section>
 
-        {/* Social */}
         <section className="bg-white py-24">
           <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
             <div className="mb-10 space-y-3">

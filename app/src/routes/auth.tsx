@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Link, useNavigate } from '@tanstack/react-router';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 
 type Mode = 'login' | 'register';
 
 export function AuthPage() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { login, register } = useAuth();
 
   const [mode, setMode] = useState<Mode>('login');
@@ -18,7 +19,7 @@ export function AuthPage() {
     setError(null);
     try {
       await login();
-      navigate({ to: '/dashboard' });
+      router.push('/dashboard');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Sign in failed. Please try again.');
     } finally {
@@ -32,7 +33,7 @@ export function AuthPage() {
     setError(null);
     try {
       await register(username.trim());
-      navigate({ to: '/dashboard' });
+      router.push('/dashboard');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Registration failed. Please try again.');
     } finally {
@@ -50,7 +51,7 @@ export function AuthPage() {
     <div className="relative flex min-h-screen flex-col items-center justify-center bg-white px-4 py-10">
       {/* Top-left logo */}
       <div className="absolute left-6 top-6 sm:left-10 sm:top-8">
-        <Link to="/" className="group flex items-center gap-2.5">
+        <Link href="/" className="group flex items-center gap-2.5">
           <img src="/prova_logo.png" alt="Prova" className="h-7 w-7 rounded-md object-contain transition-transform group-hover:scale-110" />
           <span className="text-base font-black tracking-tighter text-[hsl(var(--text-primary))]">Prova</span>
         </Link>
@@ -136,8 +137,8 @@ export function AuthPage() {
       {/* Bottom legal */}
       <div className="absolute bottom-6 flex items-center gap-6 text-xs text-[hsl(var(--text-faint))]">
         <span>© 2026 Prova Protocol</span>
-        <Link to="/privacy" className="hover:text-[hsl(var(--text-primary))]">Privacy</Link>
-        <Link to="/terms" className="hover:text-[hsl(var(--text-primary))]">Terms</Link>
+        <Link href="/privacy" className="hover:text-[hsl(var(--text-primary))]">Privacy</Link>
+        <Link href="/terms" className="hover:text-[hsl(var(--text-primary))]">Terms</Link>
       </div>
     </div>
   );

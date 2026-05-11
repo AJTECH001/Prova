@@ -1,4 +1,4 @@
-import { Link } from '@tanstack/react-router';
+import Link from 'next/link'
 
 const SOCIAL = [
   {
@@ -37,7 +37,7 @@ const SOCIAL = [
       </svg>
     ),
   },
-];
+]
 
 export function LandingFooter() {
   return (
@@ -45,13 +45,10 @@ export function LandingFooter() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 
         <div className="mb-16 grid grid-cols-1 gap-12 md:grid-cols-4">
-          {/* Brand */}
           <div className="space-y-5 md:col-span-1">
             <div className="flex items-center gap-2">
               <img src="/prova_logo.png" alt="Prova" className="h-6 w-6 rounded-md object-contain" />
-              <span className="text-xl font-black tracking-tighter text-[hsl(var(--text-primary))] ">
-                Prova
-              </span>
+              <span className="text-xl font-black tracking-tighter text-[hsl(var(--text-primary))]">Prova</span>
             </div>
             <p className="text-sm leading-relaxed text-[hsl(var(--text-muted))]">
               On-chain trade credit insurance for SME exporters. FHE-encrypted
@@ -60,7 +57,6 @@ export function LandingFooter() {
             </p>
           </div>
 
-          {/* Protocol */}
           <div>
             <h4 className="mb-6 text-xs font-bold uppercase tracking-widest text-[hsl(var(--text-primary))]">Protocol</h4>
             <ul className="space-y-4 text-sm text-[hsl(var(--text-secondary))]">
@@ -71,7 +67,6 @@ export function LandingFooter() {
             </ul>
           </div>
 
-          {/* Developers */}
           <div>
             <h4 className="mb-6 text-xs font-bold uppercase tracking-widest text-[hsl(var(--text-primary))]">Developers</h4>
             <ul className="space-y-4 text-sm text-[hsl(var(--text-secondary))]">
@@ -82,17 +77,15 @@ export function LandingFooter() {
             </ul>
           </div>
 
-          {/* Company */}
           <div>
             <h4 className="mb-6 text-xs font-bold uppercase tracking-widest text-[hsl(var(--text-primary))]">Company</h4>
             <ul className="space-y-4 text-sm text-[hsl(var(--text-secondary))]">
-              <li><Link to="/blog" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Blog</Link></li>
-              <li><Link to="/pricing" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Pricing</Link></li>
-              <li><Link to="/contact" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Contact</Link></li>
+              <li><Link href="/blog" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Blog</Link></li>
+              <li><Link href="/pricing" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Pricing</Link></li>
+              <li><Link href="/contact" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Contact</Link></li>
             </ul>
           </div>
 
-          {/* Social */}
           <div>
             <h4 className="mb-6 text-xs font-bold uppercase tracking-widest text-[hsl(var(--text-primary))]">Stay Connected</h4>
             <div className="flex gap-3">
@@ -110,17 +103,16 @@ export function LandingFooter() {
           </div>
         </div>
 
-        {/* Bottom bar */}
         <div className="flex flex-col items-center justify-between gap-4 border-t border-[hsl(var(--border-subtle))] pt-8 text-xs text-[hsl(var(--text-faint))] md:flex-row">
           <p>© 2026 Prova Protocol Foundation. All rights reserved.</p>
           <div className="flex gap-6">
-            <Link to="/privacy" className="transition-colors hover:text-[hsl(var(--text-primary))]">Privacy Policy</Link>
-            <Link to="/terms" className="transition-colors hover:text-[hsl(var(--text-primary))]">Terms of Service</Link>
-            <Link to="/contact" className="transition-colors hover:text-[hsl(var(--text-primary))]">Contact</Link>
+            <Link href="/privacy" className="transition-colors hover:text-[hsl(var(--text-primary))]">Privacy Policy</Link>
+            <Link href="/terms" className="transition-colors hover:text-[hsl(var(--text-primary))]">Terms of Service</Link>
+            <Link href="/contact" className="transition-colors hover:text-[hsl(var(--text-primary))]">Contact</Link>
           </div>
         </div>
 
       </div>
     </footer>
-  );
+  )
 }

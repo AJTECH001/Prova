@@ -1,16 +1,13 @@
-import { Link } from '@tanstack/react-router';
+import Link from 'next/link'
 
 export function CTASection() {
   return (
     <section className="relative overflow-hidden bg-white px-4 py-28 text-center sm:px-6 lg:px-8">
-      {/* Subtle radial glow */}
       <div className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute left-1/2 top-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[hsl(var(--brand-primary)/0.06)] blur-[120px]" />
       </div>
 
-      {/* Content */}
       <div className="mx-auto max-w-2xl">
-        {/* Label */}
         <div className="mb-8 flex items-center justify-center gap-2.5">
           <div className="h-2 w-2 rounded-full bg-[hsl(var(--brand-primary))]" />
           <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[hsl(var(--brand-primary))]">
@@ -28,7 +25,7 @@ export function CTASection() {
 
         <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
           <Link
-            to="/auth"
+            href="/auth"
             className="flex w-full items-center justify-center rounded-full bg-[hsl(var(--brand-primary))] px-8 py-3 text-sm font-bold text-[hsl(var(--text-on-brand))] shadow-lg shadow-[hsl(var(--brand-primary)/0.2)] transition-colors hover:bg-[hsl(var(--brand-primary-hover))] sm:w-auto"
           >
             Get started
@@ -47,5 +44,5 @@ export function CTASection() {
         </div>
       </div>
     </section>
-  );
+  )
 }

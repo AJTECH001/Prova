@@ -1,18 +1,20 @@
-import { useState } from 'react';
+'use client'
+
+import { useState } from 'react'
 
 const POOLS = [
   {
     id: 'merchants',
     category: 'For Sellers',
     name: 'Trade Credit Coverage',
-    summary: 'Enter your buyer\'s details. Prova handles the rest.',
+    summary: "Enter your buyer's details. Prova handles the rest.",
     detail: {
       label: 'Coverage',
       headline: 'You sell. We make sure you get paid.',
       subtitle: 'For any business selling goods or services on credit terms.',
-      body: 'Create an on-chain escrow for your invoice. Provide your buyer\'s wallet address, invoice amount, and due date — Prova evaluates the buyer\'s payment history and sets your premium automatically. If the buyer pays on time, funds release directly to you. If they don\'t, your coverage triggers and the insurance pool pays you out. No broker, no paperwork, no manual review.',
+      body: "Create an on-chain escrow for your invoice. Provide your buyer's wallet address, invoice amount, and due date — Prova evaluates the buyer's payment history and sets your premium automatically. If the buyer pays on time, funds release directly to you. If they don't, your coverage triggers and the insurance pool pays you out. No broker, no paperwork, no manual review.",
       bullets: [
-        'Buyer\'s payment history evaluated automatically — no broker',
+        "Buyer's payment history evaluated automatically — no broker",
         'Premium set by Prova based on buyer risk, not negotiation',
         'Funds held in escrow until payment conditions are met',
       ],
@@ -22,12 +24,12 @@ const POOLS = [
     id: 'claims',
     category: 'How Claims Work',
     name: 'Claim Settlement',
-    summary: 'Buyer didn\'t pay? One transaction. Instant payout.',
+    summary: "Buyer didn't pay? One transaction. Instant payout.",
     detail: {
       label: 'Claims',
       headline: 'One action. Funds in your wallet.',
       subtitle: 'No adjuster. No forms. No waiting weeks for approval.',
-      body: 'When an invoice passes its due date unpaid, a 7-day waiting period begins on-chain. Once that window closes, the payment condition is automatically met. You initiate the claim with a single transaction — the contract verifies the condition and releases your payout directly from the insurance pool. No broker reviews it. No adjuster approves it. The contract does. Traditional trade credit insurance takes weeks. Prova takes one transaction.',
+      body: "When an invoice passes its due date unpaid, a 7-day waiting period begins on-chain. Once that window closes, the payment condition is automatically met. You initiate the claim with a single transaction — the contract verifies the condition and releases your payout directly from the insurance pool. No broker reviews it. No adjuster approves it. The contract does. Traditional trade credit insurance takes weeks. Prova takes one transaction.",
       bullets: [
         '7-day waiting period starts automatically after due date',
         'Seller initiates claim with a single on-chain transaction',
@@ -44,7 +46,7 @@ const POOLS = [
       label: 'Liquidity',
       headline: 'Back real trade. Earn real yield.',
       subtitle: 'For individuals and institutions deploying capital into trade finance.',
-      body: 'Deposit USDC into Prova\'s insurance pool. Your capital backs active trade credit policies and earns a proportional share of every premium collected. Exposure is automatically diversified across all active policies — no manual rebalancing needed. Non-custodial: Prova never holds your keys, and you can withdraw whenever the pool has available liquidity.',
+      body: "Deposit USDC into Prova's insurance pool. Your capital backs active trade credit policies and earns a proportional share of every premium collected. Exposure is automatically diversified across all active policies — no manual rebalancing needed. Non-custodial: Prova never holds your keys, and you can withdraw whenever the pool has available liquidity.",
       bullets: [
         'Yield sourced from real trade premiums — not synthetic instruments',
         'Automatically diversified across all active policies',
@@ -52,17 +54,16 @@ const POOLS = [
       ],
     },
   },
-];
+]
 
 export function LiveFeedDemo() {
-  const [activeId, setActiveId] = useState('merchants');
-  const active = POOLS.find((p) => p.id === activeId)!;
+  const [activeId, setActiveId] = useState('merchants')
+  const active = POOLS.find((p) => p.id === activeId)!
 
   return (
     <section id="demo" className="bg-[hsl(var(--bg-surface-alt))] py-28">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 
-        {/* Header row */}
         <div className="mb-14 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-xl space-y-4">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-[hsl(var(--text-muted))]">
@@ -87,13 +88,11 @@ export function LiveFeedDemo() {
           </a>
         </div>
 
-        {/* Two-panel layout */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_3fr]">
 
-          {/* Left — selectable pool list */}
           <div className="flex flex-col gap-3">
             {POOLS.map((pool) => {
-              const isActive = pool.id === activeId;
+              const isActive = pool.id === activeId
               return (
                 <button
                   key={pool.id}
@@ -110,11 +109,10 @@ export function LiveFeedDemo() {
                   <p className="text-lg font-black text-[hsl(var(--text-primary))]">{pool.name}</p>
                   <p className="mt-1.5 text-sm text-[hsl(var(--text-secondary))]">{pool.summary}</p>
                 </button>
-              );
+              )
             })}
           </div>
 
-          {/* Right — detail panel */}
           <div className="rounded-2xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface-alt))] p-10">
             <p className="mb-4 text-xs font-bold uppercase tracking-[0.18em] text-[hsl(var(--brand-primary))]">
               {active.detail.label}
@@ -129,7 +127,6 @@ export function LiveFeedDemo() {
               {active.detail.body}
             </p>
 
-            {/* Bullets */}
             <ul className="mt-8 space-y-3">
               {active.detail.bullets.map((b) => (
                 <li key={b} className="flex items-center gap-3 text-sm font-semibold text-[hsl(var(--text-secondary))]">
@@ -139,7 +136,6 @@ export function LiveFeedDemo() {
               ))}
             </ul>
 
-            {/* CTA */}
             <div className="mt-10">
               <a
                 href="#features"
@@ -156,5 +152,5 @@ export function LiveFeedDemo() {
         </div>
       </div>
     </section>
-  );
+  )
 }

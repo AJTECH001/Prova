@@ -13,7 +13,7 @@ function buildSiweMessage(domain: string, address: string, statement: string, ur
     '',
     `URI: ${uri}`,
     'Version: 1',
-    `Chain ID: ${import.meta.env.VITE_CHAIN_ID || '421614'}`,
+    `Chain ID: ${process.env.NEXT_PUBLIC_CHAIN_ID || '421614'}`,
     `Nonce: ${nonce}`,
     `Issued At: ${now}`,
   ].join('\n');

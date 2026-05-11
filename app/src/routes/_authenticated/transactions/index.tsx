@@ -1,4 +1,4 @@
-import { useNavigate } from '@tanstack/react-router';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useTransactionStore } from '@/stores/transaction-store';
 import { useEscrowFlow } from '@/hooks/use-escrow-flow';
@@ -9,7 +9,7 @@ import { TransactionProgress } from '@/components/features/transaction-progress'
 import { Button } from '@/components/ui/button';
 
 export function TransactionsPage() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const transactions = useTransactionStore((s) => s.transactions);
   const loading = useTransactionStore((s) => s.loading);
   const hasMore = useTransactionStore((s) => s.hasMore);
@@ -27,7 +27,7 @@ export function TransactionsPage() {
     if (publicId) {
       setShowForm(false);
       fetchTransactions(true);
-      navigate({ to: '/transactions/$id', params: { id: publicId } });
+      router.push('/transactions/' + publicId);
     } else {
       // On duplicate-invoice error, refresh the list so the existing escrow surfaces
       fetchTransactions(true);
@@ -40,7 +40,7 @@ export function TransactionsPage() {
   }
 
   function handleSelect(transaction: TransactionResponse) {
-    navigate({ to: '/transactions/$id', params: { id: transaction.public_id } });
+    router.push('/transactions/' + transaction.public_id);
   }
 
   return (

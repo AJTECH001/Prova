@@ -3,5 +3,5 @@ import { arbitrumSepolia } from 'viem/chains';
 
 export const publicClient = createPublicClient({
   chain: arbitrumSepolia,
-  transport: http(import.meta.env.VITE_COFHE_RPC_URL ?? 'https://sepolia-rollup.arbitrum.io/rpc'),
+  transport: http(process.env.NEXT_PUBLIC_COFHE_RPC_URL ?? 'https://sepolia-rollup.arbitrum.io/rpc'),
 });

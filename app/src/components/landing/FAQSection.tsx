@@ -1,4 +1,6 @@
-import { useState } from 'react';
+'use client'
+
+import { useState } from 'react'
 
 const FAQS = [
   {
@@ -14,7 +16,7 @@ const FAQS = [
   {
     question: 'How does the underwriting work?',
     answer:
-      'Prova uses Fully Homomorphic Encryption (FHE) via Fhenix CoFHE. When you create coverage for an invoice, Prova evaluates your buyer\'s creditworthiness using an encrypted score — the underwriting contract computes directly on the encrypted value without ever decrypting it. The result is an encrypted premium in basis points. No plaintext financial data is stored or exposed on-chain at any point.',
+      "Prova uses Fully Homomorphic Encryption (FHE) via Fhenix CoFHE. When you create coverage for an invoice, Prova evaluates your buyer's creditworthiness using an encrypted score — the underwriting contract computes directly on the encrypted value without ever decrypting it. The result is an encrypted premium in basis points. No plaintext financial data is stored or exposed on-chain at any point.",
   },
   {
     question: 'What happens when a buyer does not pay?',
@@ -31,16 +33,15 @@ const FAQS = [
     answer:
       'Liquidity providers deposit USDC into the insurance pool. Their capital backs active trade credit policies and earns a proportional share of premiums collected. Exposure is automatically diversified across all active policies — no manual rebalancing needed. Deposits are non-custodial and withdrawable at any time subject to pool liquidity.',
   },
-];
+]
 
 export function FAQSection() {
-  const [openIndex, setOpenIndex] = useState<number | null>(0);
+  const [openIndex, setOpenIndex] = useState<number | null>(0)
 
   return (
     <section id="faq" className="bg-white py-28">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 
-        {/* Header */}
         <div className="mb-16 text-center space-y-5">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-[hsl(var(--text-muted))]">
             Got questions?
@@ -54,7 +55,6 @@ export function FAQSection() {
           </p>
         </div>
 
-        {/* Accordion */}
         <div className="mx-auto max-w-3xl divide-y divide-[hsl(var(--border-subtle))] border-t border-[hsl(var(--border-subtle))]">
           {FAQS.map((faq, i) => (
             <div key={i} className="py-7">
@@ -86,5 +86,5 @@ export function FAQSection() {
 
       </div>
     </section>
-  );
+  )
 }

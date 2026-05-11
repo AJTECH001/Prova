@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { Link, useNavigate } from '@tanstack/react-router';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
 import { parseEventLogs } from 'viem';
 import { useTransactionStore } from '@/stores/transaction-store';
@@ -568,7 +569,7 @@ function PayableInvoicesPanel() {
 
 // ── Dashboard page ────────────────────────────────────────────────────────────
 export function DashboardPage() {
-  const navigate       = useNavigate();
+  const router         = useRouter();
   const role           = useAuthStore((s) => s.role);
   const walletAddress  = useAuthStore((s) => s.walletAddress);
   const transactions   = useTransactionStore((s) => s.transactions);
@@ -658,7 +659,7 @@ export function DashboardPage() {
   }, [transactions, fetchTransactions]);
 
   function handleSelectTransaction(transaction: { public_id: string }) {
-    navigate({ to: '/transactions/$id', params: { id: transaction.public_id } });
+    router.push('/transactions/' + transaction.public_id);
   }
 
   const activeEscrows = transactions.filter((t) =>
@@ -688,10 +689,10 @@ export function DashboardPage() {
         </div>
         <div className="flex items-center gap-2">
           <Button variant="secondary" size="sm" asChild>
-            <Link to="/withdrawals">New Withdrawal</Link>
+            <Link href="/withdrawals">New Withdrawal</Link>
           </Button>
           <Button size="sm" asChild>
-            <Link to="/transactions">New Transaction</Link>
+            <Link href="/transactions">New Transaction</Link>
           </Button>
         </div>
       </div>
@@ -783,7 +784,7 @@ export function DashboardPage() {
               <p className="text-xs text-[var(--text-muted)]">Latest escrow activity</p>
             </div>
             <Link
-              to="/transactions"
+              href="/transactions"
               className="text-xs font-medium text-[var(--accent-blue)] hover:text-[var(--accent-blue-hover)] transition-colors"
             >
               View all →
@@ -796,7 +797,7 @@ export function DashboardPage() {
                 desc="Create your first escrow to get started"
                 action={
                   <Button size="sm" asChild>
-                    <Link to="/transactions">New Transaction</Link>
+                    <Link href="/transactions">New Transaction</Link>
                   </Button>
                 }
               />
@@ -819,7 +820,7 @@ export function DashboardPage() {
               <p className="text-xs text-[var(--text-muted)]">Bridge and redeem history</p>
             </div>
             <Link
-              to="/withdrawals"
+              href="/withdrawals"
               className="text-xs font-medium text-[var(--accent-blue)] hover:text-[var(--accent-blue-hover)] transition-colors"
             >
               View all →
@@ -832,7 +833,7 @@ export function DashboardPage() {
                 desc="Redeem a settled escrow to withdraw funds"
                 action={
                   <Button size="sm" variant="secondary" asChild>
-                    <Link to="/withdrawals">New Withdrawal</Link>
+                    <Link href="/withdrawals">New Withdrawal</Link>
                   </Button>
                 }
               />

@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from '@tanstack/react-router';
+import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { parseEventLogs } from 'viem';
 import { useTransactionStore } from '@/stores/transaction-store';
@@ -55,9 +55,8 @@ async function tryReconcileFunded(onChainId: string): Promise<boolean> {
   }
 }
 
-export function TransactionDetailPage() {
-  const { id } = useParams({ strict: false }) as { id: string };
-  const navigate = useNavigate();
+export function TransactionDetailPage({ id }: { id: string }) {
+  const router = useRouter();
   const currentTransaction = useTransactionStore((s) => s.currentTransaction);
   const loading = useTransactionStore((s) => s.loading);
   const fetchTransaction = useTransactionStore((s) => s.fetchTransaction);
@@ -66,7 +65,6 @@ export function TransactionDetailPage() {
     fetchTransaction(id);
   }, [id, fetchTransaction]);
 
-  // Auto-reconcile PROCESSING transactions: check receipt on-chain and update backend
   useEffect(() => {
     if (
       currentTransaction?.status === 'PROCESSING' &&
@@ -79,7 +77,6 @@ export function TransactionDetailPage() {
     }
   }, [currentTransaction?.status, currentTransaction?.tx_hash, id, fetchTransaction]);
 
-  // Auto-reconcile ON_CHAIN → FUNDED: query chain for EscrowFunded event by escrowId
   useEffect(() => {
     if (currentTransaction?.status === 'ON_CHAIN' && currentTransaction.on_chain_id) {
       tryReconcileFunded(currentTransaction.on_chain_id).then(
@@ -91,7 +88,7 @@ export function TransactionDetailPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={() => navigate({ to: '/transactions' })}>
+        <Button variant="ghost" size="sm" onClick={() => router.push('/transactions')}>
           <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
             <path
               fillRule="evenodd"

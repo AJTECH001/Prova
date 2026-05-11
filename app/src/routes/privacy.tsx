@@ -92,7 +92,7 @@ No system is perfectly secure. If you discover a security vulnerability, please 
 Email: privacy@getprova.trade
 Platform: getprova.trade/contact`,
   },
-];
+]
 
 export function PrivacyPage() {
   return (
@@ -100,7 +100,6 @@ export function PrivacyPage() {
       <LandingNavbar />
       <main>
 
-        {/* Header */}
         <section className="border-b border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-surface-alt))] px-4 pb-16 pt-[120px] sm:px-6 lg:px-8">
           <div className="mx-auto max-w-3xl">
             <p className="mb-4 text-xs font-bold uppercase tracking-[0.2em] text-[hsl(var(--text-muted))]">
@@ -115,7 +114,6 @@ export function PrivacyPage() {
           </div>
         </section>
 
-        {/* Content */}
         <section className="px-4 py-20 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-3xl">
             <div className="space-y-12">
@@ -126,7 +124,7 @@ export function PrivacyPage() {
                   </h2>
                   <div className="space-y-4">
                     {section.body.split('\n\n').map((para, i) => (
-                      <p key={i} className="text-base leading-relaxed text-[hsl(var(--text-secondary))] whitespace-pre-line">
+                      <p key={i} className="whitespace-pre-line text-base leading-relaxed text-[hsl(var(--text-secondary))]">
                         {para}
                       </p>
                     ))}
@@ -139,7 +137,7 @@ export function PrivacyPage() {
               <p className="font-semibold text-[hsl(var(--text-primary))]">Questions about this policy?</p>
               <p className="mt-2">
                 Email us at{' '}
-                <a href="mailto:privacy@getprova.trade" className="font-medium text-[hsl(var(--brand-primary))] hover:underline underline-offset-2">
+                <a href="mailto:privacy@getprova.trade" className="font-medium text-[hsl(var(--brand-primary))] underline-offset-2 hover:underline">
                   privacy@getprova.trade
                 </a>
                 {' '}and we'll respond within 30 days.

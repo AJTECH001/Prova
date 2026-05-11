@@ -1,10 +1,9 @@
 {
-  "name": "reineira-atlas",
+  "name": "prova",
   "version": "0.1.0",
   "platform": "0.1",
-  "description": "Startup operating system for ventures building on ReineiraOS",
-  "type": "atlas",
-  "repository": "https://github.com/ReineiraOS/reineira-atlas",
+  "description": "Trade credit insurance platform for SMEs — built on ReineiraOS",
+  "type": "venture",
   "compatibility": {
     "sdk": "^0.1.0",
     "contracts": "0.1"

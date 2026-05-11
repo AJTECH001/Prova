@@ -124,7 +124,7 @@ class FheService {
       const adapters = await import('@cofhe/sdk/adapters');
       const WagmiAdapter = adapters.WagmiAdapter ?? (adapters as any).default?.WagmiAdapter;
 
-      const rpcUrl = import.meta.env.VITE_COFHE_RPC_URL || 'https://sepolia-rollup.arbitrum.io/rpc';
+      const rpcUrl = process.env.NEXT_PUBLIC_COFHE_RPC_URL || 'https://sepolia-rollup.arbitrum.io/rpc';
 
       const viemPublicClient = createPublicClient({
         chain: arbitrumSepolia,

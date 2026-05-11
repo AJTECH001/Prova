@@ -99,7 +99,7 @@ Our total aggregate liability shall not exceed the greater of (a) the amount of 
 Email: legal@getprova.trade
 Platform: getprova.trade/contact`,
   },
-];
+]
 
 export function TermsPage() {
   return (
@@ -107,7 +107,6 @@ export function TermsPage() {
       <LandingNavbar />
       <main>
 
-        {/* Header */}
         <section className="border-b border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-surface-alt))] px-4 pb-16 pt-[120px] sm:px-6 lg:px-8">
           <div className="mx-auto max-w-3xl">
             <p className="mb-4 text-xs font-bold uppercase tracking-[0.2em] text-[hsl(var(--text-muted))]">
@@ -122,11 +121,9 @@ export function TermsPage() {
           </div>
         </section>
 
-        {/* Content */}
         <section className="px-4 py-20 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-3xl">
 
-            {/* Risk banner */}
             <div className="mb-12 rounded-2xl border border-[hsl(var(--warning-border))] bg-[hsl(var(--warning-bg))] p-6">
               <p className="text-sm font-semibold text-[hsl(var(--warning-text))]">
                 Important risk notice
@@ -144,7 +141,7 @@ export function TermsPage() {
                   </h2>
                   <div className="space-y-4">
                     {section.body.split('\n\n').map((para, i) => (
-                      <p key={i} className="text-base leading-relaxed text-[hsl(var(--text-secondary))] whitespace-pre-line">
+                      <p key={i} className="whitespace-pre-line text-base leading-relaxed text-[hsl(var(--text-secondary))]">
                         {para}
                       </p>
                     ))}
@@ -157,7 +154,7 @@ export function TermsPage() {
               <p className="font-semibold text-[hsl(var(--text-primary))]">Legal questions?</p>
               <p className="mt-2">
                 Email us at{' '}
-                <a href="mailto:legal@getprova.trade" className="font-medium text-[hsl(var(--brand-primary))] hover:underline underline-offset-2">
+                <a href="mailto:legal@getprova.trade" className="font-medium text-[hsl(var(--brand-primary))] underline-offset-2 hover:underline">
                   legal@getprova.trade
                 </a>
                 .

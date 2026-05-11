@@ -1,45 +1,48 @@
-import { Link, useLocation, useNavigate } from '@tanstack/react-router';
+'use client'
+
+import Link from 'next/link';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth-store';
 import { useAuth } from '@/hooks/use-auth';
 
 const navLinks = [
-  { name: 'Dashboard', to: '/dashboard' as const },
-  { name: 'Transactions', to: '/transactions' as const },
-  { name: 'Withdrawals', to: '/withdrawals' as const },
+  { name: 'Dashboard', href: '/dashboard' as const },
+  { name: 'Transactions', href: '/transactions' as const },
+  { name: 'Withdrawals', href: '/withdrawals' as const },
 ];
 
 export function AppNavbar() {
-  const location = useLocation();
-  const navigate = useNavigate();
+  const pathname = usePathname();
+  const router = useRouter();
   const walletAddress = useAuthStore((s) => s.walletAddress);
   const { logout } = useAuth();
 
   const truncatedAddress = walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : '';
 
   function isActive(path: string) {
-    return location.pathname === path || location.pathname.startsWith(path + '/');
+    return pathname === path || pathname.startsWith(path + '/');
   }
 
   async function handleLogout() {
     await logout();
-    navigate({ to: '/' });
+    router.push('/');
   }
 
   return (
     <nav className="sticky top-0 z-50 border-b border-[var(--border-dark)] bg-[hsl(var(--bg-glass-white))] backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-8">
-          <Link to="/dashboard" className="text-lg font-bold text-[var(--text-primary)]">
+          <Link href="/dashboard" className="text-lg font-bold text-[var(--text-primary)]">
             Reineira Modules
           </Link>
           <div className="hidden items-center gap-1 sm:flex">
             {navLinks.map((link) => (
               <Link
-                key={link.to}
-                to={link.to}
+                key={link.href}
+                href={link.href}
                 className={[
                   'rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                  isActive(link.to)
+                  isActive(link.href)
                     ? 'bg-[var(--accent-blue)]/10 text-[var(--accent-blue)]'
                     : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--background-secondary)]',
                 ].join(' ')}
@@ -52,7 +55,7 @@ export function AppNavbar() {
         <div className="flex items-center gap-3">
           {walletAddress && (
             <Link
-              to="/profile"
+              href="/profile"
               className="hidden rounded-lg bg-[var(--background-secondary)] px-3 py-1.5 text-xs font-mono text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors sm:block"
             >
               {truncatedAddress}
