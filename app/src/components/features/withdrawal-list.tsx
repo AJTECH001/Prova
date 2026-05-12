@@ -50,10 +50,10 @@ export function WithdrawalList({ withdrawals, loading, hasMore, onLoadMore }: Wi
           <thead>
             <tr className="border-b border-[var(--border-dark)]">
               <th className="pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Amount</th>
-              <th className="pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Chain</th>
-              <th className="pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Recipient</th>
+              <th className="hidden pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] sm:table-cell">Chain</th>
+              <th className="hidden pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] md:table-cell">Recipient</th>
               <th className="pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Status</th>
-              <th className="pb-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Created</th>
+              <th className="hidden pb-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] lg:table-cell">Created</th>
             </tr>
           </thead>
           <tbody>
@@ -62,14 +62,14 @@ export function WithdrawalList({ withdrawals, loading, hasMore, onLoadMore }: Wi
                 <td className="py-3 pr-4 text-sm font-semibold text-[var(--text-primary)]">
                   {formatAmount(w.actual_amount ?? w.estimated_amount)} <span className="text-xs font-normal text-[var(--text-muted)]">USDC</span>
                 </td>
-                <td className="py-3 pr-4 text-sm capitalize text-[var(--text-secondary)]">{w.destination_chain}</td>
-                <td className="py-3 pr-4 font-mono text-xs text-[var(--text-secondary)]">
+                <td className="hidden py-3 pr-4 text-sm capitalize text-[var(--text-secondary)] sm:table-cell">{w.destination_chain}</td>
+                <td className="hidden py-3 pr-4 font-mono text-xs text-[var(--text-secondary)] md:table-cell">
                   {truncateAddress(w.recipient_address)}
                 </td>
                 <td className="py-3 pr-4">
                   <Badge variant={statusVariant(w.status)}>{w.status}</Badge>
                 </td>
-                <td className="py-3 text-sm text-[var(--text-secondary)]">{formatDate(w.created_at)}</td>
+                <td className="hidden py-3 text-sm text-[var(--text-secondary)] lg:table-cell">{formatDate(w.created_at)}</td>
               </tr>
             ))}
           </tbody>

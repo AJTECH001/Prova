@@ -35,6 +35,7 @@ html {
   /* Layout */
   --header-height: 72px;
   --content-max-width: 1280px;
+  --bg-app: 210 20% 98%;
 
   /* Z-Index */
   --z-base: 0;

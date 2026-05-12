@@ -531,9 +531,8 @@ var PgUserRepository = class {
       role: user.role,
       createdAt: user.createdAt
     }).onConflictDoUpdate({
-      target: users.id,
+      target: users.walletAddress,
       set: {
-        walletAddress: user.walletAddress,
         walletProvider: user.walletProvider,
         email: user.email,
         role: user.role

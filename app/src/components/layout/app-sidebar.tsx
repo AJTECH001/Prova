@@ -211,6 +211,17 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   );
 }
 
+// ── Mobile top-bar wallet chip ─────────────────────────────────────────────
+function MobileTopBarWallet() {
+  const walletAddress = useAuthStore((s) => s.walletAddress);
+  if (!walletAddress) return null;
+  return (
+    <span className="rounded-full bg-[hsl(var(--bg-surface-alt))] px-3 py-1 font-mono text-[10px] text-[var(--text-secondary)]">
+      {walletAddress.slice(0, 6)}…{walletAddress.slice(-4)}
+    </span>
+  );
+}
+
 // ── Exported component ─────────────────────────────────────────────────────
 export function AppSidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -218,21 +229,24 @@ export function AppSidebar() {
   return (
     <>
       {/* Mobile top bar */}
-      <div className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-[var(--border-dark)] bg-white px-4 lg:hidden">
-        <button
-          onClick={() => setMobileOpen(true)}
-          className="rounded-lg p-2 text-[var(--text-secondary)] hover:bg-[hsl(var(--bg-hover))] transition-colors"
-        >
-          <MenuIcon />
-        </button>
-        <div className="flex items-center gap-2">
-          <div className="flex h-6 w-6 items-center justify-center rounded-[var(--radius-minimal)] bg-[var(--accent-blue)]">
-            <svg width="12" height="12" viewBox="0 0 20 20" fill="white">
-              <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
-            </svg>
+      <div className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b border-[var(--border-dark)] bg-white px-4 lg:hidden">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setMobileOpen(true)}
+            className="rounded-lg p-1.5 text-[var(--text-secondary)] hover:bg-[hsl(var(--bg-hover))] transition-colors"
+          >
+            <MenuIcon />
+          </button>
+          <div className="flex items-center gap-2">
+            <div className="flex h-6 w-6 items-center justify-center rounded-[var(--radius-minimal)] bg-[var(--accent-blue)]">
+              <svg width="12" height="12" viewBox="0 0 20 20" fill="white">
+                <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
+              </svg>
+            </div>
+            <span className="text-sm font-bold text-[var(--text-primary)]">Prova</span>
           </div>
-          <span className="text-sm font-bold text-[var(--text-primary)]">Prova</span>
         </div>
+        <MobileTopBarWallet />
       </div>
 
       {/* Desktop sidebar */}
@@ -244,10 +258,10 @@ export function AppSidebar() {
       {mobileOpen && (
         <>
           <div
-            className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm lg:hidden"
+            className="fixed inset-0 z-50 bg-black/40 lg:hidden"
             onClick={() => setMobileOpen(false)}
           />
-          <aside className="fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-[var(--shadow-xl)] lg:hidden">
+          <aside className="fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-2xl lg:hidden">
             <SidebarContent onClose={() => setMobileOpen(false)} />
           </aside>
         </>

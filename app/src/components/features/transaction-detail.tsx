@@ -20,11 +20,13 @@ function statusVariant(status: string): 'success' | 'warning' | 'error' | 'info'
     SETTLED: 'success',
     COMPLETED: 'success',
     REDEEMED: 'success',
+    FUNDED: 'success',
     PENDING: 'warning',
     PENDING_REDEEM: 'warning',
     PENDING_BRIDGE: 'warning',
     PROCESSING: 'warning',
     BRIDGING: 'warning',
+    ON_CHAIN: 'info',
     ISSUED: 'info',
     DRAFT: 'info',
     CREATED: 'info',
@@ -150,7 +152,7 @@ export function TransactionDetail({ transaction }: TransactionDetailProps) {
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <p className="text-sm text-[var(--text-secondary)]">Counterparty</p>
-            <p className="mt-1 font-medium text-[var(--text-primary)]">{transaction.counterparty}</p>
+            <p className="mt-1 break-all font-mono text-sm font-medium text-[var(--text-primary)]">{transaction.counterparty}</p>
           </div>
           <div>
             <p className="text-sm text-[var(--text-secondary)]">External Reference</p>

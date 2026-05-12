@@ -17,11 +17,13 @@ function statusVariant(status: string): 'success' | 'warning' | 'error' | 'info'
     SETTLED: 'success',
     COMPLETED: 'success',
     REDEEMED: 'success',
+    FUNDED: 'success',
     PENDING: 'warning',
     PENDING_REDEEM: 'warning',
     PENDING_BRIDGE: 'warning',
     PROCESSING: 'warning',
     BRIDGING: 'warning',
+    ON_CHAIN: 'info',
     ISSUED: 'info',
     DRAFT: 'info',
     CREATED: 'info',
@@ -50,11 +52,11 @@ export function TransactionList({ transactions, loading, hasMore, onLoadMore, on
           <thead>
             <tr className="border-b border-[var(--border-dark)]">
               <th className="pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Reference</th>
-              <th className="pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Counterparty</th>
+              <th className="hidden pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] sm:table-cell">Counterparty</th>
               <th className="pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Amount</th>
-              <th className="pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Due Date</th>
+              <th className="hidden pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] md:table-cell">Due Date</th>
               <th className="pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Status</th>
-              <th className="pb-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Created</th>
+              <th className="hidden pb-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] lg:table-cell">Created</th>
             </tr>
           </thead>
           <tbody>
@@ -67,22 +69,22 @@ export function TransactionList({ transactions, loading, hasMore, onLoadMore, on
                 <td className="py-3 pr-4 text-sm font-medium text-[var(--text-primary)]">
                   {transaction.external_reference || '—'}
                 </td>
-                <td className="py-3 pr-4 text-sm text-[var(--text-secondary)]">
+                <td className="hidden py-3 pr-4 text-sm text-[var(--text-secondary)] sm:table-cell">
                   <span className="font-mono text-xs">{`${transaction.counterparty.slice(0, 6)}...${transaction.counterparty.slice(-4)}`}</span>
                 </td>
                 <td className="py-3 pr-4 text-sm font-semibold text-[var(--text-primary)]">
                   {formatAmount(transaction.amount)} <span className="text-xs font-normal text-[var(--text-muted)]">USDC</span>
                 </td>
-                <td className="py-3 pr-4 text-sm text-[var(--text-secondary)]">{formatDate(transaction.deadline)}</td>
+                <td className="hidden py-3 pr-4 text-sm text-[var(--text-secondary)] md:table-cell">{formatDate(transaction.deadline)}</td>
                 <td className="py-3 pr-4">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Badge variant={statusVariant(transaction.status)}>{transaction.status}</Badge>
                     {isClaimEligible(transaction) && (
                       <Badge variant="warning">Claim Ready</Badge>
                     )}
                   </div>
                 </td>
-                <td className="py-3 text-sm text-[var(--text-secondary)]">{formatDate(transaction.created_at)}</td>
+                <td className="hidden py-3 text-sm text-[var(--text-secondary)] lg:table-cell">{formatDate(transaction.created_at)}</td>
               </tr>
             ))}
           </tbody>

@@ -64,19 +64,19 @@ function StatCard({ label, value, sub, icon, accent = 'blue', loading }: StatCar
   }[accent];
 
   return (
-    <div className="flex flex-col gap-4 rounded-[var(--radius-block)] border border-[var(--border-dark)] bg-white p-5 shadow-[var(--shadow-sm)]">
-      <div className="flex items-start justify-between">
-        <p className="text-sm font-medium text-[var(--text-muted)]">{label}</p>
-        <div className={`flex h-9 w-9 items-center justify-center rounded-[var(--radius-subtle)] ${iconBg}`}>
+    <div className="flex flex-col gap-3 rounded-[var(--radius-block)] border border-[var(--border-dark)] bg-white p-4 shadow-[var(--shadow-sm)]">
+      <div className="flex items-start justify-between gap-3">
+        <p className="min-w-0 flex-1 text-xs font-semibold text-[var(--text-muted)] leading-snug">{label}</p>
+        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-subtle)] ${iconBg}`}>
           {icon}
         </div>
       </div>
       {loading ? (
-        <Skeleton className="h-8 w-28" />
+        <Skeleton className="h-7 w-20" />
       ) : (
         <div>
-          <p className={`text-2xl font-bold tracking-tight ${valueColor}`}>{value}</p>
-          {sub && <p className="mt-0.5 text-xs text-[var(--text-muted)]">{sub}</p>}
+          <p className={`text-xl font-bold tracking-tight ${valueColor}`}>{value}</p>
+          {sub && <p className="mt-0.5 text-[11px] leading-tight text-[var(--text-muted)]">{sub}</p>}
         </div>
       )}
     </div>
@@ -697,7 +697,7 @@ export function DashboardPage() {
 
       {/* Stats row — LP */}
       {role === 'LP' && (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatCard
             label="Total Staked"
             value={poolStakes.length > 0 ? `${poolStakes.reduce((s, k) => s + k.amount, 0).toFixed(2)} USDC` : '—'}
@@ -748,7 +748,7 @@ export function DashboardPage() {
       )}
 
       {/* Stats row — seller / admin / buyer */}
-      {role !== 'LP' && <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
+      {role !== 'LP' && <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <StatCard
           label="Available Balance"
           value={balance ? `${balance.formatted_balance} ${balance.currency}` : '—'}
