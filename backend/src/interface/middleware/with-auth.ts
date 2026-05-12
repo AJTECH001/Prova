@@ -31,7 +31,18 @@ export function withAuth(handler: VercelHandler): VercelHandler {
         issuer: JWT_ISSUER,
       });
 
-      (req as AuthenticatedRequest).authPayload = payload as unknown as AuthPayload;
+      (req as AuthenticatedRequest).authPayload = {
+        userId: payload.sub!,
+        walletAddress: payload.walletAddress as string,
+        walletProvider: payload.walletProvider as string,
+        email: payload.email as string | undefined,
+        role: payload.role as AuthPayload['role'],
+        exp: payload.exp!,
+        iat: payload.iat!,
+        iss: payload.iss!,
+        authSource: (payload.authSource as AuthPayload['authSource']) ?? 'wallet',
+        clientId: payload.clientId as string | undefined,
+      };
     } catch {
       sendResponse(res, Response.unauthorized('Invalid token', 'Token verification failed'));
       return;
