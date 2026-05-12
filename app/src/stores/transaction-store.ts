@@ -42,9 +42,7 @@ export const useTransactionStore = create<TransactionState>((set, get) => ({
   },
 
   fetchTransaction: async (publicId) => {
-    if (!get().currentTransaction) {
-      set({ loading: true });
-    }
+    set({ currentTransaction: null, loading: true });
     try {
       const transaction = await TransactionService.getById(publicId);
       set({ currentTransaction: transaction });

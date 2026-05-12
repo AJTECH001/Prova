@@ -9,9 +9,9 @@ const useCase = new GetEscrowByIdUseCase(container.escrowRepo);
 
 const handler = createGetHandler({
   operationName: 'GetEscrowById',
-  execute: async (req) => {
+  execute: async (req, authPayload) => {
     const publicId = req.query.publicId as string;
-    const result = await useCase.execute(publicId);
+    const result = await useCase.execute(publicId, authPayload!.userId);
     return Response.ok(result);
   },
 });

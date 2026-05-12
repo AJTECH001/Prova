@@ -122,7 +122,7 @@ export class PgEscrowRepository implements IEscrowRepository {
       publicId: escrow.publicId,
       userId: escrow.userId,
       type: escrow.type,
-      counterparty: escrow.counterparty,
+      counterparty: escrow.counterparty?.toLowerCase(),
       deadline: escrow.deadline,
       externalReference: escrow.externalReference,
       amount: String(escrow.amount),

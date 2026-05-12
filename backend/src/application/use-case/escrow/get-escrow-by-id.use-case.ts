@@ -6,9 +6,9 @@ import { toEscrowResponse } from './get-escrows.use-case.js';
 export class GetEscrowByIdUseCase {
   constructor(private readonly escrowRepository: IEscrowRepository) {}
 
-  async execute(publicId: string): Promise<EscrowResponse> {
+  async execute(publicId: string, userId: string): Promise<EscrowResponse> {
     const escrow = await this.escrowRepository.findByPublicId(publicId);
-    if (!escrow) {
+    if (!escrow || escrow.userId !== userId) {
       throw ApplicationHttpError.notFound('Escrow not found');
     }
 
