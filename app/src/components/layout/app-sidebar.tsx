@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore, type UserRole } from '@/stores/auth-store';
@@ -128,11 +129,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
       {/* Logo row */}
       <div className="flex h-16 items-center justify-between px-5 border-b border-[var(--border-dark)]">
         <Link href="/dashboard" className="flex items-center gap-2.5" onClick={onClose}>
-          <div className="flex h-7 w-7 items-center justify-center rounded-[var(--radius-subtle)] bg-[var(--accent-blue)]">
-            <svg width="14" height="14" viewBox="0 0 20 20" fill="white">
-              <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
-            </svg>
-          </div>
+          <Image src="/prova_logo.png" alt="Prova" width={28} height={28} className="rounded-sm" />
           <span className="text-[15px] font-bold tracking-tight text-[var(--text-primary)]">Prova</span>
         </Link>
         {onClose && (
@@ -238,11 +235,7 @@ export function AppSidebar() {
             <MenuIcon />
           </button>
           <div className="flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded-[var(--radius-minimal)] bg-[var(--accent-blue)]">
-              <svg width="12" height="12" viewBox="0 0 20 20" fill="white">
-                <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
-              </svg>
-            </div>
+            <Image src="/prova_logo.png" alt="Prova" width={24} height={24} className="rounded-sm" />
             <span className="text-sm font-bold text-[var(--text-primary)]">Prova</span>
           </div>
         </div>
