@@ -53,7 +53,7 @@ async function buildKernelClient(webAuthnKey: WebAuthnKey): Promise<KernelAccoun
   return createKernelAccountClient({
     account,
     chain,
-    bundlerTransport: http(BUNDLER_URL),
+    bundlerTransport: http(BUNDLER_URL, { timeout: 60_000, retryCount: 3, retryDelay: 1_000 }),
     paymaster,
   });
 }
@@ -147,8 +147,21 @@ export class ZeroDevProvider implements IWalletProvider {
       })),
     );
 
-    const userOpHash = await this.kernelClient.sendUserOperation({ callData });
-    const receipt = await this.kernelClient.waitForUserOperationReceipt({ hash: userOpHash });
-    return receipt.receipt.transactionHash;
+    const MAX_ATTEMPTS = 3;
+    let lastErr: unknown;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        const userOpHash = await this.kernelClient.sendUserOperation({ callData });
+        const receipt = await this.kernelClient.waitForUserOperationReceipt({ hash: userOpHash });
+        return receipt.receipt.transactionHash;
+      } catch (e) {
+        lastErr = e;
+        const msg = (e instanceof Error ? e.message : String(e)).toLowerCase();
+        const isTransient = msg.includes('timed out') || msg.includes('took too long') || msg.includes('timeout') || msg.includes('econnreset') || msg.includes('network');
+        if (!isTransient || attempt === MAX_ATTEMPTS) throw e;
+        await new Promise((r) => setTimeout(r, attempt * 1_500));
+      }
+    }
+    throw lastErr;
   }
 }
