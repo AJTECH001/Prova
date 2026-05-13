@@ -20,6 +20,7 @@ export interface IEscrowRepository {
   findByOnChainId(onChainId: string): Promise<Escrow | null>;
   findSettledByUserId(userId: string): Promise<Escrow[]>;
   findPayableByCounterparty(walletAddress: string): Promise<Escrow[]>;
+  findPaidByCounterparty(walletAddress: string): Promise<Escrow[]>;
   save(escrow: Escrow): Promise<void>;
   update(escrow: Escrow): Promise<void>;
 }

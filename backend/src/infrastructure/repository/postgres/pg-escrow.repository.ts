@@ -87,6 +87,17 @@ export class PgEscrowRepository implements IEscrowRepository {
     return rows.map((r) => this.toDomain(r));
   }
 
+  async findPaidByCounterparty(walletAddress: string): Promise<Escrow[]> {
+    const rows = await this.db.query.escrows.findMany({
+      where: and(
+        eq(escrows.counterparty, walletAddress.toLowerCase()),
+        inArray(escrows.status, [EscrowStatus.FUNDED, EscrowStatus.SETTLED, EscrowStatus.REDEEMED]),
+      ),
+      orderBy: [desc(escrows.createdAt)],
+    });
+    return rows.map((r) => this.toDomain(r));
+  }
+
   async findSettledByUserId(userId: string): Promise<Escrow[]> {
     const rows = await this.db.query.escrows.findMany({
       where: and(
