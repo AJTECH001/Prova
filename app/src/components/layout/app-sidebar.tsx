@@ -73,7 +73,7 @@ function CloseIcon() {
 }
 
 // ── Nav config per role ─────────────────────────────────────────────────────
-type NavLink = { name: string; href: '/dashboard' | '/transactions' | '/withdrawals' | '/pool' | '/profile'; icon: () => React.ReactElement };
+type NavLink = { name: string; href: string; icon: () => React.ReactElement };
 type NavSection = { label: string; links: NavLink[] };
 
 function getNavSections(role: UserRole | null): NavSection[] {
@@ -97,10 +97,15 @@ function getNavSections(role: UserRole | null): NavSection[] {
     links: [{ name: 'Profile', href: '/profile', icon: UserIcon }],
   };
 
+  const adminSection: NavSection = {
+    label: 'Command Center',
+    links: [{ name: 'Admin Dashboard', href: '/admin', icon: PoolIcon }], // using PoolIcon or we could create a new one
+  };
+
   if (role === 'SELLER') return [overview, payments, account];
   if (role === 'BUYER')  return [overview, account];
   if (role === 'LP')     return [overview, earn, account];
-  if (role === 'ADMIN')  return [overview, payments, earn, account];
+  if (role === 'ADMIN')  return [overview, payments, earn, adminSection, account];
   return [account];
 }
 
@@ -146,7 +151,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
         {navSections.map((section) => (
           <div key={section.label}>
-            <p className="mb-1.5 px-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+            <p className="mb-1.5 px-3 text-xs font-semibold text-[var(--text-primary)]">
               {section.label}
             </p>
             <ul className="space-y-0.5">
@@ -158,10 +163,10 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                       href={link.href}
                       onClick={onClose}
                       className={[
-                        'flex items-center gap-3 rounded-[var(--radius-button)] px-3 py-2 text-sm font-medium transition-all',
+                        'flex items-center gap-3 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors',
                         active
-                          ? 'bg-[var(--accent-blue-bg)] text-[var(--accent-blue)]'
-                          : 'text-[var(--text-secondary)] hover:bg-[hsl(var(--bg-hover))] hover:text-[var(--text-primary)]',
+                          ? 'text-[var(--accent-blue)]'
+                          : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[hsl(var(--bg-hover))]',
                       ].join(' ')}
                     >
                       <span className={active ? 'text-[var(--accent-blue)]' : 'text-[var(--text-muted)]'}>

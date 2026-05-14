@@ -1,4 +1,4 @@
-import { and, eq, lt, desc, inArray } from 'drizzle-orm';
+import { and, eq, lt, desc, inArray, sql } from 'drizzle-orm';
 import type {
   IEscrowRepository,
   FindByUserIdOptions,
@@ -107,6 +107,50 @@ export class PgEscrowRepository implements IEscrowRepository {
       orderBy: [desc(escrows.createdAt)],
     });
     return rows.map((r) => this.toDomain(r));
+  }
+
+  async findAll(options?: FindByUserIdOptions): Promise<PaginatedResult<Escrow>> {
+    const limit = options?.limit ?? 50;
+    const conditions = [];
+
+    if (options?.status) {
+      conditions.push(eq(escrows.status, options.status));
+    }
+
+    if (options?.cursor) {
+      const cursorRow = await this.db.query.escrows.findFirst({
+        where: eq(escrows.publicId, options.cursor),
+        columns: { createdAt: true },
+      });
+      if (cursorRow) {
+        conditions.push(lt(escrows.createdAt, cursorRow.createdAt));
+      }
+    }
+
+    const rows = await this.db.query.escrows.findMany({
+      where: conditions.length > 0 ? and(...conditions) : undefined,
+      orderBy: [desc(escrows.createdAt)],
+      limit: limit + 1,
+    });
+
+    const hasMore = rows.length > limit;
+    const page = hasMore ? rows.slice(0, limit) : rows;
+    const items = page.map((r) => this.toDomain(r));
+    const nextCursor = hasMore ? page[page.length - 1]!.publicId : undefined;
+
+    return { items, cursor: nextCursor };
+  }
+
+  async getGlobalStats(): Promise<{ totalVolume: number; activeEscrows: number; settledEscrows: number }> {
+    const volumeResult = await this.db.execute(sql`SELECT SUM(CAST(amount AS numeric)) as total FROM escrows WHERE status IN ('FUNDED', 'SETTLED', 'REDEEMED')`);
+    const activeResult = await this.db.execute(sql`SELECT COUNT(*) as count FROM escrows WHERE status IN ('PENDING', 'ON_CHAIN', 'PROCESSING')`);
+    const settledResult = await this.db.execute(sql`SELECT COUNT(*) as count FROM escrows WHERE status IN ('FUNDED', 'SETTLED', 'REDEEMED')`);
+
+    return {
+      totalVolume: Number(volumeResult.rows[0]?.total || 0),
+      activeEscrows: Number(activeResult.rows[0]?.count || 0),
+      settledEscrows: Number(settledResult.rows[0]?.count || 0),
+    };
   }
 
   async save(escrow: Escrow): Promise<void> {

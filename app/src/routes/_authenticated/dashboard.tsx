@@ -25,6 +25,7 @@ import { ADDRESSES, ConfidentialEscrowABI } from '@/lib/contracts';
 import { TransactionService, type TransactionResponse } from '@/services/TransactionService';
 import { EscrowService } from '@/services/EscrowService';
 import { publicClient } from '@/lib/public-client';
+import { MetricBlock } from '@/components/features/metric-block';
 
 const ARBISCAN = 'https://sepolia.arbiscan.io/address';
 
@@ -90,56 +91,7 @@ function AlertBanner({
   );
 }
 
-// ── Stat card ─────────────────────────────────────────────────────────────────
-interface StatCardProps {
-  label: string;
-  value: string | number;
-  sub?: string;
-  icon: ReactNode;
-  accent?: 'blue' | 'green' | 'amber' | 'purple';
-  loading?: boolean;
-  href?: string;
-}
 
-function StatCard({ label, value, sub, icon, accent = 'blue', loading, href }: StatCardProps) {
-  const iconBg = {
-    blue:   'bg-[var(--accent-blue-bg)] text-[var(--accent-blue)]',
-    green:  'bg-[hsl(var(--tip-bg))] text-[var(--status-success)]',
-    amber:  'bg-[hsl(var(--warning-bg))] text-[var(--status-warning)]',
-    purple: 'bg-[hsl(var(--brand-purple-light))] text-[hsl(var(--brand-purple))]',
-  }[accent];
-
-  const valueColor = {
-    blue:   'text-[var(--text-primary)]',
-    green:  'text-[var(--status-success)]',
-    amber:  'text-[var(--status-warning)]',
-    purple: 'text-[hsl(var(--brand-purple))]',
-  }[accent];
-
-  const card = (
-    <div className={`group flex flex-col gap-3 rounded-xl border border-[var(--border-dark)] bg-white p-4 shadow-[var(--shadow-sm)] ${href ? 'cursor-pointer transition-shadow hover:shadow-[var(--shadow-md)]' : ''}`}>
-      <div className="flex items-start justify-between gap-2">
-        <p className="min-w-0 flex-1 text-sm font-medium text-[var(--text-muted)] leading-snug">{label}</p>
-        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${iconBg}`}>
-          {icon}
-        </div>
-      </div>
-      {loading ? (
-        <div className="flex flex-col gap-1.5">
-          <Skeleton className="h-6 w-24" />
-          {sub && <Skeleton className="h-3.5 w-16" />}
-        </div>
-      ) : (
-        <div>
-          <p className={`text-xl font-bold tracking-tight ${valueColor}`}>{value}</p>
-          {sub && <p className="mt-0.5 text-xs text-[var(--text-muted)]">{sub}</p>}
-        </div>
-      )}
-    </div>
-  );
-
-  return href ? <Link href={href}>{card}</Link> : card;
-}
 
 // ── Section card wrapper ──────────────────────────────────────────────────────
 function SectionCard({
@@ -156,15 +108,15 @@ function SectionCard({
   noPadding?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-[var(--border-dark)] bg-white shadow-[var(--shadow-sm)]">
-      <div className="flex items-center justify-between border-b border-[var(--border-dark)] px-5 py-4">
+    <div className="flex flex-col">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-[var(--border-dark)] pb-4 mb-4">
         <div>
-          <h2 className="text-sm font-semibold text-[var(--text-primary)]">{title}</h2>
-          {subtitle && <p className="mt-0.5 text-xs text-[var(--text-muted)]">{subtitle}</p>}
+          <h2 className="text-base font-semibold text-[var(--text-primary)]">{title}</h2>
+          {subtitle && <p className="mt-1 text-sm text-[var(--text-muted)]">{subtitle}</p>}
         </div>
-        {action}
+        {action && <div className="shrink-0">{action}</div>}
       </div>
-      <div className={noPadding ? '' : 'px-5 py-4'}>{children}</div>
+      <div className={noPadding ? '' : ''}>{children}</div>
     </div>
   );
 }
@@ -225,7 +177,7 @@ function StateRow({ label, value, ok }: { label: string; value: string; ok?: boo
 }
 
 // ── Developer tools (collapsible) ─────────────────────────────────────────────
-function DevToolsDrawer() {
+export function DevToolsDrawer() {
   const [open, setOpen] = useState(false);
   const { state, loading, error, fetchAll } = useContractRead();
 
@@ -382,7 +334,7 @@ function AdminForm({
 }
 
 // ── Admin panel ───────────────────────────────────────────────────────────────
-function AdminPanel() {
+export function AdminPanel() {
   const admin = useAdminFlow();
   const [open, setOpen] = useState(false);
   const [escrowContractAddr, setEscrowContractAddr] = useState('');
@@ -529,7 +481,7 @@ function PayInvoiceRow({ invoice, onPaid }: { invoice: TransactionResponse; onPa
 
   return (
     <div className="border-b border-[var(--border-dark)] py-4 last:border-0">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
             <p className="text-sm font-semibold text-[var(--text-primary)]">{refLabel}</p>
@@ -636,7 +588,7 @@ function PayableInvoicesPanel() {
 // ── LP stakes list ────────────────────────────────────────────────────────────
 function LpStakeRow({ stake }: { stake: { public_id: string; amount: number; created_at: string; on_chain_stake_id?: string; pool_address: string } }) {
   return (
-    <div className="flex items-center justify-between gap-3 border-b border-[var(--border-dark)] py-3.5 last:border-0">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border-dark)] py-3.5 last:border-0">
       <div className="flex items-center gap-3">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-blue-bg)]">
           <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" className="text-[var(--accent-blue)]">
@@ -763,35 +715,102 @@ export function DashboardPage() {
     <div className="flex flex-col gap-5">
 
       {/* ── Page header ── */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">{greeting}</h1>
-            {role && (
-              <span className="rounded-full bg-[var(--accent-blue-bg)] px-2.5 py-0.5 text-xs font-semibold text-[var(--accent-blue)]">
-                {ROLE_LABEL[role] ?? role}
-              </span>
+      <div className="mb-4">
+        <h1 className="text-3xl font-bold tracking-tight text-[var(--text-primary)]">
+          {greeting}{role === 'SELLER' ? ', merchant' : role === 'BUYER' ? ', customer' : ''}
+        </h1>
+        {shortWallet && <p className="mt-1.5 font-mono text-sm text-[var(--text-muted)]">{shortWallet}</p>}
+      </div>
+
+      {/* ── Hero Banner ── */}
+      <div className="relative overflow-hidden rounded-2xl bg-[#f7f9fc] px-6 py-8 sm:px-8 sm:py-10">
+        <div className="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-[var(--accent-blue-bg)] to-transparent opacity-50 pointer-events-none" />
+        
+        <div className="relative z-10">
+          <h2 className="text-2xl font-bold text-[var(--text-primary)]">Get started with Prova</h2>
+          <p className="mt-2 max-w-2xl text-sm text-[var(--text-muted)]">
+            Manage your digital transactions, deposit liquidity, and track your balances in one place.
+          </p>
+
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {(role === 'SELLER' || role === 'ADMIN') && (
+              <div className="flex flex-col items-start gap-4 rounded-xl border border-[var(--border-dark)] bg-white p-5 shadow-sm">
+                <span className="rounded-full bg-[var(--accent-blue-bg)] px-2.5 py-0.5 text-xs font-semibold text-[var(--accent-blue)]">
+                  Payments
+                </span>
+                <div>
+                  <h3 className="font-semibold text-[var(--text-primary)]">Create Transaction</h3>
+                  <p className="mt-1 text-sm text-[var(--text-muted)]">Set up a new escrow for a customer.</p>
+                </div>
+                <Button size="sm" asChild className="mt-2 text-xs">
+                  <Link href="/transactions">Start →</Link>
+                </Button>
+              </div>
+            )}
+            
+            {(role === 'LP' || role === 'ADMIN') && (
+              <div className="flex flex-col items-start gap-4 rounded-xl border border-[var(--border-dark)] bg-white p-5 shadow-sm">
+                <span className="rounded-full bg-[hsl(var(--brand-purple-light))] px-2.5 py-0.5 text-xs font-semibold text-[hsl(var(--brand-purple))]">
+                  Yield
+                </span>
+                <div>
+                  <h3 className="font-semibold text-[var(--text-primary)]">Provide Liquidity</h3>
+                  <p className="mt-1 text-sm text-[var(--text-muted)]">Stake USDC to underwrite policies.</p>
+                </div>
+                <Button size="sm" variant="secondary" asChild className="mt-2 text-xs">
+                  <Link href="/pool">Manage Pool →</Link>
+                </Button>
+              </div>
+            )}
+
+            {(role === 'SELLER' || role === 'BUYER' || role === 'LP' || role === 'ADMIN') && (
+              <div className="flex flex-col items-start gap-4 rounded-xl border border-[var(--border-dark)] bg-white p-5 shadow-sm">
+                <span className="rounded-full bg-[hsl(var(--tip-bg))] px-2.5 py-0.5 text-xs font-semibold text-[var(--status-success)]">
+                  Funds
+                </span>
+                <div>
+                  <h3 className="font-semibold text-[var(--text-primary)]">Withdraw Funds</h3>
+                  <p className="mt-1 text-sm text-[var(--text-muted)]">Move USDC back to your native chain.</p>
+                </div>
+                <Button size="sm" variant="secondary" asChild className="mt-2 text-xs">
+                  <Link href="/withdrawals">Withdraw →</Link>
+                </Button>
+              </div>
             )}
           </div>
-          {shortWallet && (
-            <p className="mt-1 font-mono text-xs text-[var(--text-muted)]">{shortWallet}</p>
-          )}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {(role === 'SELLER' || role === 'ADMIN') && (
-            <>
-              <Button variant="secondary" size="sm" asChild>
-                <Link href="/withdrawals">New Withdrawal</Link>
-              </Button>
-              <Button size="sm" asChild>
-                <Link href="/transactions">New Transaction</Link>
-              </Button>
-            </>
+      </div>
+
+      {/* ── Today / Overview Section ── */}
+      <div className="mt-6">
+        <h2 className="mb-4 text-xl font-bold text-[var(--text-primary)]">Today</h2>
+        <div className="flex flex-col divide-y sm:flex-row sm:divide-y-0 sm:divide-x divide-[var(--border-dark)] border-y border-[var(--border-dark)]">
+          <MetricBlock 
+            label="Total Balance" 
+            value={balance !== null ? `${balance.formatted_balance} ${balance.currency}` : '—'} 
+            sub="USDC on Arbitrum Sepolia" 
+            loading={balanceLoading} 
+          />
+          {(role === 'SELLER' || role === 'ADMIN' || role === 'LP') && (
+            <MetricBlock 
+              label="cUSDC Balance" 
+              value={cUsdcBalance !== null ? `${cUsdcBalance.formatted} cUSDC` : '—'} 
+              sub="Confidential USDC" 
+              loading={cUsdcLoading} 
+            />
           )}
-          {role === 'LP' && (
-            <Button size="sm" asChild>
-              <Link href="/pool">Manage Pool</Link>
-            </Button>
+          {role === 'LP' ? (
+            <MetricBlock 
+              label="Active Stakes" 
+              value={`$${totalStaked.toFixed(2)}`} 
+              loading={false} 
+            />
+          ) : (
+            <MetricBlock 
+              label="Active Escrows" 
+              value={activeEscrows} 
+              loading={transactionLoading} 
+            />
           )}
         </div>
       </div>
@@ -810,141 +829,7 @@ export function DashboardPage() {
         />
       )}
 
-      {/* ── LP stats ── */}
-      {role === 'LP' && (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatCard
-            label="Total Staked"
-            value={poolStakes.length > 0 ? `${totalStaked.toFixed(2)} USDC` : '—'}
-            sub="Your active positions"
-            accent="blue"
-            href="/pool"
-            icon={
-              <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" />
-                <path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd" />
-              </svg>
-            }
-          />
-          <StatCard
-            label="Active Stakes"
-            value={poolStakes.length}
-            sub="Open positions"
-            accent="green"
-            icon={
-              <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-            }
-          />
-          <StatCard
-            label="Pool Stakers"
-            value={poolStatus ? poolStatus.active_stakers : '—'}
-            sub="Across all LPs"
-            accent="purple"
-            icon={
-              <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
-              </svg>
-            }
-          />
-          <StatCard
-            label="cUSDC Balance"
-            value={cUsdcBalance ? `${cUsdcBalance.formatted} cUSDC` : '—'}
-            sub="Confidential on-chain"
-            loading={cUsdcLoading && !cUsdcBalance}
-            accent="blue"
-            icon={
-              <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-              </svg>
-            }
-          />
-        </div>
-      )}
 
-      {/* ── Seller / admin / buyer stats ── */}
-      {role !== 'LP' && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <StatCard
-            label="Available Balance"
-            value={balance ? `${balance.formatted_balance} ${balance.currency}` : '—'}
-            sub="Live wallet balance"
-            loading={balanceLoading && !balance}
-            accent="blue"
-            icon={
-              <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" />
-                <path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd" />
-              </svg>
-            }
-          />
-          <StatCard
-            label="Active Escrows"
-            value={transactionLoading && transactions.length === 0 ? '—' : activeEscrows}
-            sub="Pending settlement"
-            loading={transactionLoading && transactions.length === 0}
-            accent="amber"
-            href="/transactions"
-            icon={
-              <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-              </svg>
-            }
-          />
-          <StatCard
-            label="Settled Escrows"
-            value={transactionLoading && transactions.length === 0 ? '—' : settledEscrows}
-            sub="Funded or redeemed"
-            loading={transactionLoading && transactions.length === 0}
-            accent="green"
-            href="/transactions"
-            icon={
-              <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-            }
-          />
-          <StatCard
-            label="Active Withdrawals"
-            value={withdrawalLoading && withdrawals.length === 0 ? '—' : activeWithdrawals}
-            sub="In bridge / redeem"
-            loading={withdrawalLoading && withdrawals.length === 0}
-            accent="purple"
-            href="/withdrawals"
-            icon={
-              <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
-              </svg>
-            }
-          />
-          <StatCard
-            label="Claims Ready"
-            value={transactionLoading && transactions.length === 0 ? '—' : claimsReady}
-            sub="Waiting period passed"
-            loading={transactionLoading && transactions.length === 0}
-            accent={claimsReady > 0 ? 'amber' : 'blue'}
-            href="/transactions"
-            icon={
-              <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-            }
-          />
-          <StatCard
-            label="cUSDC Balance"
-            value={cUsdcBalance ? `${cUsdcBalance.formatted} cUSDC` : '—'}
-            sub="Confidential on-chain"
-            loading={cUsdcLoading && !cUsdcBalance}
-            accent="purple"
-            icon={
-              <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-              </svg>
-            }
-          />
-        </div>
-      )}
 
       {/* ── Buyer: payable invoices (highest priority) ── */}
       {role === 'BUYER' && <PayableInvoicesPanel />}
@@ -1051,12 +936,6 @@ export function DashboardPage() {
           )}
         </SectionCard>
       )}
-
-      {/* ── Developer tools (collapsed by default) — seller / admin ── */}
-      {(role === 'SELLER' || role === 'ADMIN') && <DevToolsDrawer />}
-
-      {/* ── Admin panel (collapsed by default) ── */}
-      {role === 'ADMIN' && <AdminPanel />}
     </div>
   );
 }

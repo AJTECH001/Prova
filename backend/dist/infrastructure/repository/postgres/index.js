@@ -398,7 +398,7 @@ var PgNonceRepository = class {
 };
 
 // src/infrastructure/repository/postgres/pg-escrow.repository.ts
-import { and as and2, eq as eq4, lt, desc, inArray } from "drizzle-orm";
+import { and as and2, eq as eq4, lt, desc, inArray, sql } from "drizzle-orm";
 
 // src/domain/escrow/model/escrow.ts
 var Escrow = class {
@@ -555,6 +555,16 @@ var PgEscrowRepository = class {
     });
     return rows.map((r) => this.toDomain(r));
   }
+  async findPaidByCounterparty(walletAddress) {
+    const rows = await this.db.query.escrows.findMany({
+      where: and2(
+        eq4(escrows.counterparty, walletAddress.toLowerCase()),
+        inArray(escrows.status, ["FUNDED" /* FUNDED */, "SETTLED" /* SETTLED */, "REDEEMED" /* REDEEMED */])
+      ),
+      orderBy: [desc(escrows.createdAt)]
+    });
+    return rows.map((r) => this.toDomain(r));
+  }
   async findSettledByUserId(userId) {
     const rows = await this.db.query.escrows.findMany({
       where: and2(
@@ -564,6 +574,42 @@ var PgEscrowRepository = class {
       orderBy: [desc(escrows.createdAt)]
     });
     return rows.map((r) => this.toDomain(r));
+  }
+  async findAll(options) {
+    const limit = options?.limit ?? 50;
+    const conditions = [];
+    if (options?.status) {
+      conditions.push(eq4(escrows.status, options.status));
+    }
+    if (options?.cursor) {
+      const cursorRow = await this.db.query.escrows.findFirst({
+        where: eq4(escrows.publicId, options.cursor),
+        columns: { createdAt: true }
+      });
+      if (cursorRow) {
+        conditions.push(lt(escrows.createdAt, cursorRow.createdAt));
+      }
+    }
+    const rows = await this.db.query.escrows.findMany({
+      where: conditions.length > 0 ? and2(...conditions) : void 0,
+      orderBy: [desc(escrows.createdAt)],
+      limit: limit + 1
+    });
+    const hasMore = rows.length > limit;
+    const page = hasMore ? rows.slice(0, limit) : rows;
+    const items = page.map((r) => this.toDomain(r));
+    const nextCursor = hasMore ? page[page.length - 1].publicId : void 0;
+    return { items, cursor: nextCursor };
+  }
+  async getGlobalStats() {
+    const volumeResult = await this.db.execute(sql`SELECT SUM(CAST(amount AS numeric)) as total FROM escrows WHERE status IN ('FUNDED', 'SETTLED', 'REDEEMED')`);
+    const activeResult = await this.db.execute(sql`SELECT COUNT(*) as count FROM escrows WHERE status IN ('PENDING', 'ON_CHAIN', 'PROCESSING')`);
+    const settledResult = await this.db.execute(sql`SELECT COUNT(*) as count FROM escrows WHERE status IN ('FUNDED', 'SETTLED', 'REDEEMED')`);
+    return {
+      totalVolume: Number(volumeResult.rows[0]?.total || 0),
+      activeEscrows: Number(activeResult.rows[0]?.count || 0),
+      settledEscrows: Number(settledResult.rows[0]?.count || 0)
+    };
   }
   async save(escrow) {
     await this.db.insert(escrows).values(this.toRow(escrow));
@@ -584,7 +630,7 @@ var PgEscrowRepository = class {
       publicId: escrow.publicId,
       userId: escrow.userId,
       type: escrow.type,
-      counterparty: escrow.counterparty,
+      counterparty: escrow.counterparty?.toLowerCase(),
       deadline: escrow.deadline,
       externalReference: escrow.externalReference,
       amount: String(escrow.amount),

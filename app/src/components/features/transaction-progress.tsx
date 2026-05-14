@@ -10,8 +10,9 @@ interface TransactionProgressProps {
 
 export function TransactionProgress({ steps, currentStep }: TransactionProgressProps) {
   return (
-    <div className="flex items-start gap-0">
-      {steps.map((step, index) => (
+    <div className="w-full overflow-x-auto pb-4 scrollbar-hide">
+      <div className="flex items-start gap-0 min-w-max px-2">
+        {steps.map((step, index) => (
         <div key={index} className="contents">
           <div className="flex flex-col items-center">
             <div
@@ -60,6 +61,7 @@ export function TransactionProgress({ steps, currentStep }: TransactionProgressP
           )}
         </div>
       ))}
+      </div>
     </div>
   );
 }

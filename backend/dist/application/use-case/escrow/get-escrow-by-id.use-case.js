@@ -59,9 +59,9 @@ var GetEscrowByIdUseCase = class {
     this.escrowRepository = escrowRepository;
   }
   escrowRepository;
-  async execute(publicId) {
+  async execute(publicId, userId) {
     const escrow = await this.escrowRepository.findByPublicId(publicId);
-    if (!escrow) {
+    if (!escrow || escrow.userId !== userId) {
       throw ApplicationHttpError.notFound("Escrow not found");
     }
     return toEscrowResponse(escrow);

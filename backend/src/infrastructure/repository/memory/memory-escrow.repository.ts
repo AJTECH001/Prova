@@ -62,6 +62,15 @@ export class MemoryEscrowRepository implements IEscrowRepository {
     );
   }
 
+  async findPaidByCounterparty(walletAddress: string): Promise<Escrow[]> {
+    const settledStatuses = [EscrowStatus.FUNDED, EscrowStatus.SETTLED, EscrowStatus.REDEEMED];
+    return [...this.store.values()].filter(
+      (e) =>
+        e.counterparty?.toLowerCase() === walletAddress.toLowerCase() &&
+        settledStatuses.includes(e.status),
+    );
+  }
+
   async findSettledByUserId(userId: string): Promise<Escrow[]> {
     const terminalStatuses = [EscrowStatus.SETTLED, EscrowStatus.EXPIRED, EscrowStatus.FAILED];
     return [...this.store.values()].filter(
@@ -75,5 +84,43 @@ export class MemoryEscrowRepository implements IEscrowRepository {
 
   async update(escrow: Escrow): Promise<void> {
     this.store.set(escrow.id, escrow);
+  }
+
+  async findAll(options?: FindByUserIdOptions): Promise<PaginatedResult<Escrow>> {
+    let items = [...this.store.values()]
+      .filter((i) => (options?.status ? i.status === options.status : true))
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+    if (options?.cursor) {
+      const cursorIndex = items.findIndex((i) => i.publicId === options.cursor);
+      if (cursorIndex !== -1) {
+        items = items.slice(cursorIndex + 1);
+      }
+    }
+
+    const limit = options?.limit ?? 50;
+    const page = items.slice(0, limit);
+    const nextCursor = page.length === limit ? page[page.length - 1]!.publicId : undefined;
+
+    return { items: page, cursor: nextCursor };
+  }
+
+  async getGlobalStats(): Promise<{ totalVolume: number; activeEscrows: number; settledEscrows: number }> {
+    let totalVolume = 0;
+    let activeEscrows = 0;
+    let settledEscrows = 0;
+
+    const activeStatuses = [EscrowStatus.PENDING, EscrowStatus.ON_CHAIN, EscrowStatus.PROCESSING];
+    const settledStatuses = [EscrowStatus.FUNDED, EscrowStatus.SETTLED, EscrowStatus.REDEEMED];
+
+    for (const escrow of this.store.values()) {
+      if (activeStatuses.includes(escrow.status)) activeEscrows++;
+      if (settledStatuses.includes(escrow.status)) {
+        settledEscrows++;
+        totalVolume += Number(escrow.amount);
+      }
+    }
+
+    return { totalVolume, activeEscrows, settledEscrows };
   }
 }

@@ -237,7 +237,18 @@ function withAuth(handler) {
       const { payload } = await jwtVerify(token, secret, {
         issuer: JWT_ISSUER
       });
-      req.authPayload = payload;
+      req.authPayload = {
+        userId: payload.sub,
+        walletAddress: payload.walletAddress,
+        walletProvider: payload.walletProvider,
+        email: payload.email,
+        role: payload.role,
+        exp: payload.exp,
+        iat: payload.iat,
+        iss: payload.iss,
+        authSource: payload.authSource ?? "wallet",
+        clientId: payload.clientId
+      };
     } catch {
       sendResponse(res, Response.unauthorized("Invalid token", "Token verification failed"));
       return;

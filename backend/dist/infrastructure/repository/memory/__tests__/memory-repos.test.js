@@ -18680,6 +18680,12 @@ var MemoryEscrowRepository = class {
       (e) => e.counterparty?.toLowerCase() === walletAddress.toLowerCase() && e.status === "ON_CHAIN" /* ON_CHAIN */
     );
   }
+  async findPaidByCounterparty(walletAddress) {
+    const settledStatuses = ["FUNDED" /* FUNDED */, "SETTLED" /* SETTLED */, "REDEEMED" /* REDEEMED */];
+    return [...this.store.values()].filter(
+      (e) => e.counterparty?.toLowerCase() === walletAddress.toLowerCase() && settledStatuses.includes(e.status)
+    );
+  }
   async findSettledByUserId(userId) {
     const terminalStatuses = ["SETTLED" /* SETTLED */, "EXPIRED" /* EXPIRED */, "FAILED" /* FAILED */];
     return [...this.store.values()].filter(
@@ -18691,6 +18697,34 @@ var MemoryEscrowRepository = class {
   }
   async update(escrow) {
     this.store.set(escrow.id, escrow);
+  }
+  async findAll(options) {
+    let items = [...this.store.values()].filter((i) => options?.status ? i.status === options.status : true).sort((a3, b2) => b2.createdAt.getTime() - a3.createdAt.getTime());
+    if (options?.cursor) {
+      const cursorIndex = items.findIndex((i) => i.publicId === options.cursor);
+      if (cursorIndex !== -1) {
+        items = items.slice(cursorIndex + 1);
+      }
+    }
+    const limit = options?.limit ?? 50;
+    const page = items.slice(0, limit);
+    const nextCursor = page.length === limit ? page[page.length - 1].publicId : void 0;
+    return { items: page, cursor: nextCursor };
+  }
+  async getGlobalStats() {
+    let totalVolume = 0;
+    let activeEscrows = 0;
+    let settledEscrows = 0;
+    const activeStatuses = ["PENDING" /* PENDING */, "ON_CHAIN" /* ON_CHAIN */, "PROCESSING" /* PROCESSING */];
+    const settledStatuses = ["FUNDED" /* FUNDED */, "SETTLED" /* SETTLED */, "REDEEMED" /* REDEEMED */];
+    for (const escrow of this.store.values()) {
+      if (activeStatuses.includes(escrow.status)) activeEscrows++;
+      if (settledStatuses.includes(escrow.status)) {
+        settledEscrows++;
+        totalVolume += Number(escrow.amount);
+      }
+    }
+    return { totalVolume, activeEscrows, settledEscrows };
   }
 };
 

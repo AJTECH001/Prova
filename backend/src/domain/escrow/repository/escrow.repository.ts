@@ -23,4 +23,6 @@ export interface IEscrowRepository {
   findPaidByCounterparty(walletAddress: string): Promise<Escrow[]>;
   save(escrow: Escrow): Promise<void>;
   update(escrow: Escrow): Promise<void>;
+  findAll(options?: FindByUserIdOptions): Promise<PaginatedResult<Escrow>>;
+  getGlobalStats(): Promise<{ totalVolume: number; activeEscrows: number; settledEscrows: number }>;
 }
