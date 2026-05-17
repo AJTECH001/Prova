@@ -65,20 +65,19 @@ export class BuyCoverageUseCase {
     const debtorId = `0x${buyerAddr.padStart(64, '0')}` as `0x${string}`;
 
     // One-time setup: register the policy in ConfidentialPolicyRegistry and whitelist
-    // it in the InsurancePool. Non-fatal — if the admin key isn't the pool's underwriter,
-    // the contracts may already be configured and purchaseCoverage will still succeed.
+    // it in the InsurancePool. Required before purchaseCoverage will be accepted.
     try {
       await this.policyAdminService.ensurePolicyReady(poolAddress, policyAddress);
     } catch (e) {
-      logger.warn({ err: e instanceof Error ? e.message : String(e) }, 'ensurePolicyReady failed (non-fatal) — continuing with coverage params');
+      logger.warn({ err: e instanceof Error ? e.message : String(e) }, 'ensurePolicyReady failed — continuing with coverage params');
     }
 
     // Per-buyer setup: set concentration cap so _registerExposure doesn't revert
-    // with ConcentrationCapNotSet. Non-fatal — cap may already be set.
+    // with ConcentrationCapNotSet.
     try {
       await this.policyAdminService.ensureDebtorRegistered(policyAddress, debtorId);
     } catch (e) {
-      logger.warn({ err: e instanceof Error ? e.message : String(e) }, 'ensureDebtorRegistered failed (non-fatal) — continuing with coverage params');
+      logger.warn({ err: e instanceof Error ? e.message : String(e) }, 'ensureDebtorRegistered failed — continuing with coverage params');
     }
 
     const invoiceAmountSmallest = BigInt(Math.round(escrow.amount * 10 ** USDC_DECIMALS));

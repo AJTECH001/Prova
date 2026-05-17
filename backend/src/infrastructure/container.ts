@@ -94,7 +94,6 @@ const jwtService = new JwtService();
 const siweVerifier = new SiweVerifier();
 const fheService = new FheService();
 const policyAdminService = new PolicyAdminService();
-
 function getComputeCreditScoreUseCase(): ComputeCreditScoreUseCase {
   return new ComputeCreditScoreUseCase(getRepos().escrowRepo, fheService);
 }
