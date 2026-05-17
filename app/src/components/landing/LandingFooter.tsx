@@ -33,7 +33,7 @@ const SOCIAL = [
     href: '#',
     icon: (
       <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 23.2 24 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
       </svg>
     ),
   },
@@ -44,51 +44,18 @@ export function LandingFooter() {
     <footer className="border-t border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-surface-alt))] py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 
-        <div className="mb-16 grid grid-cols-1 gap-12 md:grid-cols-4">
-          <div className="space-y-5 md:col-span-1">
+        <div className="mb-14 grid grid-cols-1 gap-10 md:grid-cols-[2fr_1fr_1fr_1fr]">
+
+          {/* Brand col */}
+          <div className="space-y-5">
             <div className="flex items-center gap-2">
               <img src="/prova_logo.png" alt="Prova" className="h-6 w-6 rounded-md object-contain" />
               <span className="text-xl font-black tracking-tighter text-[hsl(var(--text-primary))]">Prova</span>
             </div>
-            <p className="text-sm leading-relaxed text-[hsl(var(--text-muted))]">
-              On-chain trade credit insurance for SME exporters. FHE-encrypted
-              risk underwriting, ConfidentialEscrow settlement, and USDC liquidity
-              pools — built on Arbitrum via the ReineiraOS protocol.
+            <p className="max-w-xs text-sm leading-relaxed text-[hsl(var(--text-muted))]">
+              On-chain trade credit insurance. FHE-encrypted underwriting, escrow settlement, and USDC liquidity pools — built on Arbitrum.
             </p>
-          </div>
-
-          <div>
-            <h4 className="mb-6 text-xs font-bold uppercase tracking-widest text-[hsl(var(--text-primary))]">Protocol</h4>
-            <ul className="space-y-4 text-sm text-[hsl(var(--text-secondary))]">
-              <li><a href="#" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Documentation</a></li>
-              <li><a href="#" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Premium Pools</a></li>
-              <li><a href="#" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Governance</a></li>
-              <li><a href="#" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Security Audit</a></li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="mb-6 text-xs font-bold uppercase tracking-widest text-[hsl(var(--text-primary))]">Developers</h4>
-            <ul className="space-y-4 text-sm text-[hsl(var(--text-secondary))]">
-              <li><a href="#" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Prova SDK</a></li>
-              <li><a href="#" className="transition-colors hover:text-[hsl(var(--brand-primary))]">FHE Plugins</a></li>
-              <li><a href="#" className="transition-colors hover:text-[hsl(var(--brand-primary))]">API Reference</a></li>
-              <li><a href="#" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Subgraphs</a></li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="mb-6 text-xs font-bold uppercase tracking-widest text-[hsl(var(--text-primary))]">Company</h4>
-            <ul className="space-y-4 text-sm text-[hsl(var(--text-secondary))]">
-              <li><Link href="/blog" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Blog</Link></li>
-              <li><Link href="/pricing" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Pricing</Link></li>
-              <li><Link href="/contact" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Contact</Link></li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="mb-6 text-xs font-bold uppercase tracking-widest text-[hsl(var(--text-primary))]">Stay Connected</h4>
-            <div className="flex gap-3">
+            <div className="flex gap-2.5">
               {SOCIAL.map((s) => (
                 <a
                   key={s.label}
@@ -100,6 +67,35 @@ export function LandingFooter() {
                 </a>
               ))}
             </div>
+          </div>
+
+          <div>
+            <h4 className="mb-5 text-xs font-bold uppercase tracking-widest text-[hsl(var(--text-primary))]">Protocol</h4>
+            <ul className="space-y-3.5 text-sm text-[hsl(var(--text-secondary))]">
+              <li><a href="#" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Documentation</a></li>
+              <li><a href="#" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Premium Pools</a></li>
+              <li><a href="#" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Security Audit</a></li>
+              <li><a href="#" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Governance</a></li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="mb-5 text-xs font-bold uppercase tracking-widest text-[hsl(var(--text-primary))]">Developers</h4>
+            <ul className="space-y-3.5 text-sm text-[hsl(var(--text-secondary))]">
+              <li><a href="#" className="transition-colors hover:text-[hsl(var(--brand-primary))]">API Reference</a></li>
+              <li><a href="#" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Prova SDK</a></li>
+              <li><a href="#" className="transition-colors hover:text-[hsl(var(--brand-primary))]">FHE Plugins</a></li>
+              <li><a href="#" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Subgraphs</a></li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="mb-5 text-xs font-bold uppercase tracking-widest text-[hsl(var(--text-primary))]">Company</h4>
+            <ul className="space-y-3.5 text-sm text-[hsl(var(--text-secondary))]">
+              <li><Link href="/blog" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Blog</Link></li>
+              <li><Link href="/pricing" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Pricing</Link></li>
+              <li><Link href="/contact" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Contact</Link></li>
+            </ul>
           </div>
         </div>
 

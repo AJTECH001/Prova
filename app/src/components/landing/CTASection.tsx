@@ -2,31 +2,30 @@ import Link from 'next/link'
 
 export function CTASection() {
   return (
-    <section className="relative overflow-hidden bg-white px-4 py-28 text-center sm:px-6 lg:px-8">
+    <section className="relative overflow-hidden bg-[hsl(var(--bg-surface-alt))] px-4 py-28 sm:px-6 lg:px-8">
       <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute left-1/2 top-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[hsl(var(--brand-primary)/0.06)] blur-[120px]" />
+        <div className="absolute left-1/2 top-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[hsl(var(--brand-primary)/0.06)] blur-[100px]" />
       </div>
 
-      <div className="mx-auto max-w-2xl">
-        <div className="mb-8 flex items-center justify-center gap-2.5">
-          <div className="h-2 w-2 rounded-full bg-[hsl(var(--brand-primary))]" />
+      <div className="mx-auto max-w-2xl text-center">
+        <div className="mb-6 inline-flex items-center gap-2.5">
+          <div className="h-1.5 w-1.5 rounded-full bg-[hsl(var(--brand-primary))]" />
           <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[hsl(var(--brand-primary))]">
             Ready when you are
           </span>
         </div>
 
         <h2 className="text-[clamp(2rem,5vw,3.5rem)] font-black leading-[1.08] tracking-tight text-[hsl(var(--text-primary))]">
-          Protect your next invoice.<br className="hidden sm:block" /> Get paid either way.
+          Protect your next invoice.
         </h2>
-
-        <p className="mx-auto mt-5 max-w-sm text-base leading-relaxed text-[hsl(var(--text-secondary))]">
-          Sign up in minutes. No broker, no paperwork — just coverage that works the moment you need it.
+        <p className="mx-auto mt-4 max-w-sm text-base leading-relaxed text-[hsl(var(--text-secondary))]">
+          Sign up in minutes. Coverage that works the moment you need it.
         </p>
 
-        <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
+        <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
           <Link
             href="/auth"
-            className="flex w-full items-center justify-center rounded-full bg-[hsl(var(--brand-primary))] px-8 py-3 text-sm font-bold text-[hsl(var(--text-on-brand))] shadow-lg shadow-[hsl(var(--brand-primary)/0.2)] transition-colors hover:bg-[hsl(var(--brand-primary-hover))] sm:w-auto"
+            className="flex w-full items-center justify-center rounded-full bg-[hsl(var(--brand-primary))] px-8 py-3.5 text-sm font-bold text-[hsl(var(--text-on-brand))] shadow-lg shadow-[hsl(var(--brand-primary)/0.2)] transition-colors hover:bg-[hsl(var(--brand-primary-hover))] sm:w-auto"
           >
             Get started
           </Link>
@@ -34,7 +33,7 @@ export function CTASection() {
             href="https://cal.com/jamiu-damilola-alade-zgtrvz/30min"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex w-full items-center justify-center gap-2 rounded-full border border-[hsl(var(--border-strong))] px-8 py-3 text-sm font-semibold text-[hsl(var(--text-muted))] transition-colors hover:border-[hsl(var(--brand-primary)/0.4)] hover:text-[hsl(var(--text-primary))] sm:w-auto"
+            className="flex w-full items-center justify-center gap-2 rounded-full border border-[hsl(var(--border-strong))] px-8 py-3.5 text-sm font-semibold text-[hsl(var(--text-muted))] transition-colors hover:border-[hsl(var(--brand-primary)/0.4)] hover:text-[hsl(var(--text-primary))] sm:w-auto"
           >
             Schedule a call
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">

@@ -42,16 +42,15 @@ export function FAQSection() {
     <section id="faq" className="bg-white py-28">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 
-        <div className="mb-16 text-center space-y-5">
+        <div className="mb-16 text-center space-y-4">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-[hsl(var(--text-muted))]">
             Got questions?
           </p>
-          <h2 className="text-5xl font-black tracking-tight text-[hsl(var(--text-primary))] sm:text-6xl">
+          <h2 className="text-4xl font-black tracking-tight text-[hsl(var(--text-primary))] sm:text-5xl">
             Frequently asked.
           </h2>
-          <p className="mx-auto max-w-xl text-lg text-[hsl(var(--text-secondary))]">
-            Everything you need to know about how Prova works, who it is for,
-            and what happens to your money and your data.
+          <p className="mx-auto max-w-md text-base text-[hsl(var(--text-secondary))]">
+            Everything you need to know about how Prova works and what happens to your money.
           </p>
         </div>
 

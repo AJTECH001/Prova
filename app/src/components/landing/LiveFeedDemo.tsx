@@ -11,12 +11,12 @@ const POOLS = [
     detail: {
       label: 'Coverage',
       headline: 'You sell. We make sure you get paid.',
-      subtitle: 'For any business selling goods or services on credit terms.',
-      body: "Create an on-chain escrow for your invoice. Provide your buyer's wallet address, invoice amount, and due date — Prova evaluates the buyer's payment history and sets your premium automatically. If the buyer pays on time, funds release directly to you. If they don't, your coverage triggers and the insurance pool pays you out. No broker, no paperwork, no manual review.",
+      subtitle: 'For any business selling goods or services on credit.',
+      body: "Enter buyer details and your invoice terms. If the buyer pays, funds release directly to you. If they don't, one claim transaction pays you from the insurance pool.",
       bullets: [
-        "Buyer's payment history evaluated automatically — no broker",
-        'Premium set by Prova based on buyer risk, not negotiation',
-        'Funds held in escrow until payment conditions are met',
+        "Buyer risk evaluated automatically — no broker required",
+        'Premium set by the protocol, not negotiation',
+        'Instant payout when claim conditions are met',
       ],
     },
   },
@@ -28,12 +28,12 @@ const POOLS = [
     detail: {
       label: 'Claims',
       headline: 'One action. Funds in your wallet.',
-      subtitle: 'No adjuster. No forms. No waiting weeks for approval.',
-      body: "When an invoice passes its due date unpaid, a 7-day waiting period begins on-chain. Once that window closes, the payment condition is automatically met. You initiate the claim with a single transaction — the contract verifies the condition and releases your payout directly from the insurance pool. No broker reviews it. No adjuster approves it. The contract does. Traditional trade credit insurance takes weeks. Prova takes one transaction.",
+      subtitle: 'No adjuster. No forms. No waiting weeks.',
+      body: "After a 7-day waiting window, submit one transaction. The contract verifies the condition and releases your payout directly from the pool — no manual review, no approval process.",
       bullets: [
-        '7-day waiting period starts automatically after due date',
-        'Seller initiates claim with a single on-chain transaction',
-        'Contract verifies and pays out instantly if conditions are met',
+        '7-day window opens automatically after the due date',
+        'One transaction initiates and settles the claim',
+        'No adjuster, no forms, no delay',
       ],
     },
   },
@@ -45,11 +45,11 @@ const POOLS = [
     detail: {
       label: 'Liquidity',
       headline: 'Back real trade. Earn real yield.',
-      subtitle: 'For individuals and institutions deploying capital into trade finance.',
-      body: "Deposit USDC into Prova's insurance pool. Your capital backs active trade credit policies and earns a proportional share of every premium collected. Exposure is automatically diversified across all active policies — no manual rebalancing needed. Non-custodial: Prova never holds your keys, and you can withdraw whenever the pool has available liquidity.",
+      subtitle: 'For individuals and institutions deploying capital.',
+      body: "Deposit USDC to back active trade credit policies. Earn a proportional share of every premium collected, auto-diversified across all policies. Non-custodial — withdraw at any time.",
       bullets: [
-        'Yield sourced from real trade premiums — not synthetic instruments',
-        'Automatically diversified across all active policies',
+        'Yield sourced from real trade premiums',
+        'Auto-diversified across all active policies',
         'Non-custodial — withdraw at any time',
       ],
     },
@@ -65,21 +65,17 @@ export function LiveFeedDemo() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 
         <div className="mb-14 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-xl space-y-4">
+          <div className="max-w-lg space-y-4">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-[hsl(var(--text-muted))]">
               How Prova works
             </p>
-            <h2 className="text-5xl font-black tracking-tight text-[hsl(var(--text-primary))] sm:text-6xl">
+            <h2 className="text-4xl font-black tracking-tight text-[hsl(var(--text-primary))] sm:text-5xl">
               Pick your role.<br />Start in minutes.
             </h2>
-            <p className="text-lg text-[hsl(var(--text-secondary))]">
-              Whether you sell on credit, want to understand how claims work,
-              or want to earn yield — every role connects to the same on-chain settlement layer.
-            </p>
           </div>
           <a
             href="#faq"
-            className="flex items-center gap-1.5 text-sm font-semibold text-[hsl(var(--brand-primary))] hover:underline underline-offset-4 shrink-0"
+            className="flex shrink-0 items-center gap-1.5 text-sm font-semibold text-[hsl(var(--brand-primary))] underline-offset-4 hover:underline"
           >
             Have questions?
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -99,35 +95,35 @@ export function LiveFeedDemo() {
                   onClick={() => setActiveId(pool.id)}
                   className={`w-full rounded-2xl border p-6 text-left transition-all duration-200 ${
                     isActive
-                      ? 'border-[hsl(var(--brand-primary)/0.4)] bg-[hsl(var(--brand-primary)/0.04)] shadow-sm'
+                      ? 'border-[hsl(var(--brand-primary)/0.4)] bg-white shadow-sm'
                       : 'border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface-alt))] hover:border-[hsl(var(--border-strong))]'
                   }`}
                 >
                   <p className={`mb-1 text-xs font-bold uppercase tracking-[0.18em] ${isActive ? 'text-[hsl(var(--brand-primary))]' : 'text-[hsl(var(--text-muted))]'}`}>
                     {pool.category}
                   </p>
-                  <p className="text-lg font-black text-[hsl(var(--text-primary))]">{pool.name}</p>
+                  <p className="text-base font-black text-[hsl(var(--text-primary))]">{pool.name}</p>
                   <p className="mt-1.5 text-sm text-[hsl(var(--text-secondary))]">{pool.summary}</p>
                 </button>
               )
             })}
           </div>
 
-          <div className="rounded-2xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface-alt))] p-10">
-            <p className="mb-4 text-xs font-bold uppercase tracking-[0.18em] text-[hsl(var(--brand-primary))]">
+          <div className="rounded-2xl border border-[hsl(var(--border-default))] bg-white p-10 shadow-sm">
+            <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-[hsl(var(--brand-primary))]">
               {active.detail.label}
             </p>
-            <h3 className="text-4xl font-black tracking-tight text-[hsl(var(--text-primary))]">
+            <h3 className="text-3xl font-black tracking-tight text-[hsl(var(--text-primary))]">
               {active.detail.headline}
             </h3>
-            <p className="mt-2 text-base font-semibold text-[hsl(var(--text-secondary))]">
+            <p className="mt-2 text-sm font-semibold text-[hsl(var(--text-secondary))]">
               {active.detail.subtitle}
             </p>
-            <p className="mt-6 text-[hsl(var(--text-secondary))] leading-relaxed">
+            <p className="mt-5 text-sm leading-relaxed text-[hsl(var(--text-secondary))]">
               {active.detail.body}
             </p>
 
-            <ul className="mt-8 space-y-3">
+            <ul className="mt-6 space-y-3">
               {active.detail.bullets.map((b) => (
                 <li key={b} className="flex items-center gap-3 text-sm font-semibold text-[hsl(var(--text-secondary))]">
                   <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-[hsl(var(--brand-primary))]" />
@@ -136,9 +132,9 @@ export function LiveFeedDemo() {
               ))}
             </ul>
 
-            <div className="mt-10">
+            <div className="mt-8">
               <a
-                href="#features"
+                href="/auth"
                 className="inline-flex items-center gap-2 rounded-full bg-[hsl(var(--brand-primary))] px-6 py-2.5 text-sm font-bold text-[hsl(var(--text-on-brand))] shadow-md shadow-[hsl(var(--brand-primary)/0.2)] transition-colors hover:bg-[hsl(var(--brand-primary-hover))]"
               >
                 Get started
