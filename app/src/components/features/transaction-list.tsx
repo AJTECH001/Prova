@@ -36,6 +36,30 @@ function statusVariant(status: string): 'success' | 'warning' | 'error' | 'info'
   return map[status] ?? 'default';
 }
 
+function friendlyStatus(status: string): string {
+  const map: Record<string, string> = {
+    SETTLED: 'Settled',
+    COMPLETED: 'Completed',
+    REDEEMED: 'Withdrawn',
+    FUNDED: 'Paid',
+    PENDING: 'Awaiting Payment',
+    PENDING_REDEEM: 'Ready to Redeem',
+    PENDING_BRIDGE: 'Pending Transfer',
+    PROCESSING: 'Processing',
+    BRIDGING: 'Transferring',
+    ON_CHAIN: 'Awaiting Payment',
+    ISSUED: 'Issued',
+    DRAFT: 'Draft',
+    CREATED: 'Created',
+    FAILED: 'Failed',
+    CANCELED: 'Cancelled',
+    CANCELLED: 'Cancelled',
+    EXPIRED: 'Expired',
+    OVERDUE: 'Overdue',
+  };
+  return map[status] ?? status;
+}
+
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
@@ -44,15 +68,69 @@ function formatAmount(amount: number) {
   return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
 }
 
+function shortAddr(addr: string) {
+  if (!addr || addr.length < 10) return addr;
+  return `••••${addr.slice(-4).toUpperCase()}`;
+}
+
 export function TransactionList({ transactions, loading, hasMore, onLoadMore, onSelect }: TransactionListProps) {
+  const skeletonRows = Array.from({ length: 4 });
+
   return (
     <div>
-      <div className="overflow-x-auto">
+      {/* ── Mobile card list (hidden on sm+) ── */}
+      <div className="sm:hidden flex flex-col divide-y divide-[var(--border-dark)]">
+        {loading && transactions.length === 0
+          ? skeletonRows.map((_, i) => (
+              <div key={i} className="py-4 flex flex-col gap-2">
+                <Skeleton className="h-4 w-2/3" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+            ))
+          : transactions.map((tx) => (
+              <button
+                key={tx.public_id}
+                onClick={() => onSelect?.(tx)}
+                className="w-full text-left py-4 active:bg-[hsl(var(--bg-hover))] transition-colors focus:outline-none focus-visible:bg-[hsl(var(--bg-hover))]"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-[var(--text-primary)] truncate">
+                      {tx.external_reference || <span className="text-[var(--text-muted)] font-normal">No reference</span>}
+                    </p>
+                    <p className="mt-0.5 text-xs text-[var(--text-muted)]">
+                      To account {shortAddr(tx.counterparty)}
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1.5 shrink-0">
+                    <p className="text-sm font-bold text-[var(--text-primary)] tabular-nums">
+                      {formatAmount(tx.amount)}{' '}
+                      <span className="text-xs font-normal text-[var(--text-muted)]">USDC</span>
+                    </p>
+                    <Badge variant={statusVariant(tx.status)}>{friendlyStatus(tx.status)}</Badge>
+                  </div>
+                </div>
+                <div className="mt-1.5 flex items-center justify-between">
+                  <p className="text-xs text-[var(--text-muted)]">Due {formatDate(tx.deadline)}</p>
+                  {isClaimEligible(tx) && (
+                    <Badge variant="warning">Claim Ready</Badge>
+                  )}
+                </div>
+              </button>
+            ))}
+
+        {!loading && transactions.length === 0 && (
+          <p className="py-8 text-center text-sm text-[var(--text-secondary)]">No payments yet</p>
+        )}
+      </div>
+
+      {/* ── Desktop table (hidden on mobile) ── */}
+      <div className="hidden sm:block overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-[var(--border-dark)]">
               <th className="pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Reference</th>
-              <th className="hidden pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] sm:table-cell">Counterparty</th>
+              <th className="pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Recipient</th>
               <th className="pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Amount</th>
               <th className="hidden pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] md:table-cell">Due Date</th>
               <th className="pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Status</th>
@@ -60,48 +138,52 @@ export function TransactionList({ transactions, loading, hasMore, onLoadMore, on
             </tr>
           </thead>
           <tbody>
-            {transactions.map((transaction) => (
-              <tr
-                key={transaction.public_id}
-                className="border-b border-[var(--border-dark)] last:border-0 cursor-pointer hover:bg-[hsl(var(--bg-hover))] transition-colors"
-                onClick={() => onSelect?.(transaction)}
-              >
-                <td className="py-3 pr-4 text-sm font-medium text-[var(--text-primary)]">
-                  {transaction.external_reference || '—'}
-                </td>
-                <td className="hidden py-3 pr-4 text-sm text-[var(--text-secondary)] sm:table-cell">
-                  <span className="font-mono text-xs">{`${transaction.counterparty.slice(0, 6)}...${transaction.counterparty.slice(-4)}`}</span>
-                </td>
-                <td className="py-3 pr-4 text-sm font-semibold text-[var(--text-primary)]">
-                  {formatAmount(transaction.amount)} <span className="text-xs font-normal text-[var(--text-muted)]">USDC</span>
-                </td>
-                <td className="hidden py-3 pr-4 text-sm text-[var(--text-secondary)] md:table-cell">{formatDate(transaction.deadline)}</td>
-                <td className="py-3 pr-4">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Badge variant={statusVariant(transaction.status)}>{transaction.status}</Badge>
-                    {isClaimEligible(transaction) && (
-                      <Badge variant="warning">Claim Ready</Badge>
-                    )}
-                  </div>
-                </td>
-                <td className="hidden py-3 text-sm text-[var(--text-secondary)] lg:table-cell">{formatDate(transaction.created_at)}</td>
-              </tr>
-            ))}
+            {loading && transactions.length === 0
+              ? skeletonRows.map((_, i) => (
+                  <tr key={i} className="border-b border-[var(--border-dark)]">
+                    <td className="py-3 pr-4"><Skeleton className="h-4 w-24" /></td>
+                    <td className="py-3 pr-4"><Skeleton className="h-4 w-20" /></td>
+                    <td className="py-3 pr-4"><Skeleton className="h-4 w-16" /></td>
+                    <td className="hidden py-3 pr-4 md:table-cell"><Skeleton className="h-4 w-20" /></td>
+                    <td className="py-3 pr-4"><Skeleton className="h-5 w-24 rounded-full" /></td>
+                    <td className="hidden py-3 lg:table-cell"><Skeleton className="h-4 w-20" /></td>
+                  </tr>
+                ))
+              : transactions.map((tx) => (
+                  <tr
+                    key={tx.public_id}
+                    className="border-b border-[var(--border-dark)] last:border-0 cursor-pointer hover:bg-[hsl(var(--bg-hover))] transition-colors"
+                    onClick={() => onSelect?.(tx)}
+                  >
+                    <td className="py-3.5 pr-4">
+                      <span className="text-sm font-medium text-[var(--text-primary)]">
+                        {tx.external_reference || <span className="text-[var(--text-muted)]">—</span>}
+                      </span>
+                    </td>
+                    <td className="py-3.5 pr-4">
+                      <span className="text-xs text-[var(--text-secondary)]">Account {shortAddr(tx.counterparty)}</span>
+                    </td>
+                    <td className="py-3.5 pr-4">
+                      <span className="text-sm font-semibold text-[var(--text-primary)] tabular-nums">{formatAmount(tx.amount)}</span>
+                      <span className="ml-1 text-xs font-normal text-[var(--text-muted)]">USDC</span>
+                    </td>
+                    <td className="hidden py-3.5 pr-4 text-sm text-[var(--text-secondary)] md:table-cell">{formatDate(tx.deadline)}</td>
+                    <td className="py-3.5 pr-4">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant={statusVariant(tx.status)}>{friendlyStatus(tx.status)}</Badge>
+                        {isClaimEligible(tx) && <Badge variant="warning">Claim Ready</Badge>}
+                      </div>
+                    </td>
+                    <td className="hidden py-3.5 text-sm text-[var(--text-secondary)] lg:table-cell">{formatDate(tx.created_at)}</td>
+                  </tr>
+                ))}
           </tbody>
         </table>
+
+        {!loading && transactions.length === 0 && (
+          <p className="py-8 text-center text-sm text-[var(--text-secondary)]">No payments yet</p>
+        )}
       </div>
-
-      {loading && transactions.length === 0 && (
-        <div className="flex flex-col gap-3 py-4">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-12 w-full" />
-          ))}
-        </div>
-      )}
-
-      {!loading && transactions.length === 0 && (
-        <p className="py-8 text-center text-sm text-[var(--text-secondary)]">No transactions yet</p>
-      )}
 
       {hasMore && (
         <div className="mt-4 flex justify-center">

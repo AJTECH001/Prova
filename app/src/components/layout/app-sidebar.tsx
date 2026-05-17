@@ -16,6 +16,15 @@ function HomeIcon() {
   );
 }
 
+function BalanceIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+      <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" />
+      <path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
 function ArrowsIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
@@ -32,10 +41,18 @@ function UploadIcon() {
   );
 }
 
+function DisputeIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
 function PoolIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-      <path d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" />
+      <path fillRule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732l-3.354 1.935-1.18 4.455a1 1 0 01-1.933 0L9.854 12.8 6.5 10.866a1 1 0 010-1.732l3.354-1.935 1.18-4.455A1 1 0 0112 2z" clipRule="evenodd" />
     </svg>
   );
 }
@@ -50,7 +67,7 @@ function UserIcon() {
 
 function LogoutIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+    <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
       <path fillRule="evenodd" d="M3 3a1 1 0 011 1v12a1 1 0 11-2 0V4a1 1 0 011-1zm7.293 11.293a1 1 0 001.414-1.414L9.414 11H17a1 1 0 100-2H9.414l2.293-2.293a1 1 0 00-1.414-1.414l-4 4a1 1 0 000 1.414l4 4z" clipRule="evenodd" />
     </svg>
   );
@@ -72,6 +89,19 @@ function CloseIcon() {
   );
 }
 
+// ── Role labels ─────────────────────────────────────────────────────────────
+const ROLE_LABEL: Record<string, string> = {
+  SELLER: 'Merchant',
+  BUYER: 'Customer',
+  LP: 'Liquidity Provider',
+};
+
+const ROLE_COLOR: Record<string, string> = {
+  SELLER: 'bg-[hsl(var(--bg-active))] text-[var(--accent-blue)]',
+  BUYER: 'bg-[hsl(var(--tip-bg))] text-[var(--status-success)]',
+  LP: 'bg-[hsl(var(--brand-purple-light))] text-[hsl(var(--brand-purple))]',
+};
+
 // ── Nav config per role ─────────────────────────────────────────────────────
 type NavLink = { name: string; href: string; icon: () => React.ReactElement };
 type NavSection = { label: string; links: NavLink[] };
@@ -81,31 +111,33 @@ function getNavSections(role: UserRole | null): NavSection[] {
     label: 'Overview',
     links: [{ name: 'Dashboard', href: '/dashboard', icon: HomeIcon }],
   };
-  const payments: NavSection = {
+  const sellerMoney: NavSection = {
+    label: 'Payments',
+    links: [
+      { name: 'Balances', href: '/balances', icon: BalanceIcon },
+      { name: 'Transactions', href: '/transactions', icon: ArrowsIcon },
+      { name: 'Withdrawals', href: '/withdrawals', icon: UploadIcon },
+      { name: 'Disputes', href: '/disputes', icon: DisputeIcon },
+    ],
+  };
+  const buyerMoney: NavSection = {
     label: 'Payments',
     links: [
       { name: 'Transactions', href: '/transactions', icon: ArrowsIcon },
-      { name: 'Withdrawals', href: '/withdrawals', icon: UploadIcon },
     ],
   };
   const earn: NavSection = {
     label: 'Earn',
-    links: [{ name: 'Liquidity Pool', href: '/pool', icon: PoolIcon }],
+    links: [{ name: 'Pool', href: '/pool', icon: PoolIcon }],
   };
   const account: NavSection = {
     label: 'Account',
     links: [{ name: 'Profile', href: '/profile', icon: UserIcon }],
   };
 
-  const adminSection: NavSection = {
-    label: 'Command Center',
-    links: [{ name: 'Admin Dashboard', href: '/admin', icon: PoolIcon }], // using PoolIcon or we could create a new one
-  };
-
-  if (role === 'SELLER') return [overview, payments, account];
-  if (role === 'BUYER')  return [overview, account];
+  if (role === 'SELLER') return [overview, sellerMoney, account];
+  if (role === 'BUYER')  return [overview, buyerMoney, account];
   if (role === 'LP')     return [overview, earn, account];
-  if (role === 'ADMIN')  return [overview, payments, earn, adminSection, account];
   return [account];
 }
 
@@ -127,20 +159,24 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
     router.push('/');
   }
 
-  const truncated = walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : '';
+  const accountId = walletAddress ? `••••${walletAddress.slice(-4).toUpperCase()}` : '';
+  const roleLabel = role ? ROLE_LABEL[role] : null;
+  const roleColorClass = role
+    ? (ROLE_COLOR[role] ?? 'bg-[hsl(var(--bg-surface-alt))] text-[var(--text-muted)]')
+    : '';
 
   return (
     <div className="flex h-full flex-col">
       {/* Logo row */}
-      <div className="flex h-16 items-center justify-between px-5 border-b border-[var(--border-dark)]">
+      <div className="flex h-14 items-center justify-between border-b border-[var(--border-dark)] px-4">
         <Link href="/dashboard" className="flex items-center gap-2.5" onClick={onClose}>
-          <Image src="/prova_logo.png" alt="Prova" width={28} height={28} className="rounded-sm" />
+          <Image src="/prova_logo.png" alt="Prova" width={26} height={26} className="rounded-sm" />
           <span className="text-[15px] font-bold tracking-tight text-[var(--text-primary)]">Prova</span>
         </Link>
         {onClose && (
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-[var(--text-muted)] hover:bg-[hsl(var(--bg-hover))] hover:text-[var(--text-primary)] transition-colors lg:hidden"
+            className="rounded-lg p-1.5 text-[var(--text-muted)] transition-colors hover:bg-[hsl(var(--bg-hover))] hover:text-[var(--text-primary)] lg:hidden"
           >
             <CloseIcon />
           </button>
@@ -148,10 +184,10 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+      <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-5">
         {navSections.map((section) => (
           <div key={section.label}>
-            <p className="mb-1.5 px-3 text-xs font-semibold text-[var(--text-primary)]">
+            <p className="mb-1 px-2.5 text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
               {section.label}
             </p>
             <ul className="space-y-0.5">
@@ -163,16 +199,21 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                       href={link.href}
                       onClick={onClose}
                       className={[
-                        'flex items-center gap-3 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors',
+                        'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium transition-all duration-150',
                         active
-                          ? 'text-[var(--accent-blue)]'
-                          : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[hsl(var(--bg-hover))]',
+                          ? 'bg-[hsl(var(--bg-active))] text-[var(--accent-blue)]'
+                          : 'text-[var(--text-muted)] hover:bg-[hsl(var(--bg-hover))] hover:text-[var(--text-primary)]',
                       ].join(' ')}
                     >
-                      <span className={active ? 'text-[var(--accent-blue)]' : 'text-[var(--text-muted)]'}>
+                      <span
+                        className={`shrink-0 transition-colors ${active ? 'text-[var(--accent-blue)]' : 'text-[var(--text-muted)]'}`}
+                      >
                         <link.icon />
                       </span>
                       {link.name}
+                      {active && (
+                        <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[var(--accent-blue)] opacity-80" />
+                      )}
                     </Link>
                   </li>
                 );
@@ -182,28 +223,42 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         ))}
       </nav>
 
-      {/* Bottom — wallet + logout */}
-      <div className="border-t border-[var(--border-dark)] p-3 space-y-1">
+      {/* Bottom — account + logout */}
+      <div className="space-y-1 border-t border-[var(--border-dark)] p-3">
         {walletAddress && (
           <Link
             href="/profile"
             onClick={onClose}
-            className="flex items-center gap-3 rounded-[var(--radius-button)] px-3 py-2 transition-colors hover:bg-[hsl(var(--bg-hover))]"
+            className="group flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 transition-colors hover:bg-[hsl(var(--bg-hover))]"
           >
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--accent-blue-bg)]">
               <span className="text-[10px] font-bold text-[var(--accent-blue)]">
                 {walletAddress.slice(2, 4).toUpperCase()}
               </span>
             </div>
-            <div className="min-w-0">
-              <p className="truncate font-mono text-xs text-[var(--text-secondary)]">{truncated}</p>
-              <p className="text-[11px] text-[var(--text-muted)]">View profile</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-medium text-[var(--text-secondary)]">
+                Account <span className="font-mono">{accountId}</span>
+              </p>
+              {roleLabel && (
+                <span
+                  className={`mt-0.5 inline-flex items-center rounded-full px-1.5 py-0 text-[10px] font-semibold ${roleColorClass}`}
+                >
+                  {roleLabel}
+                </span>
+              )}
             </div>
+            <svg
+              width="12" height="12" viewBox="0 0 20 20" fill="currentColor"
+              className="shrink-0 text-[var(--text-muted)] opacity-0 transition-opacity group-hover:opacity-100"
+            >
+              <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+            </svg>
           </Link>
         )}
         <button
           onClick={handleLogout}
-          className="flex w-full items-center gap-3 rounded-[var(--radius-button)] px-3 py-2 text-sm text-[var(--text-secondary)] transition-colors hover:bg-[hsl(var(--danger-bg))] hover:text-[var(--status-error)] cursor-pointer"
+          className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] text-[var(--text-muted)] transition-colors hover:bg-[hsl(var(--danger-bg))] hover:text-[var(--status-error)]"
         >
           <LogoutIcon />
           Sign out
@@ -213,13 +268,13 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   );
 }
 
-// ── Mobile top-bar wallet chip ─────────────────────────────────────────────
-function MobileTopBarWallet() {
+// ── Mobile top-bar account chip ────────────────────────────────────────────
+function MobileTopBarAccount() {
   const walletAddress = useAuthStore((s) => s.walletAddress);
   if (!walletAddress) return null;
   return (
-    <span className="rounded-full bg-[hsl(var(--bg-surface-alt))] px-3 py-1 font-mono text-[10px] text-[var(--text-secondary)]">
-      {walletAddress.slice(0, 6)}…{walletAddress.slice(-4)}
+    <span className="rounded-full bg-[hsl(var(--bg-surface-alt))] px-3 py-1 text-[11px] font-medium text-[var(--text-secondary)]">
+      ••••{walletAddress.slice(-4).toUpperCase()}
     </span>
   );
 }
@@ -235,20 +290,21 @@ export function AppSidebar() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setMobileOpen(true)}
-            className="rounded-lg p-1.5 text-[var(--text-secondary)] hover:bg-[hsl(var(--bg-hover))] transition-colors"
+            className="rounded-lg p-1.5 text-[var(--text-secondary)] transition-colors hover:bg-[hsl(var(--bg-hover))]"
+            aria-label="Open menu"
           >
             <MenuIcon />
           </button>
           <div className="flex items-center gap-2">
-            <Image src="/prova_logo.png" alt="Prova" width={24} height={24} className="rounded-sm" />
+            <Image src="/prova_logo.png" alt="Prova" width={22} height={22} className="rounded-sm" />
             <span className="text-sm font-bold text-[var(--text-primary)]">Prova</span>
           </div>
         </div>
-        <MobileTopBarWallet />
+        <MobileTopBarAccount />
       </div>
 
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex lg:w-60 lg:shrink-0 lg:flex-col lg:border-r lg:border-[var(--border-dark)] lg:bg-white lg:h-screen lg:sticky lg:top-0">
+      <aside className="hidden lg:flex lg:h-screen lg:w-56 lg:shrink-0 lg:sticky lg:top-0 lg:flex-col lg:border-r lg:border-[var(--border-dark)] lg:bg-white">
         <SidebarContent />
       </aside>
 
@@ -258,8 +314,12 @@ export function AppSidebar() {
           <div
             className="fixed inset-0 z-50 bg-black/40 lg:hidden"
             onClick={() => setMobileOpen(false)}
+            aria-hidden="true"
           />
-          <aside className="fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-2xl lg:hidden">
+          <aside
+            className="fixed inset-y-0 left-0 z-50 w-[280px] bg-white shadow-2xl lg:hidden"
+            style={{ animation: 'slideInLeft 200ms ease-out' }}
+          >
             <SidebarContent onClose={() => setMobileOpen(false)} />
           </aside>
         </>

@@ -4,8 +4,6 @@ import authNonceHandler from '../src/handlers/auth/wallet/nonce.js';
 import authVerifyHandler from '../src/handlers/auth/wallet/verify.js';
 import authRefreshHandler from '../src/handlers/auth/tokens/refresh.js';
 import authTokensHandler from '../src/handlers/auth/tokens/index.js';
-import adminEscrowsHandler from '../src/handlers/admin/escrows.js';
-import adminStatsHandler from '../src/handlers/admin/stats.js';
 import apiCredentialOauthHandler from '../src/handlers/api-credentials/oauth/token.js';
 import apiCredentialByIdHandler from '../src/handlers/api-credentials/[clientId].js';
 import apiCredentialsHandler from '../src/handlers/api-credentials/index.js';
@@ -54,9 +52,6 @@ interface Route {
 const ROUTES: Route[] = [
   // Health — unauthenticated, used by Railway healthcheck
   { pattern: /^\/health$/, paramNames: [], handler: async (_req, res) => { res.status(200).json({ ok: true }); } },
-  // Admin
-  { pattern: /^\/api\/v1\/admin\/escrows$/,         paramNames: [],           handler: adminEscrowsHandler },
-  { pattern: /^\/api\/v1\/admin\/stats$/,           paramNames: [],           handler: adminStatsHandler },
   // Auth
   { pattern: /^\/api\/v1\/auth\/wallet\/nonce$/,    paramNames: [],           handler: authNonceHandler },
   { pattern: /^\/api\/v1\/auth\/wallet\/verify$/,   paramNames: [],           handler: authVerifyHandler },

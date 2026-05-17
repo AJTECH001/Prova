@@ -11,35 +11,19 @@ import { useAuthStore } from '@/stores/auth-store';
 import { usePoolStore } from '@/stores/pool-store';
 import { useBalance } from '@/hooks/use-balance';
 import { useCUsdcBalance } from '@/hooks/use-cUsdc-balance';
-import { useContractRead } from '@/hooks/use-contract-read';
-import { useAdminFlow, strToBytes2, strToBytes4, parseUint32Array } from '@/hooks/use-admin-flow';
 import { useFundFlow, FUND_FLOW_STEPS } from '@/hooks/use-fund-flow';
 import { TransactionList } from '@/components/features/transaction-list';
 import { TransactionProgress } from '@/components/features/transaction-progress';
 import { WithdrawalList } from '@/components/features/withdrawal-list';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { isClaimEligible } from '@/hooks/use-claim-eligibility';
 import { ADDRESSES, ConfidentialEscrowABI } from '@/lib/contracts';
 import { TransactionService, type TransactionResponse } from '@/services/TransactionService';
 import { EscrowService } from '@/services/EscrowService';
 import { publicClient } from '@/lib/public-client';
-import { MetricBlock } from '@/components/features/metric-block';
-
-const ARBISCAN = 'https://sepolia.arbiscan.io/address';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function fmtDays(seconds: bigint | null) {
-  if (seconds === null) return '—';
-  return `${Math.floor(Number(seconds) / 86400)} days`;
-}
-
-function shortAddr(addr: string | null) {
-  if (!addr) return '—';
-  return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
-}
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -49,10 +33,9 @@ function getGreeting() {
 }
 
 const ROLE_LABEL: Record<string, string> = {
-  SELLER: 'Seller',
-  BUYER: 'Buyer',
+  SELLER: 'Merchant',
+  BUYER: 'Customer',
   LP: 'Liquidity Provider',
-  ADMIN: 'Admin',
 };
 
 // ── Alert banner ──────────────────────────────────────────────────────────────
@@ -91,7 +74,41 @@ function AlertBanner({
   );
 }
 
+// ── Stat Card ─────────────────────────────────────────────────────────────────
+function StatCard({
+  label,
+  value,
+  sub,
+  loading,
+  accent,
+}: {
+  label: string;
+  value: string | number;
+  sub?: string;
+  loading?: boolean;
+  accent?: 'blue' | 'green' | 'purple';
+}) {
+  const accentDot = {
+    blue: 'bg-[var(--accent-blue)]',
+    green: 'bg-[var(--status-success)]',
+    purple: 'bg-[hsl(var(--brand-purple))]',
+  }[accent ?? 'blue'] ?? '';
 
+  return (
+    <div className="flex flex-col gap-1 rounded-xl border border-[var(--border-dark)] bg-white px-4 py-4 shadow-[var(--shadow-card)] sm:px-5">
+      <div className="flex items-center gap-1.5">
+        {accent && <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${accentDot}`} />}
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] sm:text-xs truncate">{label}</p>
+      </div>
+      {loading ? (
+        <Skeleton className="mt-2 h-6 w-24 sm:h-7 sm:w-28" />
+      ) : (
+        <p className="mt-1 text-xl font-bold tracking-tight text-[var(--text-primary)] sm:text-2xl tabular-nums leading-tight break-words">{value}</p>
+      )}
+      {sub && <p className="mt-0.5 text-[10px] text-[var(--text-muted)] sm:text-xs">{sub}</p>}
+    </div>
+  );
+}
 
 // ── Section card wrapper ──────────────────────────────────────────────────────
 function SectionCard({
@@ -99,24 +116,22 @@ function SectionCard({
   subtitle,
   action,
   children,
-  noPadding,
 }: {
   title: string;
   subtitle?: string;
   action?: ReactNode;
   children: ReactNode;
-  noPadding?: boolean;
 }) {
   return (
-    <div className="flex flex-col">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-[var(--border-dark)] pb-4 mb-4">
-        <div>
-          <h2 className="text-base font-semibold text-[var(--text-primary)]">{title}</h2>
-          {subtitle && <p className="mt-1 text-sm text-[var(--text-muted)]">{subtitle}</p>}
+    <div className="rounded-xl border border-[var(--border-dark)] bg-white shadow-[var(--shadow-card)]">
+      <div className="flex items-center justify-between gap-3 border-b border-[var(--border-dark)] px-4 py-3.5 sm:px-5 sm:py-4">
+        <div className="min-w-0">
+          <h2 className="text-sm font-semibold text-[var(--text-primary)]">{title}</h2>
+          {subtitle && <p className="mt-0.5 text-xs text-[var(--text-muted)]">{subtitle}</p>}
         </div>
         {action && <div className="shrink-0">{action}</div>}
       </div>
-      <div className={noPadding ? '' : ''}>{children}</div>
+      <div className="px-4 py-4 sm:px-5">{children}</div>
     </div>
   );
 }
@@ -134,330 +149,15 @@ function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center py-12 text-center">
+    <div className="flex flex-col items-center justify-center py-10 text-center">
       {icon ? (
-        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--accent-blue-bg)] text-[var(--accent-blue)]">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--accent-blue-bg)] text-[var(--accent-blue)]">
           {icon}
         </div>
       ) : null}
       <p className="text-sm font-semibold text-[var(--text-primary)]">{title}</p>
       <p className="mt-1 max-w-xs text-sm text-[var(--text-muted)]">{desc}</p>
-      {action && <div className="mt-5">{action}</div>}
-    </div>
-  );
-}
-
-// ── Address row ───────────────────────────────────────────────────────────────
-function AddrRow({ label, address }: { label: string; address: string }) {
-  return (
-    <div className="flex items-start justify-between gap-4 border-b border-[var(--border-dark)] py-3 last:border-0">
-      <p className="min-w-[180px] shrink-0 text-xs text-[var(--text-muted)]">{label}</p>
-      <a
-        href={`${ARBISCAN}/${address}`}
-        target="_blank"
-        rel="noreferrer"
-        className="break-all font-mono text-xs text-[var(--accent-blue)] hover:underline"
-      >
-        {address}
-      </a>
-    </div>
-  );
-}
-
-// ── State row ─────────────────────────────────────────────────────────────────
-function StateRow({ label, value, ok }: { label: string; value: string; ok?: boolean }) {
-  return (
-    <div className="flex items-center justify-between gap-4 border-b border-[var(--border-dark)] py-2.5 last:border-0">
-      <p className="text-xs text-[var(--text-muted)]">{label}</p>
-      <p className={`font-mono text-xs ${ok === undefined ? 'text-[var(--text-primary)]' : ok ? 'text-[var(--status-success)]' : 'text-[var(--status-error)]'}`}>
-        {value}
-      </p>
-    </div>
-  );
-}
-
-// ── Developer tools (collapsible) ─────────────────────────────────────────────
-export function DevToolsDrawer() {
-  const [open, setOpen] = useState(false);
-  const { state, loading, error, fetchAll } = useContractRead();
-
-  useEffect(() => { if (open) fetchAll(); }, [open, fetchAll]);
-
-  return (
-    <div className="rounded-xl border border-[var(--border-dark)] bg-white shadow-[var(--shadow-sm)]">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between px-5 py-4 text-left transition-colors hover:bg-[hsl(var(--bg-hover))]"
-      >
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[hsl(var(--bg-surface-alt))]">
-            <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor" className="text-[var(--text-muted)]">
-              <path fillRule="evenodd" d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 11-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 11-1.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-[var(--text-primary)]">Developer Tools</p>
-            <p className="text-xs text-[var(--text-muted)]">Contract state, addresses — Arbitrum Sepolia</p>
-          </div>
-        </div>
-        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" className={`shrink-0 text-[var(--text-muted)] transition-transform ${open ? 'rotate-180' : ''}`}>
-          <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-        </svg>
-      </button>
-
-      {open && (
-        <div className="border-t border-[var(--border-dark)]">
-          {/* Contract state */}
-          <div className="px-5 py-4">
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Contract State</p>
-              <Button size="sm" variant="secondary" loading={loading} onClick={fetchAll}>Refresh</Button>
-            </div>
-            {error && <p className="mb-3 text-xs text-[var(--status-error)]">{error}</p>}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-lg border border-[var(--border-dark)] p-3">
-                <p className="mb-2 text-xs font-medium text-[var(--text-muted)]">TradeInvoiceResolver</p>
-                {loading ? (
-                  <div className="flex flex-col gap-1.5"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-3/4" /></div>
-                ) : (
-                  <>
-                    <StateRow label="escrowContract" value={shortAddr(state.escrowContract)} />
-                    <StateRow label="MIN_WAITING_PERIOD" value={fmtDays(state.minWaitingPeriod)} />
-                    <StateRow label="MAX_WAITING_PERIOD" value={fmtDays(state.maxWaitingPeriod)} />
-                    <StateRow label="owner" value={shortAddr(state.resolverOwner)} />
-                  </>
-                )}
-              </div>
-              <div className="rounded-lg border border-[var(--border-dark)] p-3">
-                <p className="mb-2 text-xs font-medium text-[var(--text-muted)]">TradeCreditInsurancePolicy</p>
-                {loading ? (
-                  <div className="flex flex-col gap-1.5"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-3/4" /></div>
-                ) : (
-                  <>
-                    <StateRow label="curveVersion" value={state.curveVersion !== null ? String(state.curveVersion) : '—'} />
-                    <StateRow label="protocolCaller" value={shortAddr(state.protocolCaller)} />
-                    <StateRow label="debtorProofAdapter" value={shortAddr(state.debtorProofAdapter)} />
-                    <StateRow label="exposureRegistry" value={shortAddr(state.exposureRegistry)} />
-                    <StateRow label="lossHistory" value={shortAddr(state.lossHistory)} />
-                    <StateRow label="owner" value={shortAddr(state.policyOwner)} />
-                  </>
-                )}
-              </div>
-            </div>
-            <div className="mt-3 rounded-lg border border-[var(--border-dark)] p-3">
-              <p className="mb-2 text-xs font-medium text-[var(--text-muted)]">Registry Wiring</p>
-              {loading ? <Skeleton className="h-4 w-1/2" /> : (
-                <div className="grid gap-0 sm:grid-cols-2">
-                  <StateRow
-                    label="Policy in ExposureRegistry"
-                    value={state.policyInExposureRegistry === null ? '—' : state.policyInExposureRegistry ? 'registered ✓' : 'not registered ✗'}
-                    ok={state.policyInExposureRegistry ?? undefined}
-                  />
-                  <StateRow
-                    label="Policy in ClaimsRegistry"
-                    value={state.policyInClaimsRegistry === null ? '—' : state.policyInClaimsRegistry ? 'registered ✓' : 'not registered ✗'}
-                    ok={state.policyInClaimsRegistry ?? undefined}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Contract addresses */}
-          <div className="border-t border-[var(--border-dark)] px-5 py-4">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Contract Addresses</p>
-            <div className="grid gap-6 sm:grid-cols-2">
-              <div>
-                <p className="mb-1 text-xs font-medium text-[var(--text-muted)]">PROVA Plugins</p>
-                <AddrRow label="TradeInvoiceResolver" address={ADDRESSES.TradeInvoiceResolver} />
-                <AddrRow label="TradeCreditInsurancePolicy" address={ADDRESSES.TradeCreditInsurancePolicy} />
-                <AddrRow label="DebtorExposureRegistry" address={ADDRESSES.DebtorExposureRegistry} />
-                <AddrRow label="InsuranceClaimsRegistry" address={ADDRESSES.InsuranceClaimsRegistry} />
-                <AddrRow label="MockDebtorProof" address={ADDRESSES.MockDebtorProof} />
-              </div>
-              <div>
-                <p className="mb-1 text-xs font-medium text-[var(--text-muted)]">Reineira Core</p>
-                <AddrRow label="ConfidentialEscrow" address={ADDRESSES.ConfidentialEscrow} />
-                <AddrRow label="ConfidentialCoverageManager" address={ADDRESSES.ConfidentialCoverageManager} />
-                <AddrRow label="PoolFactory" address={ADDRESSES.PoolFactory} />
-                <AddrRow label="PolicyRegistry" address={ADDRESSES.PolicyRegistry} />
-                <AddrRow label="cUSDC" address={ADDRESSES.cUSDC} />
-                <AddrRow label="USDC" address={ADDRESSES.USDC} />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Admin section helpers ─────────────────────────────────────────────────────
-function AdminSectionBlock({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <div className="border-b border-[var(--border-dark)] px-5 py-5 last:border-0">
-      <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">{title}</p>
-      <div className="flex flex-col gap-4">{children}</div>
-    </div>
-  );
-}
-
-function AdminForm({
-  label,
-  fields,
-  disabled,
-  onSubmit,
-}: {
-  label: string;
-  fields: { id: string; placeholder: string; value: string; onChange: (v: string) => void }[];
-  disabled: boolean;
-  onSubmit: () => void;
-}) {
-  return (
-    <div className="flex flex-col gap-2 rounded-lg border border-[var(--border-dark)] p-3.5">
-      <p className="text-xs font-medium text-[var(--text-primary)]">{label}</p>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        {fields.map((f) => (
-          <Input
-            key={f.id}
-            placeholder={f.placeholder}
-            value={f.value}
-            onChange={(e) => f.onChange(e.target.value)}
-            disabled={disabled}
-            className="flex-1 font-mono text-xs"
-          />
-        ))}
-        <Button size="sm" disabled={disabled} onClick={onSubmit} className="shrink-0">Send</Button>
-      </div>
-    </div>
-  );
-}
-
-// ── Admin panel ───────────────────────────────────────────────────────────────
-export function AdminPanel() {
-  const admin = useAdminFlow();
-  const [open, setOpen] = useState(false);
-  const [escrowContractAddr, setEscrowContractAddr] = useState('');
-  const [capDebtorId, setCapDebtorId] = useState('');
-  const [capValue, setCapValue] = useState('');
-  const [countryCode, setCountryCode] = useState('');
-  const [countryBps, setCountryBps] = useState('');
-  const [industryCode, setIndustryCode] = useState('');
-  const [industryBps, setIndustryBps] = useState('');
-  const [curveThresholds, setCurveThresholds] = useState('800,720,650,580,500,0');
-  const [curvePremiums, setCurvePremiums] = useState('150,200,280,400,600,1000');
-  const [newProtocolCaller, setNewProtocolCaller] = useState('');
-  const [regContractAddr, setRegContractAddr] = useState('');
-  const [deregContractAddr, setDeregContractAddr] = useState('');
-  const [regPolicyAddr, setRegPolicyAddr] = useState('');
-  const [scoreDebtorId, setScoreDebtorId] = useState('');
-  const [scoreCtHash, setScoreCtHash] = useState('');
-  const [defaultCtHash, setDefaultCtHash] = useState('');
-
-  return (
-    <div className="rounded-xl border border-[hsl(var(--warning-border,35_100%_80%))] bg-white shadow-[var(--shadow-sm)]">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between px-5 py-4 text-left transition-colors hover:bg-[hsl(var(--warning-bg))]"
-      >
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[hsl(var(--warning-bg))]">
-            <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor" className="text-[var(--status-warning)]">
-              <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
-            </svg>
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-[var(--status-warning)]">Admin Panel</p>
-            <p className="text-xs text-[var(--text-muted)]">Owner-only contract calls — Arbitrum Sepolia</p>
-          </div>
-        </div>
-        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" className={`shrink-0 text-[var(--text-muted)] transition-transform ${open ? 'rotate-180' : ''}`}>
-          <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-        </svg>
-      </button>
-
-      {open && (
-        <div className="border-t border-[var(--border-dark)]">
-          {admin.error && (
-            <div className="border-b border-[var(--border-dark)] px-5 py-3">
-              <p className="text-xs text-[var(--status-error)]">{admin.error}</p>
-            </div>
-          )}
-          {admin.txHash && (
-            <div className="border-b border-[var(--border-dark)] px-5 py-3">
-              <p className="text-xs text-[var(--status-success)]">
-                Sent:{' '}
-                <a href={`https://sepolia.arbiscan.io/tx/${admin.txHash}`} target="_blank" rel="noreferrer" className="font-mono underline">
-                  {admin.txHash.slice(0, 18)}…
-                </a>
-              </p>
-            </div>
-          )}
-
-          <AdminSectionBlock title="TradeInvoiceResolver">
-            <AdminForm label="setEscrowContract(address _escrowContract)" disabled={admin.loading}
-              fields={[{ id: 'esc', placeholder: '0x… ConfidentialEscrow address', value: escrowContractAddr, onChange: setEscrowContractAddr }]}
-              onSubmit={() => admin.setEscrowContract(escrowContractAddr)} />
-          </AdminSectionBlock>
-
-          <AdminSectionBlock title="TradeCreditInsurancePolicy">
-            <AdminForm label="setConcentrationCap(bytes32 debtorId, uint64 cap)" disabled={admin.loading}
-              fields={[
-                { id: 'cdid', placeholder: '0x… debtorId (bytes32)', value: capDebtorId, onChange: setCapDebtorId },
-                { id: 'cap', placeholder: 'cap (uint64)', value: capValue, onChange: setCapValue },
-              ]}
-              onSubmit={() => admin.setConcentrationCap(capDebtorId as `0x${string}`, BigInt(capValue))} />
-            <AdminForm label="setCountryRisk(bytes2 countryCode, uint16 bps)" disabled={admin.loading}
-              fields={[
-                { id: 'cc', placeholder: 'ISO e.g. NG', value: countryCode, onChange: setCountryCode },
-                { id: 'cbps', placeholder: 'bps 0–500', value: countryBps, onChange: setCountryBps },
-              ]}
-              onSubmit={() => admin.setCountryRisk(strToBytes2(countryCode), parseInt(countryBps, 10))} />
-            <AdminForm label="setIndustryRisk(bytes4 industryCode, uint16 bps)" disabled={admin.loading}
-              fields={[
-                { id: 'ic', placeholder: 'NACE/SIC e.g. 6419', value: industryCode, onChange: setIndustryCode },
-                { id: 'ibps', placeholder: 'bps 0–500', value: industryBps, onChange: setIndustryBps },
-              ]}
-              onSubmit={() => admin.setIndustryRisk(strToBytes4(industryCode), parseInt(industryBps, 10))} />
-            <AdminForm label="setCurve(uint32[6] thresholds, uint32[6] premiums)" disabled={admin.loading}
-              fields={[
-                { id: 'thr', placeholder: '800,720,650,580,500,0', value: curveThresholds, onChange: setCurveThresholds },
-                { id: 'prm', placeholder: '150,200,280,400,600,1000', value: curvePremiums, onChange: setCurvePremiums },
-              ]}
-              onSubmit={() => admin.setCurve(parseUint32Array(curveThresholds, 6), parseUint32Array(curvePremiums, 6))} />
-            <AdminForm label="setProtocolCaller(address caller)" disabled={admin.loading}
-              fields={[{ id: 'pc', placeholder: '0x… ConfidentialCoverageManager', value: newProtocolCaller, onChange: setNewProtocolCaller }]}
-              onSubmit={() => admin.setProtocolCaller(newProtocolCaller)} />
-          </AdminSectionBlock>
-
-          <AdminSectionBlock title="DebtorExposureRegistry">
-            <AdminForm label="registerContract(address prova)" disabled={admin.loading}
-              fields={[{ id: 'rc', placeholder: '0x… contract to whitelist', value: regContractAddr, onChange: setRegContractAddr }]}
-              onSubmit={() => admin.registerContract(regContractAddr)} />
-            <AdminForm label="deregisterContract(address prova)" disabled={admin.loading}
-              fields={[{ id: 'dc', placeholder: '0x… contract to remove', value: deregContractAddr, onChange: setDeregContractAddr }]}
-              onSubmit={() => admin.deregisterContract(deregContractAddr)} />
-          </AdminSectionBlock>
-
-          <AdminSectionBlock title="InsuranceClaimsRegistry">
-            <AdminForm label="registerPolicy(address policy)" disabled={admin.loading}
-              fields={[{ id: 'rp', placeholder: '0x… policy contract', value: regPolicyAddr, onChange: setRegPolicyAddr }]}
-              onSubmit={() => admin.registerPolicy(regPolicyAddr)} />
-          </AdminSectionBlock>
-
-          <AdminSectionBlock title="MockDebtorProof (testnet only)">
-            <AdminForm label="setScore(bytes32 debtorId, uint256 ctHash)" disabled={admin.loading}
-              fields={[
-                { id: 'sdid', placeholder: '0x… debtorId (bytes32)', value: scoreDebtorId, onChange: setScoreDebtorId },
-                { id: 'sct', placeholder: 'ctHash (uint256 decimal)', value: scoreCtHash, onChange: setScoreCtHash },
-              ]}
-              onSubmit={() => admin.setScore(scoreDebtorId as `0x${string}`, BigInt(scoreCtHash))} />
-            <AdminForm label="setDefaultScore(uint256 ctHash)" disabled={admin.loading}
-              fields={[{ id: 'dct', placeholder: 'ctHash (uint256 decimal)', value: defaultCtHash, onChange: setDefaultCtHash }]}
-              onSubmit={() => admin.setDefaultScore(BigInt(defaultCtHash))} />
-          </AdminSectionBlock>
-        </div>
-      )}
+      {action && <div className="mt-4">{action}</div>}
     </div>
   );
 }
@@ -481,8 +181,8 @@ function PayInvoiceRow({ invoice, onPaid }: { invoice: TransactionResponse; onPa
 
   return (
     <div className="border-b border-[var(--border-dark)] py-4 last:border-0">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="min-w-0">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
             <p className="text-sm font-semibold text-[var(--text-primary)]">{refLabel}</p>
             <span className="rounded-full bg-[var(--accent-blue-bg)] px-2 py-0.5 text-xs font-medium text-[var(--accent-blue)]">
@@ -490,11 +190,11 @@ function PayInvoiceRow({ invoice, onPaid }: { invoice: TransactionResponse; onPa
             </span>
           </div>
           <p className="mt-0.5 text-xs text-[var(--text-muted)]">
-            Due {dueDate} · from {invoice.counterparty?.slice(0, 10)}…
+            Due {dueDate}{invoice.counterparty ? ` · Account ••••${invoice.counterparty.slice(-4).toUpperCase()}` : ''}
           </p>
         </div>
         {!active && (
-          <Button size="sm" onClick={handlePay} className="shrink-0">Pay Now</Button>
+          <Button size="sm" onClick={handlePay} className="shrink-0 min-h-[36px]">Pay Now</Button>
         )}
       </div>
 
@@ -507,7 +207,7 @@ function PayInvoiceRow({ invoice, onPaid }: { invoice: TransactionResponse; onPa
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
-              <p className="text-xs text-[var(--accent-blue)]">Processing on-chain…</p>
+              <p className="text-xs text-[var(--accent-blue)]">Sending your payment…</p>
             </div>
           )}
           {fundFlow.error && (
@@ -549,8 +249,8 @@ function PayableInvoicesPanel() {
 
   return (
     <SectionCard
-      title="Invoices to Pay"
-      subtitle="Escrows awaiting your payment"
+      title="Pending Invoices"
+      subtitle="Awaiting your payment"
       action={
         <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
           invoices.length > 0
@@ -574,7 +274,7 @@ function PayableInvoicesPanel() {
             </svg>
           }
           title="No pending invoices"
-          desc="When a seller creates an escrow addressed to your wallet, it will appear here for payment."
+          desc="When you receive a payment request, it will appear here."
         />
       ) : (
         invoices.map((inv) => (
@@ -585,7 +285,7 @@ function PayableInvoicesPanel() {
   );
 }
 
-// ── LP stakes list ────────────────────────────────────────────────────────────
+// ── LP deposit row ────────────────────────────────────────────────────────────
 function LpStakeRow({ stake }: { stake: { public_id: string; amount: number; created_at: string; on_chain_stake_id?: string; pool_address: string } }) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border-dark)] py-3.5 last:border-0">
@@ -599,14 +299,11 @@ function LpStakeRow({ stake }: { stake: { public_id: string; amount: number; cre
         <div>
           <p className="text-sm font-semibold text-[var(--text-primary)]">{stake.amount.toFixed(2)} USDC</p>
           <p className="text-xs text-[var(--text-muted)]">
-            Staked {new Date(stake.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            Deposited {new Date(stake.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
           </p>
         </div>
       </div>
       <div className="flex items-center gap-3">
-        {stake.on_chain_stake_id && (
-          <p className="hidden font-mono text-xs text-[var(--text-muted)] sm:block">ID #{stake.on_chain_stake_id}</p>
-        )}
         <span className="rounded-full bg-[hsl(var(--tip-bg))] px-2 py-0.5 text-xs font-medium text-[var(--status-success)]">Active</span>
       </div>
     </div>
@@ -625,7 +322,6 @@ export function DashboardPage() {
   const withdrawalLoading = useWithdrawalStore((s) => s.loading);
   const fetchWithdrawals = useWithdrawalStore((s) => s.fetchWithdrawals);
   const poolStakes = usePoolStore((s) => s.stakes);
-  const poolStatus = usePoolStore((s) => s.status);
   const fetchPoolStatus = usePoolStore((s) => s.fetchStatus);
 
   const { balance, loading: balanceLoading, startPolling, stopPolling } = useBalance();
@@ -703,7 +399,6 @@ export function DashboardPage() {
   }
 
   const activeEscrows = transactions.filter((t) => ['PENDING', 'ON_CHAIN', 'PROCESSING'].includes(t.status)).length;
-  const settledEscrows = transactions.filter((t) => ['FUNDED', 'SETTLED', 'REDEEMED'].includes(t.status)).length;
   const activeWithdrawals = withdrawals.filter((w) => ['PENDING_REDEEM', 'PENDING_BRIDGE', 'BRIDGING'].includes(w.status)).length;
   const claimsReady = transactions.filter(isClaimEligible).length;
   const totalStaked = poolStakes.reduce((s, k) => s + k.amount, 0);
@@ -715,111 +410,98 @@ export function DashboardPage() {
     <div className="flex flex-col gap-5">
 
       {/* ── Page header ── */}
-      <div className="mb-4">
-        <h1 className="text-3xl font-bold tracking-tight text-[var(--text-primary)]">
-          {greeting}{role === 'SELLER' ? ', merchant' : role === 'BUYER' ? ', customer' : ''}
-        </h1>
-        {shortWallet && <p className="mt-1.5 font-mono text-sm text-[var(--text-muted)]">{shortWallet}</p>}
-      </div>
-
-      {/* ── Hero Banner ── */}
-      <div className="relative overflow-hidden rounded-2xl bg-[#f7f9fc] px-6 py-8 sm:px-8 sm:py-10">
-        <div className="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-[var(--accent-blue-bg)] to-transparent opacity-50 pointer-events-none" />
-        
-        <div className="relative z-10">
-          <h2 className="text-2xl font-bold text-[var(--text-primary)]">Get started with Prova</h2>
-          <p className="mt-2 max-w-2xl text-sm text-[var(--text-muted)]">
-            Manage your digital transactions, deposit liquidity, and track your balances in one place.
-          </p>
-
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {(role === 'SELLER' || role === 'ADMIN') && (
-              <div className="flex flex-col items-start gap-4 rounded-xl border border-[var(--border-dark)] bg-white p-5 shadow-sm">
-                <span className="rounded-full bg-[var(--accent-blue-bg)] px-2.5 py-0.5 text-xs font-semibold text-[var(--accent-blue)]">
-                  Payments
-                </span>
-                <div>
-                  <h3 className="font-semibold text-[var(--text-primary)]">Create Transaction</h3>
-                  <p className="mt-1 text-sm text-[var(--text-muted)]">Set up a new escrow for a customer.</p>
-                </div>
-                <Button size="sm" asChild className="mt-2 text-xs">
-                  <Link href="/transactions">Start →</Link>
-                </Button>
-              </div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-[var(--text-primary)] sm:text-2xl">
+            {greeting}{role === 'SELLER' ? ', merchant' : role === 'BUYER' ? ', customer' : ''}
+          </h1>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            {shortWallet && (
+              <p className="font-mono text-xs text-[var(--text-muted)]">Account {shortWallet}</p>
             )}
-            
-            {(role === 'LP' || role === 'ADMIN') && (
-              <div className="flex flex-col items-start gap-4 rounded-xl border border-[var(--border-dark)] bg-white p-5 shadow-sm">
-                <span className="rounded-full bg-[hsl(var(--brand-purple-light))] px-2.5 py-0.5 text-xs font-semibold text-[hsl(var(--brand-purple))]">
-                  Yield
-                </span>
-                <div>
-                  <h3 className="font-semibold text-[var(--text-primary)]">Provide Liquidity</h3>
-                  <p className="mt-1 text-sm text-[var(--text-muted)]">Stake USDC to underwrite policies.</p>
-                </div>
-                <Button size="sm" variant="secondary" asChild className="mt-2 text-xs">
-                  <Link href="/pool">Manage Pool →</Link>
-                </Button>
-              </div>
-            )}
-
-            {(role === 'SELLER' || role === 'BUYER' || role === 'LP' || role === 'ADMIN') && (
-              <div className="flex flex-col items-start gap-4 rounded-xl border border-[var(--border-dark)] bg-white p-5 shadow-sm">
-                <span className="rounded-full bg-[hsl(var(--tip-bg))] px-2.5 py-0.5 text-xs font-semibold text-[var(--status-success)]">
-                  Funds
-                </span>
-                <div>
-                  <h3 className="font-semibold text-[var(--text-primary)]">Withdraw Funds</h3>
-                  <p className="mt-1 text-sm text-[var(--text-muted)]">Move USDC back to your native chain.</p>
-                </div>
-                <Button size="sm" variant="secondary" asChild className="mt-2 text-xs">
-                  <Link href="/withdrawals">Withdraw →</Link>
-                </Button>
-              </div>
+            {role && (
+              <span className="rounded-full bg-[hsl(var(--bg-surface-alt))] px-2 py-0.5 text-[11px] font-semibold text-[var(--text-secondary)]">
+                {ROLE_LABEL[role] ?? role}
+              </span>
             )}
           </div>
         </div>
+
+        {/* Quick action buttons — full width on mobile, auto on desktop */}
+        <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+          {role === 'SELLER' && (
+            <Button size="sm" asChild className="flex-1 sm:flex-none justify-center min-w-[120px]">
+              <Link href="/transactions">+ New Payment</Link>
+            </Button>
+          )}
+          {role === 'LP' && (
+            <Button size="sm" variant="secondary" asChild className="flex-1 sm:flex-none justify-center min-w-[120px]">
+              <Link href="/pool">Deposit Funds</Link>
+            </Button>
+          )}
+          <Button size="sm" variant="secondary" asChild className="flex-1 sm:flex-none justify-center min-w-[100px]">
+            <Link href="/withdrawals">Withdraw</Link>
+          </Button>
+        </div>
       </div>
 
-      {/* ── Today / Overview Section ── */}
-      <div className="mt-6">
-        <h2 className="mb-4 text-xl font-bold text-[var(--text-primary)]">Today</h2>
-        <div className="flex flex-col divide-y sm:flex-row sm:divide-y-0 sm:divide-x divide-[var(--border-dark)] border-y border-[var(--border-dark)]">
-          <MetricBlock 
-            label="Total Balance" 
-            value={balance !== null ? `${balance.formatted_balance} ${balance.currency}` : '—'} 
-            sub="USDC on Arbitrum Sepolia" 
-            loading={balanceLoading} 
+      {/* ── Summary Stat Cards ── */}
+      <div className={`grid gap-3 sm:gap-4 ${
+        role === 'SELLER' ? 'grid-cols-2 lg:grid-cols-4' :
+        role === 'LP' ? 'grid-cols-2 lg:grid-cols-3' :
+        'grid-cols-1 sm:grid-cols-2'
+      }`}>
+        <StatCard
+          label="Available Balance"
+          value={balance !== null ? `${balance.formatted_balance} ${balance.currency}` : '—'}
+          sub="Spendable USDC"
+          loading={balanceLoading}
+          accent="blue"
+        />
+
+        {(role === 'SELLER' || role === 'LP') && (
+          <StatCard
+            label="Confidential Balance"
+            value={cUsdcBalance !== null ? `${cUsdcBalance.formatted} USDC` : '—'}
+            sub="Privacy-protected"
+            loading={cUsdcLoading}
+            accent="purple"
           />
-          {(role === 'SELLER' || role === 'ADMIN' || role === 'LP') && (
-            <MetricBlock 
-              label="cUSDC Balance" 
-              value={cUsdcBalance !== null ? `${cUsdcBalance.formatted} cUSDC` : '—'} 
-              sub="Confidential USDC" 
-              loading={cUsdcLoading} 
-            />
-          )}
-          {role === 'LP' ? (
-            <MetricBlock 
-              label="Active Stakes" 
-              value={`$${totalStaked.toFixed(2)}`} 
-              loading={false} 
-            />
-          ) : (
-            <MetricBlock 
-              label="Active Escrows" 
-              value={activeEscrows} 
-              loading={transactionLoading} 
-            />
-          )}
-        </div>
+        )}
+
+        {role === 'LP' ? (
+          <StatCard
+            label="Total Deposited"
+            value={`$${totalStaked.toFixed(2)}`}
+            sub={`${poolStakes.length} active position${poolStakes.length !== 1 ? 's' : ''}`}
+            loading={false}
+            accent="green"
+          />
+        ) : (
+          <StatCard
+            label="Active Payments"
+            value={activeEscrows}
+            sub="In progress"
+            loading={transactionLoading}
+            accent="green"
+          />
+        )}
+
+        {role === 'SELLER' && (
+          <StatCard
+            label="Pending Withdrawals"
+            value={activeWithdrawals}
+            sub="Awaiting transfer"
+            loading={withdrawalLoading}
+          />
+        )}
       </div>
 
       {/* ── Alert banners (contextual, high priority) ── */}
       {claimsReady > 0 && (
         <AlertBanner
           variant="amber"
-          message={`${claimsReady} escrow${claimsReady > 1 ? 's' : ''} ready to claim — waiting period has passed`}
+          message={`${claimsReady} payment${claimsReady > 1 ? 's are' : ' is'} ready to claim — the waiting period has passed`}
           action={{ label: 'Review', href: '/transactions' }}
           icon={
             <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
@@ -829,17 +511,15 @@ export function DashboardPage() {
         />
       )}
 
-
-
       {/* ── Buyer: payable invoices (highest priority) ── */}
       {role === 'BUYER' && <PayableInvoicesPanel />}
 
       {/* ── Seller / admin: activity grid ── */}
-      {(role === 'SELLER' || role === 'ADMIN') && (
+      {role === 'SELLER' && (
         <div className="grid gap-5 xl:grid-cols-2">
           <SectionCard
-            title="Recent Transactions"
-            subtitle="Latest escrow activity"
+            title="Recent Activity"
+            subtitle="Your most recent payment activity"
             action={
               <Link href="/transactions" className="text-xs font-medium text-[var(--accent-blue)] hover:opacity-70 transition-opacity">
                 View all →
@@ -853,9 +533,9 @@ export function DashboardPage() {
                     <path fillRule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V8z" clipRule="evenodd" />
                   </svg>
                 }
-                title="No transactions yet"
-                desc="Create your first escrow to start insuring trade invoices"
-                action={<Button size="sm" asChild><Link href="/transactions">New Transaction</Link></Button>}
+                title="No payments yet"
+                desc="Create your first payment to get started"
+                action={<Button size="sm" asChild><Link href="/transactions">New Payment</Link></Button>}
               />
             ) : (
               <TransactionList
@@ -869,7 +549,7 @@ export function DashboardPage() {
 
           <SectionCard
             title="Recent Withdrawals"
-            subtitle="Bridge and redeem history"
+            subtitle="Your withdrawal history"
             action={
               <Link href="/withdrawals" className="text-xs font-medium text-[var(--accent-blue)] hover:opacity-70 transition-opacity">
                 View all →
@@ -884,7 +564,7 @@ export function DashboardPage() {
                   </svg>
                 }
                 title="No withdrawals yet"
-                desc="Redeem a settled escrow to withdraw funds to your wallet"
+                desc="Withdraw funds from completed payments to your wallet"
                 action={<Button size="sm" variant="secondary" asChild><Link href="/withdrawals">New Withdrawal</Link></Button>}
               />
             ) : (
@@ -894,14 +574,14 @@ export function DashboardPage() {
         </div>
       )}
 
-      {/* ── Seller / admin: payable invoices (lower priority than own activity) ── */}
-      {(role === 'SELLER' || role === 'ADMIN') && <PayableInvoicesPanel />}
+      {/* ── Seller / admin: payable invoices ── */}
+      {role === 'SELLER' && <PayableInvoicesPanel />}
 
-      {/* ── LP: stakes list ── */}
+      {/* ── LP: deposits list ── */}
       {role === 'LP' && (
         <SectionCard
-          title="My Stakes"
-          subtitle="Active positions in the insurance pool"
+          title="My Deposits"
+          subtitle="Your funding positions"
           action={
             <Link href="/pool" className="text-xs font-medium text-[var(--accent-blue)] hover:opacity-70 transition-opacity">
               Manage →
@@ -916,9 +596,9 @@ export function DashboardPage() {
                   <path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd" />
                 </svg>
               }
-              title="No active stakes"
-              desc="Provide liquidity to the insurance pool to start earning premiums from covered trade invoices"
-              action={<Button size="sm" asChild><Link href="/pool">Provide Liquidity</Link></Button>}
+              title="No deposits yet"
+              desc="Deposit USDC to start earning yield from trade insurance premiums"
+              action={<Button size="sm" asChild><Link href="/pool">Deposit Funds</Link></Button>}
             />
           ) : (
             <div className="flex flex-col">
@@ -928,7 +608,7 @@ export function DashboardPage() {
               {poolStakes.length > 6 && (
                 <div className="pt-3 text-center">
                   <Link href="/pool" className="text-xs font-medium text-[var(--accent-blue)] hover:opacity-70 transition-opacity">
-                    View all {poolStakes.length} stakes →
+                    View all {poolStakes.length} deposits →
                   </Link>
                 </div>
               )}

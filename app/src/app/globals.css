@@ -122,6 +122,7 @@ html {
 
   /* ── Shadows (Softer for light mode) ── */
   --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-card: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
   --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.1);
   --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.1);
   --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.1);
@@ -149,6 +150,16 @@ body {
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 input[type="number"]::-webkit-inner-spin-button,

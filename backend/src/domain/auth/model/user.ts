@@ -1,5 +1,5 @@
 export type WalletProvider = 'zerodev' | 'walletconnect';
-export type UserRole = 'SELLER' | 'BUYER' | 'LP' | 'ADMIN';
+export type UserRole = 'SELLER' | 'BUYER' | 'LP';
 
 export interface UserParams {
   id: string;

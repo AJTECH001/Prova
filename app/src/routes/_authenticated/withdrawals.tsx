@@ -38,38 +38,39 @@ export function WithdrawalsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       {/* Page header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">Withdrawals</h1>
-          <p className="mt-0.5 text-sm text-[var(--text-muted)]">Redeem and bridge settled escrows</p>
+          <h1 className="text-xl font-bold tracking-tight text-[var(--text-primary)] sm:text-2xl">Withdrawals</h1>
+          <p className="mt-0.5 text-sm text-[var(--text-muted)]">Transfer settled payment funds to your wallet</p>
         </div>
         <Button
           size="sm"
           variant={showForm ? 'secondary' : 'primary'}
           onClick={() => (showForm ? handleCancel() : setShowForm(true))}
+          className="shrink-0"
         >
-          {showForm ? 'Cancel' : 'New Withdrawal'}
+          {showForm ? 'Cancel' : 'Withdraw'}
         </Button>
       </div>
 
       {/* Create form panel */}
       {showForm && (
-        <div className="rounded-[var(--radius-block)] border border-[var(--border-dark)] bg-white shadow-[var(--shadow-sm)]">
-          <div className="border-b border-[var(--border-dark)] px-5 py-4">
-            <h2 className="text-sm font-semibold text-[var(--text-primary)]">Create Withdrawal</h2>
-            <p className="text-xs text-[var(--text-muted)]">Select settled escrows and destination chain</p>
+        <div className="rounded-xl border border-[var(--border-dark)] bg-white shadow-[var(--shadow-sm)]">
+          <div className="border-b border-[var(--border-dark)] px-4 py-3.5 sm:px-5 sm:py-4">
+            <h2 className="text-sm font-semibold text-[var(--text-primary)]">New Withdrawal</h2>
+            <p className="text-xs text-[var(--text-muted)]">Select completed payments and your destination</p>
           </div>
-          <div className="px-5 py-5">
+          <div className="px-4 py-4 sm:px-5 sm:py-5">
             {withdrawalFlow.currentStep < 0 ? (
               <WithdrawalForm transactions={transactions} onSubmit={handleCreate} />
             ) : (
               <div className="flex flex-col gap-4">
                 <TransactionProgress steps={withdrawalFlow.steps} currentStep={withdrawalFlow.currentStep} />
                 {withdrawalFlow.estimatedAmount && (
-                  <div className="flex items-center gap-2 rounded-[var(--radius-subtle)] bg-[hsl(var(--tip-bg))] px-4 py-3">
-                    <svg className="h-4 w-4 text-[var(--status-success)]" viewBox="0 0 20 20" fill="currentColor">
+                  <div className="flex items-center gap-2 rounded-lg bg-[hsl(var(--tip-bg))] px-4 py-3">
+                    <svg className="h-4 w-4 shrink-0 text-[var(--status-success)]" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
                     <p className="text-sm text-[var(--status-success)]">
@@ -78,7 +79,7 @@ export function WithdrawalsPage() {
                   </div>
                 )}
                 {withdrawalFlow.error && (
-                  <div className="rounded-[var(--radius-subtle)] border border-[hsl(var(--danger-border))] bg-[hsl(var(--danger-bg))] px-4 py-3">
+                  <div className="rounded-lg border border-[hsl(var(--danger-border))] bg-[hsl(var(--danger-bg))] px-4 py-3">
                     <p className="text-sm text-[var(--status-error)]">{withdrawalFlow.error}</p>
                   </div>
                 )}
@@ -93,13 +94,13 @@ export function WithdrawalsPage() {
         </div>
       )}
 
-      {/* Withdrawals table */}
-      <div className="rounded-[var(--radius-block)] border border-[var(--border-dark)] bg-white shadow-[var(--shadow-sm)]">
-        <div className="border-b border-[var(--border-dark)] px-5 py-4">
+      {/* Withdrawals list */}
+      <div className="rounded-xl border border-[var(--border-dark)] bg-white shadow-[var(--shadow-sm)]">
+        <div className="border-b border-[var(--border-dark)] px-4 py-3.5 sm:px-5 sm:py-4">
           <h2 className="text-sm font-semibold text-[var(--text-primary)]">All Withdrawals</h2>
-          <p className="text-xs text-[var(--text-muted)]">Bridge and redeem history</p>
+          <p className="text-xs text-[var(--text-muted)]">Your withdrawal history</p>
         </div>
-        <div className="px-5 py-4">
+        <div className="px-4 py-4 sm:px-5">
           <WithdrawalList
             withdrawals={withdrawals}
             loading={withdrawalLoading}

@@ -9,7 +9,7 @@ interface CardProps {
 
 function Card({ title, className, children }: CardProps) {
   return (
-    <div className={cn('rounded-xl border border-[var(--border-dark)] bg-[var(--background)] p-6', className)}>
+    <div className={cn('rounded-xl border border-[var(--border-dark)] bg-[var(--background)] p-4 shadow-[var(--shadow-card)] sm:p-6', className)}>
       {title && <h3 className="mb-4 text-lg font-semibold text-[var(--text-primary)]">{title}</h3>}
       {children}
     </div>

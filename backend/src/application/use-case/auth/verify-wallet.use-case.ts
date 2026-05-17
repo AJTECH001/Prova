@@ -42,7 +42,6 @@ export class VerifyWalletUseCase {
       throw ApplicationHttpError.unauthorized('Invalid or expired nonce');
     }
 
-    const ADMIN_WALLET = '0x24682566496932ddd71b8b89d2904e7761389b44';
     let user = await this.userRepository.findByWalletAddress(dto.wallet_address);
     if (!user) {
       user = new User({
@@ -50,7 +49,6 @@ export class VerifyWalletUseCase {
         walletAddress: dto.wallet_address,
         walletProvider: 'zerodev',
         email: dto.email,
-        role: dto.wallet_address.toLowerCase() === ADMIN_WALLET ? 'ADMIN' : undefined,
         createdAt: new Date(),
       });
       try {
@@ -58,13 +56,6 @@ export class VerifyWalletUseCase {
       } catch (e) {
         logger.error({ err: e instanceof Error ? e.message : String(e), walletAddress: dto.wallet_address }, 'Failed to save user');
         throw e;
-      }
-    } else if (dto.wallet_address.toLowerCase() === ADMIN_WALLET && user.role !== 'ADMIN') {
-      user.role = 'ADMIN';
-      try {
-        await this.userRepository.updateRole(user.id, 'ADMIN');
-      } catch (e) {
-        logger.error({ err: e instanceof Error ? e.message : String(e), userId: user.id }, 'Failed to update admin role');
       }
     }
 

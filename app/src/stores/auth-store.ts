@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type UserRole = 'SELLER' | 'BUYER' | 'LP' | 'ADMIN';
+export type UserRole = 'SELLER' | 'BUYER' | 'LP';
 
 interface AuthState {
   accessToken: string | null;

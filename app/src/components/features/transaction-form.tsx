@@ -46,10 +46,9 @@ export function TransactionForm({ onSubmit }: TransactionFormProps) {
 
   return (
     <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-      {/* Buyer wallet address — required for on-chain condition resolver */}
       <Input
-        label="Buyer Wallet Address *"
-        placeholder="0x..."
+        label="Recipient Wallet Address *"
+        placeholder="0x…"
         value={buyerAddress}
         onChange={(e) => setBuyerAddress(e.target.value)}
         error={!buyerAddressValid ? 'Must be a valid 0x wallet address' : undefined}
@@ -77,8 +76,8 @@ export function TransactionForm({ onSubmit }: TransactionFormProps) {
         onChange={(e) => setExternalReference(e.target.value)}
       />
       <div className="flex justify-end">
-        <Button type="submit" loading={submitting} disabled={!canSubmit}>
-          Create Invoice Escrow
+        <Button type="submit" loading={submitting} disabled={!canSubmit} className="w-full sm:w-auto">
+          Create Payment
         </Button>
       </div>
     </form>

@@ -15,6 +15,7 @@ function extractBearerToken(req: VercelRequest): string | null {
 }
 
 export function withAuth(handler: VercelHandler): VercelHandler {
+  
   return async (req: VercelRequest, res: VercelResponse): Promise<void> => {
     const token = extractBearerToken(req);
 
