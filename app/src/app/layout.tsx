@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     siteName: 'Prova',
     images: [
       {
-        url: '/opengraph-image',
+        url: '/og-image.png',
         width: 1200,
         height: 630,
         alt: 'Prova — Trade Credit Insurance',
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Prova — Trade Credit Insurance',
     description: 'On-chain trade credit insurance for SME exporters. Get covered, trade confidently.',
-    images: ['/opengraph-image'],
+    images: ['/og-image.png'],
   },
 }
 
