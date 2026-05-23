@@ -139,6 +139,24 @@ export class ZeroDevProvider implements IWalletProvider {
   async sendUserOperation(calls: Call[]): Promise<string> {
     if (!this.kernelClient?.account) throw new Error('Not connected');
 
+    // Guard: passkeys are domain-scoped. A passkey registered on `localhost`
+    // will produce an authenticatorData with SHA-256("localhost") as the RP ID
+    // hash, which will fail WebAuthn validation on any other domain.
+    if (typeof window !== 'undefined') {
+      const currentHost = window.location.hostname;
+      const registeredRpId = (this.webAuthnKeyRef as { rpId?: string } | null)?.rpId ?? '';
+      if (
+        registeredRpId &&
+        currentHost !== 'localhost' &&
+        registeredRpId === 'localhost'
+      ) {
+        throw new Error(
+          'Your passkey was created on localhost and cannot be used on this domain. ' +
+            'Please sign out and register again on ' + currentHost + '.',
+        );
+      }
+    }
+
     const callData = await this.kernelClient.account.encodeCalls(
       calls.map((c) => ({
         to: c.to as Hex,

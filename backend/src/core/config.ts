@@ -24,6 +24,8 @@ const EnvSchema = z.object({
   EXPOSURE_REGISTRY_ADDRESS: z.string().optional(),
   CLAIMS_REGISTRY_ADDRESS: z.string().optional(),
   MOCK_DEBTOR_PROOF_ADDRESS: z.string().optional(),
+  ORACLE_DEBTOR_PROOF_ADDRESS: z.string().optional(),
+  DEFAULT_DEBTOR_CREDIT_SCORE: z.coerce.number().min(0).max(1000).default(750),
   COVERAGE_MANAGER_ADDRESS: z.string().optional(),
   POOL_ADDRESS: z.string().optional(),
   POOL_FACTORY_ADDRESS: z.string().optional(),

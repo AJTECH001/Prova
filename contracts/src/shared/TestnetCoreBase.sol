@@ -30,9 +30,20 @@ abstract contract TestnetCoreBase is Initializable, UUPSUpgradeable, OwnableUpgr
         return _allowedContracts[addr];
     }
 
+    /// @notice Update the Moat registry whitelist.
+    /// @param  addr    Address to whitelist or remove.
+    /// @param  allowed True to whitelist, false to remove.
+    function setAllowedContract(address addr, bool allowed) external onlyOwner {
+        if (addr == address(0)) revert ZeroAddress();
+        _allowedContracts[addr] = allowed;
+        emit ContractWhitelistUpdated(addr, allowed);
+    }
+
     // ─── Core init ────────────────────────────────────────────────────────────
 
+    error ZeroAddress();
     event CoreInitialized();
+    event ContractWhitelistUpdated(address indexed addr, bool allowed);
 
     function __TestnetCoreBase_init(address initialOwner) internal onlyInitializing {
         __Ownable_init(initialOwner);

@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { encodeFunctionData, parseEventLogs } from 'viem';
+import { encodeFunctionData, parseAbi, parseEventLogs, decodeAbiParameters } from 'viem';
 import { PoolService } from '@/services/PoolService';
 import { fheService } from '@/services/FheService';
 import { publicClient } from '@/lib/public-client';
@@ -7,24 +7,38 @@ import { usePoolStore } from '@/stores/pool-store';
 import { useWalletStore } from '@/stores/wallet-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { useRefreshStore } from '@/stores/refresh-store';
-import { InsurancePoolABI, ConfidentialCoverageManagerABI, cUSDCABI, ERC20ApproveABI, ADDRESSES } from '@/lib/contracts';
+import { InsurancePoolABI, ConfidentialCoverageManagerABI, ConfidentialEscrowABI, CoFHETaskManagerABI, cUSDCABI, ERC20ApproveABI, ADDRESSES } from '@/lib/contracts';
+import { decodeError } from '@/lib/contract-errors';
+import { assertPoolHealthy } from '@/lib/pool-validator';
+import type { Hex } from 'viem';
 
-// Maps on-chain error selectors to user-readable messages.
-const CONTRACT_ERROR_MESSAGES: Record<string, string> = {
-  '0xe2e43053': 'Coverage has already been purchased for this escrow. Refresh the page to see the updated status.',
-  '0x3aadb858': 'Invoice conflict detected on-chain. This can happen if coverage was already partially processed. Please try again or contact support.',
-  '0xd06b96b1': 'Policy not approved by the insurance pool. This is a one-time setup issue — please try again in a few seconds.',
-  '0xea7a154b': 'Concentration cap not configured for this buyer. The system is setting it up — please try again in a few seconds.',
-  '0x1fa47a1c': 'The escrow does not exist on-chain yet. Wait for the on-chain confirmation and try again.',
-  '0xaa0b79a6': 'Policy data not found on-chain. Please try again.',
-};
+const ORACLE_ABI = parseAbi(['function hasScore(bytes32) external view returns (bool)']);
+
+async function assertOracleHasScore(oracleAddress: string, debtorId: Hex): Promise<void> {
+  try {
+    const hasScore = await publicClient.readContract({
+      address: oracleAddress as Hex,
+      abi: ORACLE_ABI,
+      functionName: 'hasScore',
+      args: [debtorId],
+    });
+    if (!hasScore) {
+      throw new Error(
+        'Credit score not yet registered for this buyer. ' +
+          'The system is setting it up — please wait a moment and try again.',
+      );
+    }
+  } catch (e: unknown) {
+    if (e instanceof Error && e.message.includes('Credit score not yet registered')) throw e;
+    // If oracle read fails (wrong address, not deployed yet), log and continue —
+    // the on-chain error from evaluateRisk will surface the issue.
+    console.warn('[OracleCheck] hasScore read failed — continuing:', e instanceof Error ? e.message : e);
+  }
+}
 
 function decodeCoverageError(e: unknown): string {
-  const msg = e instanceof Error ? e.message : String(e);
-  for (const [selector, readable] of Object.entries(CONTRACT_ERROR_MESSAGES)) {
-    if (msg.toLowerCase().includes(selector.toLowerCase())) return readable;
-  }
-  return msg || 'Coverage purchase failed';
+  const decoded = decodeError(e);
+  return decoded.message;
 }
 
 // one year operator approval (uint48 — viem maps this to number, not bigint)
@@ -301,61 +315,128 @@ export function useCoverageFlow() {
     setInProgress(true);
     setError(null);
     try {
+      // ── Step 0: fetch coverage parameters from backend ────────────────────
       setCurrentStep(0);
       const response = await PoolService.buyCoverage(escrowPublicId, opts);
 
+      // ── Preflight: verify pool ↔ manager wiring before touching the wallet ─
+      await assertPoolHealthy(response.pool_address, response.policy_address);
+
+      // ── Step 1: FHE encryption ─────────────────────────────────────────────
       setCurrentStep(1);
       const walletAddress = useAuthStore.getState().walletAddress;
       if (!walletAddress) throw new Error('Wallet not connected');
+
+      // ── Preflight: verify oracle has a score for this buyer ───────────────
+      // The debtorId in policyData (first 32 bytes) is the canonical debtor
+      // identifier used on-chain — NOT necessarily the connected wallet.
+      // In trade credit insurance: seller buys coverage, buyer is the debtor.
+      const oracleAddress = (ADDRESSES as Record<string, string>).OracleDebtorProof;
+      if (oracleAddress && response.policy_data && response.policy_data.length >= 66) {
+        try {
+          const [debtorId] = decodeAbiParameters(
+            [{ type: 'bytes32' }],
+            response.policy_data as Hex,
+          );
+          await assertOracleHasScore(oracleAddress, debtorId as Hex);
+        } catch (e: unknown) {
+          if (e instanceof Error && e.message.includes('Credit score not yet registered')) throw e;
+          console.warn('[OracleCheck] preflight decode failed — continuing:', e instanceof Error ? e.message : e);
+        }
+      }
       await fheService.initialize(walletAddress);
 
-      // FHE-encrypt holder address and coverage amount
       const [encryptedHolder, encryptedCoverage] = await fheService.encryptBatch([
         { type: 'eaddress', value: walletAddress },
         { type: 'euint64', value: BigInt(response.coverage_amount_smallest_unit) },
       ]);
 
+      console.debug('[CoverageFlow] encryptedHolder utype:', encryptedHolder.utype,
+        'ctHash:', encryptedHolder.data.slice(0, 18),
+        'sigLen:', encryptedHolder.inputProof?.length ?? 0);
+      console.debug('[CoverageFlow] encryptedCoverage utype:', encryptedCoverage.utype,
+        'ctHash:', encryptedCoverage.data.slice(0, 18),
+        'sigLen:', encryptedCoverage.inputProof?.length ?? 0);
+
+      // ── Step 2: simulate + sign ───────────────────────────────────────────
       setCurrentStep(2);
       await useWalletStore.getState().ensureConnected();
-      const data = encodeFunctionData({
-        abi: ConfidentialCoverageManagerABI,
-        functionName: 'purchaseCoverage',
+
+      const coverageArgs = [
+        {
+          ctHash: BigInt(encryptedHolder.data),
+          securityZone: encryptedHolder.securityZone,
+          utype: encryptedHolder.utype,
+          signature: encryptedHolder.inputProof as Hex,
+        },
+        response.pool_address as Hex,
+        response.policy_address as Hex,
+        BigInt(response.escrow_on_chain_id),
+        {
+          ctHash: BigInt(encryptedCoverage.data),
+          securityZone: encryptedCoverage.securityZone,
+          utype: encryptedCoverage.utype,
+          signature: encryptedCoverage.inputProof as Hex,
+        },
+        BigInt(response.expiry),
+        response.policy_data as Hex,
+        response.risk_proof as Hex,
+      ] as const;
+
+      // Dry-run note: purchaseCoverage uses FHE operations (FHE.asEuint64, evaluateRisk)
+      // that require the CoFHE coprocessor, which is unavailable on standard Arbitrum
+      // Sepolia RPC. Any simulateContract call will revert inside the FHE layer with
+      // unpredictable selectors — simulation results are not reliable for this function.
+      // assertPoolHealthy() above already validated the real infrastructure state via
+      // read calls. Skip simulation and let the UserOp surface any on-chain errors.
+
+      // ── Pre-grant CCM FHE ACL on the escrow amount handle ─────────────────
+      // ConfidentialEscrow.getAmount() is a view function and cannot call FHE.allow().
+      // CCM tries to use the returned handle in FHE.lte(coverage, escrowAmount) but
+      // fails with ACLNotAllowed because it was never granted access. Fix: the escrow
+      // creator (this wallet/Kernel) holds permanent ACL on the amount handle from
+      // create() time and can delegate to CCM via TaskManager.allow() in the same
+      // UserOp, before purchaseCoverage is invoked.
+      const escrowAmountHandle = await publicClient.readContract({
+        address: ADDRESSES.ConfidentialEscrow as Hex,
+        abi: ConfidentialEscrowABI,
+        functionName: 'getAmount',
+        args: [BigInt(response.escrow_on_chain_id)],
+      });
+
+      const allowData = encodeFunctionData({
+        abi: CoFHETaskManagerABI,
+        functionName: 'allow',
         args: [
-          {
-            ctHash: BigInt(encryptedHolder.data),
-            securityZone: encryptedHolder.securityZone,
-            utype: encryptedHolder.utype,
-            signature: encryptedHolder.inputProof as `0x${string}`,
-          },
-          response.pool_address as `0x${string}`,
-          response.policy_address as `0x${string}`,
-          BigInt(response.escrow_on_chain_id),
-          {
-            ctHash: BigInt(encryptedCoverage.data),
-            securityZone: encryptedCoverage.securityZone,
-            utype: encryptedCoverage.utype,
-            signature: encryptedCoverage.inputProof as `0x${string}`,
-          },
-          BigInt(response.expiry),
-          response.policy_data as `0x${string}`,
-          response.risk_proof as `0x${string}`,
+          BigInt(escrowAmountHandle as `0x${string}`),
+          ADDRESSES.ConfidentialCoverageManager as Hex,
         ],
       });
 
-      const txHash = await useWalletStore.getState().sendUserOperation([{ to: response.contract_address, data }]);
+      const coverageData = encodeFunctionData({
+        abi: ConfidentialCoverageManagerABI,
+        functionName: 'purchaseCoverage',
+        args: coverageArgs,
+      });
 
-      // Parse CoveragePurchased event to record coverageId in backend
+      // ── Step 3: submit UserOp (ACL grant + purchaseCoverage in one batch) ──
+      const txHash = await useWalletStore.getState().sendUserOperation([
+        { to: ADDRESSES.CoFHETaskManager as Hex, data: allowData },
+        { to: response.contract_address as Hex, data: coverageData },
+      ]);
+
+      // ── Step 4: confirm on-chain + report to backend ──────────────────────
       setCurrentStep(3);
       let coverageId: string | undefined;
       try {
-        const receipt = await publicClient.getTransactionReceipt({ hash: txHash as `0x${string}` });
+        const receipt = await publicClient.getTransactionReceipt({ hash: txHash as Hex });
         const events = parseEventLogs({
           abi: ConfidentialCoverageManagerABI,
           logs: receipt.logs,
           eventName: 'CoveragePurchased',
         });
         if (events.length > 0) coverageId = (events[0].args as { coverageId: bigint }).coverageId.toString();
-      } catch { /* non-fatal */ }
+      } catch { /* non-fatal — backend webhook will pick it up */ }
 
       if (coverageId) {
         try { await PoolService.confirmCoverage(escrowPublicId, coverageId, txHash); } catch { /* non-fatal */ }
@@ -366,6 +447,8 @@ export function useCoverageFlow() {
       setCurrentStep(4);
       return true;
     } catch (e) {
+      const raw = e instanceof Error ? e.message : String(e);
+      console.error('[CoverageFlow] raw error:', raw);
       setError(decodeCoverageError(e));
       return false;
     } finally {

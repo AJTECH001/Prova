@@ -1,21 +1,18 @@
 import { encodeAbiParameters } from 'viem';
 import { ApplicationHttpError } from '../../../core/errors.js';
 import { getEnv } from '../../../core/config.js';
-import { getLogger } from '../../../core/logger.js';
 import type { IEscrowRepository } from '../../../domain/escrow/repository/escrow.repository.js';
 import type { PolicyAdminService } from '../../../infrastructure/chain/policy-admin.service.js';
 import type { BuyCoverageDto, BuyCoverageResponse } from '../../dto/escrow/buy-coverage.dto.js';
 
-// purchaseCoverage(InEaddress holder, address pool, address policy, uint256 escrowId,
-//                  InEuint64 coverageAmount, uint256 expiry, bytes policyData, bytes riskProof)
+// purchaseCoverage(uint256 holder, address pool, address policy, uint256 escrowId,
+//                  uint256 coverageAmount, uint256 expiry, bytes policyData, bytes riskProof)
 const ABI_FUNCTION_SIGNATURE =
-  'purchaseCoverage((uint256,uint8,uint8,bytes),address,address,uint256,(uint256,uint8,uint8,bytes),uint256,bytes,bytes)';
+  'purchaseCoverage(uint256,address,address,uint256,uint256,uint256,bytes,bytes)';
 
 const USDC_DECIMALS = 6;
 const DEFAULT_COVERAGE_DAYS = 90;
 const DEFAULT_COVERAGE_PERCENTAGE_BPS = 9000; // 90% — standard trade-credit coverage
-
-const logger = getLogger('BuyCoverageUseCase');
 
 export class BuyCoverageUseCase {
   constructor(
@@ -44,7 +41,10 @@ export class BuyCoverageUseCase {
     }
 
     const env = getEnv();
-    const poolAddress = dto.pool_address ?? escrow.poolAddress ?? env.POOL_ADDRESS ?? '';
+    // env.POOL_ADDRESS takes priority over the escrow's stored pool address so that
+    // updating POOL_ADDRESS in .env after a pool redeploy immediately applies to all
+    // pending escrows — without needing a DB migration.
+    const poolAddress = dto.pool_address ?? env.POOL_ADDRESS ?? escrow.poolAddress ?? '';
     const policyAddress = escrow.policyAddress ?? env.POLICY_ADDRESS ?? '';
 
     if (!poolAddress) throw new ApplicationHttpError(422, 'pool_address is required (or set POOL_ADDRESS env var)');
@@ -64,21 +64,20 @@ export class BuyCoverageUseCase {
     const buyerAddr = (escrow.counterparty ?? walletAddress).toLowerCase().replace('0x', '');
     const debtorId = `0x${buyerAddr.padStart(64, '0')}` as `0x${string}`;
 
-    // One-time setup: register the policy in ConfidentialPolicyRegistry and whitelist
-    // it in the InsurancePool. Required before purchaseCoverage will be accepted.
-    try {
-      await this.policyAdminService.ensurePolicyReady(poolAddress, policyAddress);
-    } catch (e) {
-      logger.warn({ err: e instanceof Error ? e.message : String(e) }, 'ensurePolicyReady failed — continuing with coverage params');
-    }
-
-    // Per-buyer setup: set concentration cap so _registerExposure doesn't revert
-    // with ConcentrationCapNotSet.
-    try {
-      await this.policyAdminService.ensureDebtorRegistered(policyAddress, debtorId);
-    } catch (e) {
-      logger.warn({ err: e instanceof Error ? e.message : String(e) }, 'ensureDebtorRegistered failed — continuing with coverage params');
-    }
+    // ── Infrastructure checks ─────────────────────────────────────────────────
+    //
+    // All four are blocking: if any fails, purchaseCoverage will revert on-chain.
+    // Run sequentially so each failure surfaces immediately with a clear message
+    // rather than being swallowed by Promise.allSettled or silent try/catch.
+    //
+    // 1. Pool must be registered in ConfidentialPoolFactory — root cause of 0x4d13139e.
+    // 2. CCM.escrow() and CCM.poolFactory() must point to canonical Reineira addresses.
+    // 3. Policy must be registered in PolicyRegistry and whitelisted in InsurancePool.
+    // 4. Per-buyer: concentration cap must be set on TradeCreditInsurancePolicy.
+    await this.policyAdminService.ensurePoolManagerCorrect(poolAddress);
+    await this.policyAdminService.ensureCcmWired();
+    await this.policyAdminService.ensurePolicyReady(poolAddress, policyAddress);
+    await this.policyAdminService.ensureDebtorRegistered(policyAddress, debtorId);
 
     const invoiceAmountSmallest = BigInt(Math.round(escrow.amount * 10 ** USDC_DECIMALS));
 

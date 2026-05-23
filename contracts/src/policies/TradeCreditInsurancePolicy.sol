@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {FHE, Common, euint64, euint32, euint16, ebool, InEuint32, InEuint64} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import {FHE, Common, euint64, euint32, euint16, ebool, InEuint64} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 import {UnderwriterPolicyBase} from "../shared/extensions/UnderwriterPolicyBase.sol";
 import {FHEMeta} from "../shared/lib/FHEMeta.sol";
 import {IDebtorProof} from "../interfaces/IDebtorProof.sol";
@@ -85,9 +85,6 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
     /// @notice Encrypted append-only log of all judged claims.
     InsuranceClaimsRegistry public lossHistory;
 
-    /// @notice Authorised protocol caller (ConfidentialCoverageManager).
-    address public protocolCaller;
-
     // ─── Events ──────────────────────────────────────────────────────────────
 
     /// @notice Emitted when a coverage policy is registered.
@@ -109,10 +106,6 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
     /// @param  bps          Add-on value in basis points.
     event IndustryRiskSet(bytes4 indexed industryCode, uint16 bps);
 
-    /// @notice Emitted when the authorised protocol caller is updated.
-    /// @param  caller The new protocol caller address.
-    event ProtocolCallerSet(address indexed caller);
-
     /// @notice Emitted when the loss history log call fails, so monitoring can detect it.
     /// @param  coverageId Coverage whose claim could not be logged.
     event ClaimLogFailed(uint256 indexed coverageId);
@@ -131,29 +124,24 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
     /// @param  _debtorProofAdapter Address of the IDebtorProof credit score adapter.
     /// @param  _exposureRegistry   Address of the DebtorExposureRegistry moat contract.
     /// @param  _lossHistory        Address of the InsuranceClaimsRegistry contract.
-    /// @param  _protocolCaller     Address of the ConfidentialCoverageManager.
     function initialize(
         address initialOwner,
         address _debtorProofAdapter,
         address _exposureRegistry,
-        address _lossHistory,
-        address _protocolCaller
+        address _lossHistory
     ) external initializer {
         __UnderwriterPolicyBase_init(initialOwner);
 
         if (_debtorProofAdapter == address(0)) revert ZeroAddress();
         if (_exposureRegistry   == address(0)) revert ZeroAddress();
         if (_lossHistory        == address(0)) revert ZeroAddress();
-        if (_protocolCaller     == address(0)) revert ZeroAddress();
 
         debtorProofAdapter = IDebtorProof(_debtorProofAdapter);
         exposureRegistry   = DebtorExposureRegistry(_exposureRegistry);
         lossHistory        = InsuranceClaimsRegistry(_lossHistory);
-        protocolCaller     = _protocolCaller;
 
         _encryptAndStoreCurve(RiskMathLib.defaultThresholds(), RiskMathLib.defaultPremiums());
         curveVersion = RiskMathLib.DEFAULT_CURVE_VERSION;
-        emit ProtocolCallerSet(_protocolCaller);
     }
 
     // ─── Owner administration ─────────────────────────────────────────────────
@@ -206,26 +194,17 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
         _concentrationCaps[debtorId] = cap;
     }
 
-    /// @notice Update the authorised protocol caller.
-    /// @param  caller Address of the new ConfidentialCoverageManager.
-    function setProtocolCaller(address caller) external onlyOwner {
-        if (caller == address(0)) revert ZeroAddress();
-        protocolCaller = caller;
-        emit ProtocolCallerSet(caller);
-    }
-
     // ─── IUnderwriterPolicy ──────────────────────────────────────────────────
 
     /// @notice Stores coverage policy parameters, registers debtor exposure, and
     ///         binds the calling coverage manager as the authorised caller for this ID.
-    /// @dev    Restricted to protocolCaller. Any other sender reverts with UnauthorizedCaller.
+    /// @dev    Restricted to whitelisted Prova contracts (P5).
     ///         data = abi.encode(bytes32 debtorId, address poolId, uint64 buyerCreditLimit,
     ///                           uint16 coveragePercentageBps, bytes2 countryCode,
     ///                           bytes4 industryCode, uint64 invoiceAmount)
     /// @param  coverageId Unique identifier assigned by the coverage manager.
     /// @param  data       ABI-encoded policy configuration parameters.
-    function onPolicySet(uint256 coverageId, bytes calldata data) external override {
-        if (msg.sender != protocolCaller) revert UnauthorizedCaller(coverageId);
+    function onPolicySet(uint256 coverageId, bytes calldata data) external override onlyProvaContract {
         _bindManager(coverageId);
 
         (
@@ -264,8 +243,24 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
         emit PolicySet(coverageId);
     }
 
-    /// @notice Fetches the buyer's encrypted credit score, evaluates it against the
-    ///         6-bucket FHE premium curve, and returns an encrypted premium in basis points.
+    /// @notice Update the IDebtorProof adapter address.
+    /// @dev    Called after a UUPS upgrade to wire the OracleDebtorProof replacing MockDebtorProof.
+    ///         Any address(0) argument is rejected.
+    /// @param  newAdapter Address of the new IDebtorProof implementation.
+    function setDebtorProofAdapter(address newAdapter) external onlyOwner {
+        if (newAdapter == address(0)) revert ZeroAddress();
+        debtorProofAdapter = IDebtorProof(newAdapter);
+    }
+
+    /// @notice Fetches the buyer's CoFHE-sealed credit score from the oracle adapter,
+    ///         evaluates it against the 6-bucket FHE premium curve, and returns an
+    ///         encrypted premium in basis points.
+    ///
+    /// @dev    The adapter's getScore() returns a pre-verified euint32 handle and calls
+    ///         FHE.allow(score, address(this)) so this contract can operate on the value.
+    ///         No re-verification via FHE.asEuint32(InEuint32) is needed — the ciphertext
+    ///         was validated against the CoFHE TaskManager when the oracle called setScore().
+    ///
     /// @param  escrowId  The escrow being insured (passed as coverageId by ConfidentialCoverageManager).
     /// @return riskScore Encrypted premium in basis points as a euint64.
     function evaluateRisk(uint256 escrowId, bytes calldata /*riskProof*/)
@@ -277,14 +272,13 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
         Policy memory p = _policies[escrowId];
         if (!p.set) revert PolicyNotSet(escrowId);
 
+        // getScore() grants this contract ACL permission on the returned euint32 handle
+        // via FHE.allow(score, msg.sender) inside the adapter.
         // TODO: Enhance with zkTLS off-chain risk data (see TECH_DEBT.md)
-        // Current: Only on-chain credit score
-        // Future: Combine with bank history, payment patterns, PROVA's verified loss data system
-        (InEuint32 memory encInput, ) = debtorProofAdapter.getScore(p.debtorId);
-        euint32 creditScore = FHEMeta.asEuint32(encInput, msg.sender);
+        (euint32 creditScore, ) = debtorProofAdapter.getScore(p.debtorId);
         FHE.allowThis(creditScore);
 
-        // Use shared library for risk curve evaluation
+        // Evaluate the encrypted credit score against the 6-bucket FHE premium curve.
         euint32 premium = FHERiskMath.evaluateRiskCurveOptimized(
             creditScore,
             _encThresholds,
@@ -295,13 +289,9 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
         euint16 countryRisk = _countryRisk[p.countryCode];
         euint16 industryRisk = _industryRisk[p.industryCode];
 
-        // Use shared library for add-on calculation
         euint32 addOns = FHERiskMath.addRiskAddons(countryRisk, industryRisk);
-
-        // Use shared library for premium finalization
         euint32 finalPremium = FHERiskMath.finalizePremium(premium, addOns, p.validCapEnc);
 
-        // Convert to euint64 with proper ACL permissions
         riskScore = FHERiskMath.convertToEuint64(finalPremium, msg.sender);
     }
 

@@ -13,13 +13,16 @@ export const ADDRESSES = {
   DebtorExposureRegistry:     '0xe3b6a9E4BDF597899e79D13C4f73B16dff610fBE',
   InsuranceClaimsRegistry:    '0x69e4fce78B3E1A4582FF2e35C51EA4364CB5D5dA',
   MockDebtorProof:            '0x817A8DA1e6B5A7E45Dcf3784870d82C3E67F1576',
-  // Reineira core contracts redeployed 
+  OracleDebtorProof:          '0xfcBf9E3df4AB09C4451b35cac0D995DA558E0A6e',
+  // Reineira core contracts redeployed
   ConfidentialEscrow:          '0xbe1eEB78504B71beEE1b33D3E3D367A2F9a549A6',
   ConfidentialCoverageManager: '0x40A3A53d54D25cF079Bc9C2033224159d4EA3A67',
   PoolFactory:                 '0xCBD3815244ee96a92B3Ca3C71B6eD9acB3661e80',
   PolicyRegistry:              '0x962A6c7Be4fC765B0E8B601ab4BB210938660190',
   cUSDC:                       '0x42E47f9bA89712C317f60A72C81A610A2b68c48a',
   USDC:                        '0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d',
+  // CoFHE infrastructure (hardcoded in FHE.sol — same address on all CoFHE-enabled chains)
+  CoFHETaskManager:            '0xeA30c4B8b44078Bbf8a6ef5b9f1eC1626C7848D9',
 } as const;
 
 // ─── ABIs ────────────────────────────────────────────────────────────────────
@@ -711,9 +714,18 @@ export const ConfidentialEscrowABI = [
     anonymous: false,
     inputs: [{ indexed: true, name: 'insuranceManager', type: 'address' }],
   },
+  // getAmount returns euint64 which is bytes32 at ABI level (the ciphertext handle)
+  {
+    name: 'getAmount',
+    inputs: [{ name: 'escrowId', type: 'uint256' }],
+    outputs: [{ name: '', type: 'bytes32' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
 ] as const;
 
 export const InsurancePoolABI = [
+  // ─── Staking ─────────────────────────────────────────────────────────────
   {
     name: 'stake',
     inputs: [
@@ -739,6 +751,22 @@ export const InsurancePoolABI = [
     stateMutability: 'nonpayable',
     type: 'function',
   },
+  // ─── Validation views (used by pool-validator.ts) ─────────────────────────
+  {
+    name: 'insuranceManager',
+    inputs: [],
+    outputs: [{ type: 'address' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    name: 'isPolicy',
+    inputs: [{ name: 'policy', type: 'address' }],
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  // ─── Events ───────────────────────────────────────────────────────────────
   {
     name: 'Staked',
     type: 'event',
@@ -814,6 +842,25 @@ export const ConfidentialCoverageManagerABI = [
     anonymous: false,
     inputs: [{ indexed: true, name: 'coverageId', type: 'uint256' }],
     type: 'event',
+  },
+] as const;
+
+// CoFHE TaskManager — allow(handle, account, requester) grants permanent FHE ACL.
+// Called by the escrow creator's Kernel to pre-authorise CCM on the stored amount
+// handle before purchaseCoverage, because ConfidentialEscrow.getAmount() is a view
+// function and cannot call FHE.allow() itself.
+// Production CoFHE TaskManager uses allow(uint256,address) — msg.sender is the implicit
+// requester. The mock uses a 3-arg version; calling 3-arg on production hits the fallback.
+export const CoFHETaskManagerABI = [
+  {
+    name: 'allow',
+    inputs: [
+      { name: 'handle',  type: 'uint256' },
+      { name: 'account', type: 'address' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
   },
 ] as const;
 
