@@ -14,6 +14,24 @@ const USDC_DECIMALS = 6;
 const DEFAULT_COVERAGE_DAYS = 90;
 const DEFAULT_COVERAGE_PERCENTAGE_BPS = 9000; // 90% — standard trade-credit coverage
 
+/**
+ * Convert a decimal amount (number or numeric string from DB) to the smallest
+ * unit integer for USDC (6 decimals) without float precision loss.
+ *
+ * String path: parses the decimal string directly — no float arithmetic involved.
+ * Number path: uses Math.round which is safe for USDC amounts up to ~$9B.
+ */
+function amountToSmallestUnit(amount: number | string, decimals: number): bigint {
+  if (typeof amount === 'string') {
+    const dotIdx = amount.indexOf('.');
+    if (dotIdx === -1) return BigInt(amount) * BigInt(10 ** decimals);
+    const intPart = amount.slice(0, dotIdx) || '0';
+    const fracPart = amount.slice(dotIdx + 1).padEnd(decimals, '0').slice(0, decimals);
+    return BigInt(intPart) * BigInt(10 ** decimals) + BigInt(fracPart || '0');
+  }
+  return BigInt(Math.round(amount * 10 ** decimals));
+}
+
 export class BuyCoverageUseCase {
   constructor(
     private readonly escrowRepository: IEscrowRepository,
@@ -41,9 +59,6 @@ export class BuyCoverageUseCase {
     }
 
     const env = getEnv();
-    // env.POOL_ADDRESS takes priority over the escrow's stored pool address so that
-    // updating POOL_ADDRESS in .env after a pool redeploy immediately applies to all
-    // pending escrows — without needing a DB migration.
     const poolAddress = dto.pool_address ?? env.POOL_ADDRESS ?? escrow.poolAddress ?? '';
     const policyAddress = escrow.policyAddress ?? env.POLICY_ADDRESS ?? '';
 
@@ -51,39 +66,28 @@ export class BuyCoverageUseCase {
     if (!policyAddress) throw new ApplicationHttpError(422, 'POLICY_ADDRESS not configured');
 
     const coverageAmount = dto.coverage_amount ?? escrow.amount;
-    const coverageAmountSmallest = BigInt(Math.round(coverageAmount * 10 ** USDC_DECIMALS));
+    const coverageAmountSmallest = amountToSmallestUnit(coverageAmount, USDC_DECIMALS);
 
-    // Expiry: provided date or default 90 days from now
     const expiryTimestamp = dto.expiry
       ? Math.floor(new Date(dto.expiry + 'T00:00:00Z').getTime() / 1000)
       : Math.floor(Date.now() / 1000) + DEFAULT_COVERAGE_DAYS * 24 * 60 * 60;
 
-    // debtorId: bytes32 canonical identifier for the buyer.
-    // Derived by left-padding the buyer's wallet address into 32 bytes —
-    // matches bytes32(uint160(address)) in Solidity.
     const buyerAddr = (escrow.counterparty ?? walletAddress).toLowerCase().replace('0x', '');
     const debtorId = `0x${buyerAddr.padStart(64, '0')}` as `0x${string}`;
 
-    // ── Infrastructure checks ─────────────────────────────────────────────────
-    //
-    // All four are blocking: if any fails, purchaseCoverage will revert on-chain.
-    // Run sequentially so each failure surfaces immediately with a clear message
-    // rather than being swallowed by Promise.allSettled or silent try/catch.
-    //
-    // 1. Pool must be registered in ConfidentialPoolFactory — root cause of 0x4d13139e.
-    // 2. CCM.escrow() and CCM.poolFactory() must point to canonical Reineira addresses.
-    // 3. Policy must be registered in PolicyRegistry and whitelisted in InsurancePool.
-    // 4. Per-buyer: concentration cap must be set on TradeCreditInsurancePolicy.
     await this.policyAdminService.ensurePoolManagerCorrect(poolAddress);
     await this.policyAdminService.ensureCcmWired();
     await this.policyAdminService.ensurePolicyReady(poolAddress, policyAddress);
     await this.policyAdminService.ensureDebtorRegistered(policyAddress, debtorId);
 
-    const invoiceAmountSmallest = BigInt(Math.round(escrow.amount * 10 ** USDC_DECIMALS));
+    const invoiceAmountSmallest = amountToSmallestUnit(escrow.amount, USDC_DECIMALS);
 
-    // ABI-encode policy parameters for TradeCreditInsurancePolicy.onPolicySet().
-    // Layout: (bytes32 debtorId, address poolId, uint64 buyerCreditLimit,
-    //          uint16 coveragePercentageBps, bytes2 countryCode, bytes4 industryCode, uint64 invoiceAmount)
+    // Country and industry codes from DTO, or zeros (risk model disabled for that dimension).
+    // Callers should provide ISO 3166-1 alpha-2 country codes encoded as bytes2 hex,
+    // and NACE/SIC industry codes encoded as bytes4 hex.
+    const countryCode  = (dto.country_code  ?? '0x0000')     as `0x${string}`;
+    const industryCode = (dto.industry_code ?? '0x00000000') as `0x${string}`;
+
     const policyData = encodeAbiParameters(
       [
         { name: 'debtorId',              type: 'bytes32' },
@@ -93,19 +97,20 @@ export class BuyCoverageUseCase {
         { name: 'countryCode',           type: 'bytes2'  },
         { name: 'industryCode',          type: 'bytes4'  },
         { name: 'invoiceAmount',         type: 'uint64'  },
+        { name: 'escrowId',              type: 'uint256' },
       ],
       [
         debtorId,
         poolAddress as `0x${string}`,
         coverageAmountSmallest,
         DEFAULT_COVERAGE_PERCENTAGE_BPS,
-        '0x0000' as `0x${string}`,
-        '0x00000000' as `0x${string}`,
+        countryCode,
+        industryCode,
         invoiceAmountSmallest,
+        BigInt(escrow.onChainEscrowId!),
       ],
     );
 
-    // ConfidentialCoverageManager is a Reineira core contract — address is fixed per network
     const coverageManagerAddress = env.COVERAGE_MANAGER_ADDRESS ?? '0x40A3A53d54D25cF079Bc9C2033224159d4EA3A67';
 
     return {

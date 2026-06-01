@@ -14,39 +14,52 @@ abstract contract UnderwriterPolicyBase is IUnderwriterPolicy, ERC165, TestnetCo
 
     // ─── Errors ──────────────────────────────────────────────────────────────
 
-    /// @dev Caller is not the coverage manager that registered this coverageId.
     error UnauthorizedCaller(uint256 coverageId);
-
-    /// @dev onPolicySet already called for this coverageId.
     error PolicyAlreadySet(uint256 coverageId);
 
-    // ─── Storage ─────────────────────────────────────────────────────────────
+    // ─── ERC-7201 namespaced storage ─────────────────────────────────────────
 
-    /// @dev Private — binding must not be world-readable (T4).
-    mapping(uint256 => address) private _boundManager;
+    struct PolicyBaseStorage {
+        mapping(uint256 => address) boundManager;
+    }
+
+    function _policyBaseStorage() private pure returns (PolicyBaseStorage storage $) {
+        bytes32 slot = keccak256(abi.encode(uint256(keccak256("reineira.storage.UnderwriterPolicyBase")) - 1))
+            & ~bytes32(uint256(0xff));
+        assembly {
+            $.slot := slot
+        }
+    }
 
     // ─── Modifiers ───────────────────────────────────────────────────────────
 
     /// @dev Restricts a function to the coverage manager that registered this coverageId.
+    ///      Uses msg.sender directly — the coverage manager contract (not the end-user) is the caller.
     modifier onlyBoundManager(uint256 coverageId) {
-        if (msg.sender != _boundManager[coverageId]) revert UnauthorizedCaller(coverageId);
+        if (msg.sender != _policyBaseStorage().boundManager[coverageId]) revert UnauthorizedCaller(coverageId);
         _;
     }
 
-    // ─── Constructor ─────────────────────────────────────────────────────────
+    // ─── Init ─────────────────────────────────────────────────────────────────
 
     /// @notice Initialize the upgradeable policy base.
-    function __UnderwriterPolicyBase_init(address initialOwner) internal onlyInitializing {
-        __TestnetCoreBase_init(initialOwner);
+    /// @param initialOwner    Address granted ownership.
+    /// @param trustedForwarder ERC-2771 forwarder address (address(0) to disable).
+    function __UnderwriterPolicyBase_init(
+        address initialOwner,
+        address trustedForwarder
+    ) internal onlyInitializing {
+        __TestnetCoreBase_init(initialOwner, trustedForwarder);
     }
 
     // ─── Internal helpers ─────────────────────────────────────────────────────
 
-    /// @notice Bind msg.sender as the only authorised manager for `coverageId`.
+    /// @notice Bind msg.sender (the coverage manager) as the only authorised caller for `coverageId`.
     /// @dev    Call this once at the start of `onPolicySet`.
     function _bindManager(uint256 coverageId) internal {
-        if (_boundManager[coverageId] != address(0)) revert PolicyAlreadySet(coverageId);
-        _boundManager[coverageId] = msg.sender;
+        PolicyBaseStorage storage $ = _policyBaseStorage();
+        if ($.boundManager[coverageId] != address(0)) revert PolicyAlreadySet(coverageId);
+        $.boundManager[coverageId] = msg.sender;
     }
 
     // ─── ERC-165 ─────────────────────────────────────────────────────────────
@@ -55,4 +68,8 @@ abstract contract UnderwriterPolicyBase is IUnderwriterPolicy, ERC165, TestnetCo
         return interfaceId == type(IUnderwriterPolicy).interfaceId
             || super.supportsInterface(interfaceId);
     }
+
+    // ─── Storage gap ──────────────────────────────────────────────────────────
+
+    uint256[50] private __gap;
 }

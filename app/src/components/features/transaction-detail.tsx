@@ -1,15 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import type { TransactionResponse } from '@/services/TransactionService';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { TransactionProgress } from '@/components/features/transaction-progress';
 import { isClaimEligible, claimOpenAt } from '@/hooks/use-claim-eligibility';
 import { useCoverageFlow, COVERAGE_FLOW_STEPS } from '@/hooks/use-pool-flow';
 import { useFundFlow, FUND_FLOW_STEPS } from '@/hooks/use-fund-flow';
 import { useTransactionStore } from '@/stores/transaction-store';
 import { useAuthStore } from '@/stores/auth-store';
+import { PoolService, type CoverageQuoteResponse } from '@/services/PoolService';
 
 interface TransactionDetailProps {
   transaction: TransactionResponse;
@@ -140,6 +142,27 @@ export function TransactionDetail({ transaction }: TransactionDetailProps) {
   const hasCoverage = !!transaction.coverage_id;
   const canPay = isBuyer && transaction.status === 'ON_CHAIN' && !!transaction.on_chain_id;
 
+  const [quote, setQuote] = useState<CoverageQuoteResponse | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+
+  const fetchQuote = useCallback(async () => {
+    setQuoteLoading(true);
+    setQuoteError(null);
+    try {
+      const q = await PoolService.getCoverageQuote(transaction.public_id);
+      setQuote(q);
+    } catch {
+      setQuoteError('Could not load quote. Please try again.');
+    } finally {
+      setQuoteLoading(false);
+    }
+  }, [transaction.public_id]);
+
+  useEffect(() => {
+    if (canBuyCoverage) fetchQuote();
+  }, [canBuyCoverage, fetchQuote]);
+
   async function handleBuyCoverage() {
     setShowCoverageFlow(true);
     coverageFlow.reset();
@@ -235,14 +258,65 @@ export function TransactionDetail({ transaction }: TransactionDetailProps) {
           </DetailRow>
         </div>
 
-        {/* ── Buy Coverage ── */}
+        {/* ── Coverage Quote + Buy Coverage ── */}
         {canBuyCoverage && !showCoverageFlow && (
-          <div className="flex items-center justify-between rounded-xl border border-[var(--border-dark)] bg-[hsl(var(--bg-surface-alt))] px-4 py-3">
-            <div>
-              <p className="text-sm font-semibold text-[var(--text-primary)]">Add payment protection</p>
-              <p className="text-xs text-[var(--text-muted)]">Insure this payment against buyer default.</p>
+          <div className="flex flex-col gap-0 rounded-xl border border-[var(--border-dark)] overflow-hidden">
+            <div className="bg-[hsl(var(--bg-surface-alt))] px-4 py-3 border-b border-[var(--border-dark)]">
+              <p className="text-sm font-semibold text-[var(--text-primary)]">Coverage quote</p>
+              <p className="text-xs text-[var(--text-muted)]">Estimated rate based on buyer payment history. Final rate is set on-chain.</p>
             </div>
-            <Button size="sm" onClick={handleBuyCoverage} className="ml-4 shrink-0">Add Coverage</Button>
+
+            {quoteLoading && (
+              <div className="flex flex-col gap-3 px-4 py-4">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-4/5" />
+                <Skeleton className="h-4 w-3/5" />
+              </div>
+            )}
+
+            {quoteError && !quoteLoading && (
+              <div className="flex items-center justify-between gap-3 px-4 py-4">
+                <p className="text-sm text-[var(--status-error)]">{quoteError}</p>
+                <Button size="sm" variant="secondary" onClick={fetchQuote}>Retry</Button>
+              </div>
+            )}
+
+            {quote && !quoteLoading && (
+              <div className="bg-white px-4 py-4 flex flex-col gap-3">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                  <span className="text-[var(--text-muted)]">Invoice value</span>
+                  <span className="font-medium text-[var(--text-primary)] text-right tabular-nums">
+                    {new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(quote.invoice_amount)} USDC
+                  </span>
+
+                  <span className="text-[var(--text-muted)]">Coverage amount</span>
+                  <span className="font-medium text-[var(--text-primary)] text-right tabular-nums">
+                    {new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(quote.coverage_amount)} USDC
+                  </span>
+
+                  <span className="text-[var(--text-muted)]">Buyer risk score</span>
+                  <span className="font-medium text-[var(--text-primary)] text-right tabular-nums">
+                    {quote.risk_score} / 1000
+                  </span>
+
+                  <span className="text-[var(--text-muted)]">Premium rate</span>
+                  <span className="font-medium text-[var(--text-primary)] text-right tabular-nums">
+                    {quote.premium_rate_pct}%
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between rounded-lg border border-[var(--border-dark)] bg-[hsl(var(--bg-surface-alt))] px-3 py-2.5">
+                  <span className="text-sm font-semibold text-[var(--text-primary)]">Premium due</span>
+                  <span className="text-sm font-bold tabular-nums text-[var(--text-primary)]">
+                    {new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(quote.premium_cost)} USDC
+                  </span>
+                </div>
+
+                <Button onClick={handleBuyCoverage} className="w-full">
+                  Buy Coverage →
+                </Button>
+              </div>
+            )}
           </div>
         )}
 

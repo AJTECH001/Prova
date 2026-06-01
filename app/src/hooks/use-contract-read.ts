@@ -16,7 +16,6 @@ export interface ContractState {
   resolverOwner: string | null;
   // TradeCreditInsurancePolicy
   curveVersion: number | null;
-  protocolCaller: string | null;
   debtorProofAdapter: string | null;
   exposureRegistry: string | null;
   lossHistory: string | null;
@@ -32,7 +31,6 @@ const EMPTY: ContractState = {
   maxWaitingPeriod: null,
   resolverOwner: null,
   curveVersion: null,
-  protocolCaller: null,
   debtorProofAdapter: null,
   exposureRegistry: null,
   lossHistory: null,
@@ -61,7 +59,6 @@ export function useContractRead() {
         maxWaitingPeriod,
         resolverOwner,
         curveVersion,
-        protocolCaller,
         debtorProofAdapter,
         exposureRegistryAddr,
         lossHistory,
@@ -74,28 +71,26 @@ export function useContractRead() {
         publicClient.readContract({ address: resolver, abi: TradeInvoiceResolverABI,       functionName: 'MAX_WAITING_PERIOD' }),
         publicClient.readContract({ address: resolver, abi: TradeInvoiceResolverABI,       functionName: 'owner' }),
         publicClient.readContract({ address: policy,   abi: TradeCreditInsurancePolicyABI, functionName: 'curveVersion' }),
-        publicClient.readContract({ address: policy,   abi: TradeCreditInsurancePolicyABI, functionName: 'protocolCaller' }),
         publicClient.readContract({ address: policy,   abi: TradeCreditInsurancePolicyABI, functionName: 'debtorProofAdapter' }),
         publicClient.readContract({ address: policy,   abi: TradeCreditInsurancePolicyABI, functionName: 'exposureRegistry' }),
         publicClient.readContract({ address: policy,   abi: TradeCreditInsurancePolicyABI, functionName: 'lossHistory' }),
         publicClient.readContract({ address: policy,   abi: TradeCreditInsurancePolicyABI, functionName: 'owner' }),
-        publicClient.readContract({ address: exposure, abi: DebtorExposureRegistryABI,     functionName: 'isRegistered',     args: [policy] }),
+        publicClient.readContract({ address: exposure, abi: DebtorExposureRegistryABI,     functionName: 'isRegistered',      args: [policy] }),
         publicClient.readContract({ address: claims,   abi: InsuranceClaimsRegistryABI,    functionName: 'isAllowedContract', args: [policy] }),
       ]);
 
       setState({
-        escrowContract:          escrowContract as string,
-        minWaitingPeriod:        minWaitingPeriod as bigint,
-        maxWaitingPeriod:        maxWaitingPeriod as bigint,
-        resolverOwner:           resolverOwner as string,
-        curveVersion:            Number(curveVersion),
-        protocolCaller:          protocolCaller as string,
-        debtorProofAdapter:      debtorProofAdapter as string,
-        exposureRegistry:        exposureRegistryAddr as string,
-        lossHistory:             lossHistory as string,
-        policyOwner:             policyOwner as string,
+        escrowContract:           escrowContract as string,
+        minWaitingPeriod:         minWaitingPeriod as bigint,
+        maxWaitingPeriod:         maxWaitingPeriod as bigint,
+        resolverOwner:            resolverOwner as string,
+        curveVersion:             Number(curveVersion),
+        debtorProofAdapter:       debtorProofAdapter as string,
+        exposureRegistry:         exposureRegistryAddr as string,
+        lossHistory:              lossHistory as string,
+        policyOwner:              policyOwner as string,
         policyInExposureRegistry: policyInExposureRegistry as boolean,
-        policyInClaimsRegistry:  policyInClaimsRegistry as boolean,
+        policyInClaimsRegistry:   policyInClaimsRegistry as boolean,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to read contract state');

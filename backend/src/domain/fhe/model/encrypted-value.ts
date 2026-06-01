@@ -1,4 +1,4 @@
-export type EncryptedValueType = 'euint64' | 'eaddress' | 'ebool';
+export type EncryptedValueType = 'euint32' | 'euint64' | 'eaddress' | 'ebool';
 
 export interface EncryptedValueParams {
   type: EncryptedValueType;

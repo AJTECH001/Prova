@@ -13,7 +13,7 @@ class HttpClient {
     });
 
     this.client.interceptors.request.use((config) => {
-      const token = localStorage.getItem('access_token');
+      const token = sessionStorage.getItem('access_token');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -36,7 +36,7 @@ class HttpClient {
           originalRequest._retry = true;
           this.isRefreshing = true;
           try {
-            const refreshToken = localStorage.getItem('refresh_token');
+            const refreshToken = sessionStorage.getItem('refresh_token');
             if (!refreshToken) throw new Error('No refresh token');
             const { data } = await axios.post(`${this.client.defaults.baseURL}/v1/auth/tokens/refresh`, {
               refresh_token: refreshToken,
@@ -48,7 +48,9 @@ class HttpClient {
             return this.client(originalRequest);
           } catch {
             useAuthStore.getState().logout();
-            window.location.href = '/auth';
+            if (!window.location.pathname.startsWith('/auth')) {
+              window.location.href = '/auth';
+            }
             return Promise.reject(error);
           } finally {
             this.isRefreshing = false;

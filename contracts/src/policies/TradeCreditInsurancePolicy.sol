@@ -26,12 +26,11 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
     error InvalidCreditLimit();
     error InvalidCoveragePercentage();
     error InvalidAddonBps();
-    error ZeroAddress();
     error InvalidCurve();
     error InvalidInvoiceAmount();
     error ConcentrationCapNotSet(bytes32 debtorId);
 
-    // ─── Storage ─────────────────────────────────────────────────────────────
+    // ─── ERC-7201 namespaced storage ─────────────────────────────────────────
 
     /// @notice Policy parameters recorded when coverage is purchased.
     struct Policy {
@@ -47,43 +46,41 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
         bool    set;                   // guard against uninitialised reads
     }
 
-    /// @dev Private — policy terms must not be world-readable.
-    mapping(uint256 => Policy) private _policies;
+    struct PolicyStorage {
+        /// @dev Private — policy terms must not be world-readable.
+        mapping(uint256 => Policy) policies;
+        /// @dev Country risk add-on table. ISO 3166-1 alpha-2 → encrypted basis points.
+        ///      No plaintext getter exists — values are only accessible via FHE authorisation.
+        mapping(bytes2 => euint16) countryRisk;
+        /// @dev Industry risk add-on table. NACE/SIC code → encrypted basis points.
+        ///      No plaintext getter exists — values are only accessible via FHE authorisation.
+        mapping(bytes4 => euint16) industryRisk;
+        /// @dev Hard concentration cap per debtor used when registering new exposure.
+        mapping(bytes32 => uint64) concentrationCaps;
+        /// @dev Encrypted score thresholds in descending order. Default: [800, 720, 650, 580, 500, 0].
+        euint32[6] encThresholds;
+        /// @dev Encrypted premium rates in basis points per bucket. Default: [150, 200, 280, 400, 600, 1000].
+        euint32[6] encPremiums;
+        /// @notice Current premium curve version. Incremented on every setCurve call.
+        uint16 curveVersion;
+        /// @notice Adapter that supplies encrypted buyer credit scores.
+        IDebtorProof debtorProofAdapter;
+        /// @notice Registry that tracks and enforces per-debtor concentration limits.
+        DebtorExposureRegistry exposureRegistry;
+        /// @notice Encrypted append-only log of all judged claims.
+        InsuranceClaimsRegistry lossHistory;
+        /// @dev Policy indexed by escrowId for evaluateRisk(escrowId).
+        ///      CCM calls evaluateRisk(escrowId) but onPolicySet receives coverageId.
+        mapping(uint256 => Policy) policyByEscrow;
+    }
 
-    // ─── Risk add-on tables ───────────────────────────────────────────────────
-
-    /// @dev Country risk add-on table. ISO 3166-1 alpha-2 → encrypted basis points.
-    ///      No plaintext getter exists — values are only accessible via FHE authorisation.
-    mapping(bytes2 => euint16) private _countryRisk;
-
-    /// @dev Industry risk add-on table. NACE/SIC code → encrypted basis points.
-    ///      No plaintext getter exists — values are only accessible via FHE authorisation.
-    mapping(bytes4 => euint16) private _industryRisk;
-
-    /// @dev Hard concentration cap per debtor used when registering new exposure.
-    mapping(bytes32 => uint64) private _concentrationCaps;
-
-    // ─── FHE premium curve ────────────────────────────────────────────────────
-
-    /// @dev Encrypted score thresholds in descending order. Default: [800, 720, 650, 580, 500, 0].
-    euint32[6] private _encThresholds;
-
-    /// @dev Encrypted premium rates in basis points per bucket. Default: [150, 200, 280, 400, 600, 1000].
-    euint32[6] private _encPremiums;
-
-    /// @notice Current premium curve version. Incremented on every setCurve call.
-    uint16 public curveVersion;
-
-    // ─── External integrations ────────────────────────────────────────────────
-
-    /// @notice Adapter that supplies encrypted buyer credit scores.
-    IDebtorProof public debtorProofAdapter;
-
-    /// @notice Registry that tracks and enforces per-debtor concentration limits.
-    DebtorExposureRegistry public exposureRegistry;
-
-    /// @notice Encrypted append-only log of all judged claims.
-    InsuranceClaimsRegistry public lossHistory;
+    function _policyStorage() private pure returns (PolicyStorage storage $) {
+        bytes32 slot = keccak256(abi.encode(uint256(keccak256("reineira.storage.TradeCreditInsurancePolicy")) - 1))
+            & ~bytes32(uint256(0xff));
+        assembly {
+            $.slot := slot
+        }
+    }
 
     // ─── Events ──────────────────────────────────────────────────────────────
 
@@ -124,24 +121,49 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
     /// @param  _debtorProofAdapter Address of the IDebtorProof credit score adapter.
     /// @param  _exposureRegistry   Address of the DebtorExposureRegistry moat contract.
     /// @param  _lossHistory        Address of the InsuranceClaimsRegistry contract.
+    /// @param  trustedForwarder    ERC-2771 forwarder address (address(0) to disable).
     function initialize(
         address initialOwner,
         address _debtorProofAdapter,
         address _exposureRegistry,
-        address _lossHistory
+        address _lossHistory,
+        address trustedForwarder
     ) external initializer {
-        __UnderwriterPolicyBase_init(initialOwner);
+        __UnderwriterPolicyBase_init(initialOwner, trustedForwarder);
 
         if (_debtorProofAdapter == address(0)) revert ZeroAddress();
         if (_exposureRegistry   == address(0)) revert ZeroAddress();
         if (_lossHistory        == address(0)) revert ZeroAddress();
 
-        debtorProofAdapter = IDebtorProof(_debtorProofAdapter);
-        exposureRegistry   = DebtorExposureRegistry(_exposureRegistry);
-        lossHistory        = InsuranceClaimsRegistry(_lossHistory);
+        PolicyStorage storage $ = _policyStorage();
+        $.debtorProofAdapter = IDebtorProof(_debtorProofAdapter);
+        $.exposureRegistry   = DebtorExposureRegistry(_exposureRegistry);
+        $.lossHistory        = InsuranceClaimsRegistry(_lossHistory);
 
         _encryptAndStoreCurve(RiskMathLib.defaultThresholds(), RiskMathLib.defaultPremiums());
-        curveVersion = RiskMathLib.DEFAULT_CURVE_VERSION;
+        $.curveVersion = RiskMathLib.DEFAULT_CURVE_VERSION;
+    }
+
+    // ─── Public getters (replacing auto-generated public var getters) ─────────
+
+    /// @notice Current premium curve version.
+    function curveVersion() external view returns (uint16) {
+        return _policyStorage().curveVersion;
+    }
+
+    /// @notice Adapter that supplies encrypted buyer credit scores.
+    function debtorProofAdapter() external view returns (IDebtorProof) {
+        return _policyStorage().debtorProofAdapter;
+    }
+
+    /// @notice Registry that tracks and enforces per-debtor concentration limits.
+    function exposureRegistry() external view returns (DebtorExposureRegistry) {
+        return _policyStorage().exposureRegistry;
+    }
+
+    /// @notice Encrypted append-only log of all judged claims.
+    function lossHistory() external view returns (InsuranceClaimsRegistry) {
+        return _policyStorage().lossHistory;
     }
 
     // ─── Owner administration ─────────────────────────────────────────────────
@@ -161,8 +183,9 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
         if (thresholds[5] != 0) revert InvalidCurve();
 
         _encryptAndStoreCurve(thresholds, premiums);
-        curveVersion = curveVersion + 1;
-        emit CurveUpdated(curveVersion);
+        PolicyStorage storage $ = _policyStorage();
+        $.curveVersion = $.curveVersion + 1;
+        emit CurveUpdated($.curveVersion);
     }
 
     /// @notice Set the risk add-on for a country. The value is encrypted and stored on-chain.
@@ -172,7 +195,7 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
         if (bps > RiskMathLib.MAX_ADDON_BPS) revert InvalidAddonBps();
         euint16 encVal = FHE.asEuint16(bps);
         FHE.allowThis(encVal);
-        _countryRisk[countryCode] = encVal;
+        _policyStorage().countryRisk[countryCode] = encVal;
         emit CountryRiskSet(countryCode, bps);
     }
 
@@ -183,7 +206,7 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
         if (bps > RiskMathLib.MAX_ADDON_BPS) revert InvalidAddonBps();
         euint16 encVal = FHE.asEuint16(bps);
         FHE.allowThis(encVal);
-        _industryRisk[industryCode] = encVal;
+        _policyStorage().industryRisk[industryCode] = encVal;
         emit IndustryRiskSet(industryCode, bps);
     }
 
@@ -191,7 +214,16 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
     /// @param  debtorId Canonical debtor identifier.
     /// @param  cap      Maximum total exposure in the same units as invoice amounts. Must be > 0.
     function setConcentrationCap(bytes32 debtorId, uint64 cap) external onlyOwner {
-        _concentrationCaps[debtorId] = cap;
+        _policyStorage().concentrationCaps[debtorId] = cap;
+    }
+
+    /// @notice Update the IDebtorProof adapter address.
+    /// @dev    Called after a UUPS upgrade to wire the OracleDebtorProof replacing MockDebtorProof.
+    ///         Any address(0) argument is rejected.
+    /// @param  newAdapter Address of the new IDebtorProof implementation.
+    function setDebtorProofAdapter(address newAdapter) external onlyOwner {
+        if (newAdapter == address(0)) revert ZeroAddress();
+        _policyStorage().debtorProofAdapter = IDebtorProof(newAdapter);
     }
 
     // ─── IUnderwriterPolicy ──────────────────────────────────────────────────
@@ -201,7 +233,8 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
     /// @dev    Restricted to whitelisted Prova contracts (P5).
     ///         data = abi.encode(bytes32 debtorId, address poolId, uint64 buyerCreditLimit,
     ///                           uint16 coveragePercentageBps, bytes2 countryCode,
-    ///                           bytes4 industryCode, uint64 invoiceAmount)
+    ///                           bytes4 industryCode, uint64 invoiceAmount, uint256 escrowId)
+    ///         escrowId is appended at the end so older 7-field decoders ignore it gracefully.
     /// @param  coverageId Unique identifier assigned by the coverage manager.
     /// @param  data       ABI-encoded policy configuration parameters.
     function onPolicySet(uint256 coverageId, bytes calldata data) external override onlyProvaContract {
@@ -217,6 +250,12 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
             uint64  invoiceAmount
         ) = abi.decode(data, (bytes32, address, uint64, uint16, bytes2, bytes4, uint64));
 
+        // Decode escrowId from byte 224 onward separately to avoid stack-too-deep.
+        uint256 escrowId;
+        if (data.length >= 256) {
+            (escrowId) = abi.decode(data[224:], (uint256));
+        }
+
         if (buyerCreditLimit == 0)                          revert InvalidCreditLimit();
         if (coveragePercentageBps == 0 ||
             coveragePercentageBps > 10_000)                 revert InvalidCoveragePercentage();
@@ -228,28 +267,22 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
         euint64 creditLimitEnc = FHE.asEuint64(buyerCreditLimit);
         FHE.allowThis(creditLimitEnc);
 
-        _policies[coverageId] = Policy({
+        PolicyStorage storage $ = _policyStorage();
+        Policy memory p = Policy({
             buyerCreditLimitEnc:   creditLimitEnc,
             debtorId:              debtorId,
             poolId:                poolId,
             countryCode:           countryCode,
             industryCode:          industryCode,
             coveragePercentageBps: coveragePercentageBps,
-            curveVersion:          curveVersion,
+            curveVersion:          $.curveVersion,
             validCapEnc:           isCapValid,
             set:                   true
         });
+        $.policies[coverageId] = p;
+        if (escrowId != 0) $.policyByEscrow[escrowId] = p;
 
         emit PolicySet(coverageId);
-    }
-
-    /// @notice Update the IDebtorProof adapter address.
-    /// @dev    Called after a UUPS upgrade to wire the OracleDebtorProof replacing MockDebtorProof.
-    ///         Any address(0) argument is rejected.
-    /// @param  newAdapter Address of the new IDebtorProof implementation.
-    function setDebtorProofAdapter(address newAdapter) external onlyOwner {
-        if (newAdapter == address(0)) revert ZeroAddress();
-        debtorProofAdapter = IDebtorProof(newAdapter);
     }
 
     /// @notice Fetches the buyer's CoFHE-sealed credit score from the oracle adapter,
@@ -261,33 +294,35 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
     ///         No re-verification via FHE.asEuint32(InEuint32) is needed — the ciphertext
     ///         was validated against the CoFHE TaskManager when the oracle called setScore().
     ///
-    /// @param  escrowId  The escrow being insured (passed as coverageId by ConfidentialCoverageManager).
+    /// @param  escrowId  The on-chain escrow identifier passed by CCM.
+    ///                   CCM calls evaluateRisk(escrowId) not evaluateRisk(coverageId).
     /// @return riskScore Encrypted premium in basis points as a euint64.
     function evaluateRisk(uint256 escrowId, bytes calldata /*riskProof*/)
         external
         override
-        onlyBoundManager(escrowId)
+        onlyProvaContract
         returns (euint64 riskScore)
     {
-        Policy memory p = _policies[escrowId];
+        PolicyStorage storage $ = _policyStorage();
+        Policy memory p = $.policyByEscrow[escrowId];
         if (!p.set) revert PolicyNotSet(escrowId);
 
         // getScore() grants this contract ACL permission on the returned euint32 handle
         // via FHE.allow(score, msg.sender) inside the adapter.
         // TODO: Enhance with zkTLS off-chain risk data (see TECH_DEBT.md)
-        (euint32 creditScore, ) = debtorProofAdapter.getScore(p.debtorId);
+        (euint32 creditScore, ) = $.debtorProofAdapter.getScore(p.debtorId);
         FHE.allowThis(creditScore);
 
         // Evaluate the encrypted credit score against the 6-bucket FHE premium curve.
         euint32 premium = FHERiskMath.evaluateRiskCurveOptimized(
             creditScore,
-            _encThresholds,
-            _encPremiums
+            $.encThresholds,
+            $.encPremiums
         );
 
         // TODO: Replace manual country risk with zkTLS-verified country proof (see TECH_DEBT.md)
-        euint16 countryRisk = _countryRisk[p.countryCode];
-        euint16 industryRisk = _industryRisk[p.industryCode];
+        euint16 countryRisk = $.countryRisk[p.countryCode];
+        euint16 industryRisk = $.industryRisk[p.industryCode];
 
         euint32 addOns = FHERiskMath.addRiskAddons(countryRisk, industryRisk);
         euint32 finalPremium = FHERiskMath.finalizePremium(premium, addOns, p.validCapEnc);
@@ -310,7 +345,8 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
         onlyBoundManager(coverageId)
         returns (ebool valid)
     {
-        Policy memory p = _policies[coverageId];
+        PolicyStorage storage $ = _policyStorage();
+        Policy memory p = $.policies[coverageId];
         if (!p.set) revert PolicyNotSet(coverageId);
 
         InEuint64 memory encInput = abi.decode(disputeProof, (InEuint64));
@@ -323,21 +359,21 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
         FHE.allowThis(valid);
         FHE.allow(valid, msg.sender);
 
-        if (address(lossHistory) != address(0)) {
+        if (address($.lossHistory) != address(0)) {
             // Grant the loss history contract ACL permission before the cross-contract call.
-            FHE.allow(claimAmount, address(lossHistory));
-            try lossHistory.logClaim(coverageId, uint32(p.curveVersion), claimAmount) {} catch {
+            FHE.allow(claimAmount, address($.lossHistory));
+            try $.lossHistory.logClaim(coverageId, uint32(p.curveVersion), claimAmount) {} catch {
                 emit ClaimLogFailed(coverageId);
             }
         }
 
         // Release aggregate exposure proportional to the validated claim only.
         // FHE.select yields claimAmount for a valid claim, 0 for an invalid one.
-        if (address(exposureRegistry) != address(0)) {
+        if (address($.exposureRegistry) != address(0)) {
             euint64 reductionAmount = FHE.select(valid, claimAmount, FHE.asEuint64(0));
             FHE.allowThis(reductionAmount);
-            FHE.allow(reductionAmount, address(exposureRegistry));
-            exposureRegistry.reduceExposure(p.debtorId, reductionAmount);
+            FHE.allow(reductionAmount, address($.exposureRegistry));
+            $.exposureRegistry.reduceExposure(p.debtorId, reductionAmount);
         }
     }
 
@@ -350,29 +386,35 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
         address poolId,
         uint64 invoiceAmount
     ) private returns (ebool isCapValid) {
-        uint64 hardCap = _concentrationCaps[debtorId];
+        PolicyStorage storage $ = _policyStorage();
+        uint64 hardCap = $.concentrationCaps[debtorId];
         if (hardCap == 0) revert ConcentrationCapNotSet(debtorId);
         euint64 invoiceAmountEnc = FHE.asEuint64(invoiceAmount);
-        FHE.allow(invoiceAmountEnc, address(exposureRegistry));
-        isCapValid = exposureRegistry.addExposure(debtorId, poolId, invoiceAmountEnc, hardCap);
+        FHE.allow(invoiceAmountEnc, address($.exposureRegistry));
+        isCapValid = $.exposureRegistry.addExposure(debtorId, poolId, invoiceAmountEnc, hardCap);
         FHE.allowThis(isCapValid);
     }
 
-    /// @dev    Encrypts plaintext curve values and writes them into the encrypted storage arrays.
+    /// @dev Encrypts plaintext curve values and writes them into the encrypted storage arrays.
     /// @param  thresholds Six plaintext score thresholds to encrypt and store.
     /// @param  premiums   Six plaintext premium rates in basis points to encrypt and store.
     function _encryptAndStoreCurve(
         uint32[6] memory thresholds,
         uint32[6] memory premiums
     ) internal {
+        PolicyStorage storage $ = _policyStorage();
         for (uint256 i = 0; i < 6; ++i) {
             euint32 encT = FHE.asEuint32(thresholds[i]);
             FHE.allowThis(encT);
-            _encThresholds[i] = encT;
+            $.encThresholds[i] = encT;
 
             euint32 encP = FHE.asEuint32(premiums[i]);
             FHE.allowThis(encP);
-            _encPremiums[i] = encP;
+            $.encPremiums[i] = encP;
         }
     }
+
+    // ─── Storage gap ──────────────────────────────────────────────────────────
+
+    uint256[50] private __gap;
 }

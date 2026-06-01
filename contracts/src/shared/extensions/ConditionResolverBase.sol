@@ -14,32 +14,49 @@ abstract contract ConditionResolverBase is IConditionResolver, ERC165, TestnetCo
 
     // ─── Errors ──────────────────────────────────────────────────────────────
 
-    /// @dev Caller is not the escrow that registered this escrowId.
     error UnauthorizedCaller(uint256 escrowId);
-
-    /// @dev onConditionSet already called for this escrowId.
     error ConditionAlreadySet(uint256 escrowId);
 
-    // ─── Storage ─────────────────────────────────────────────────────────────
+    // ─── ERC-7201 namespaced storage ─────────────────────────────────────────
 
-    /// @dev Private — binding must not be world-readable.
-    mapping(uint256 => address) private _boundEscrow;
+    struct ResolverBaseStorage {
+        mapping(uint256 => address) boundEscrow;
+    }
+
+    function _resolverBaseStorage() private pure returns (ResolverBaseStorage storage $) {
+        bytes32 slot = keccak256(abi.encode(uint256(keccak256("reineira.storage.ConditionResolverBase")) - 1))
+            & ~bytes32(uint256(0xff));
+        assembly {
+            $.slot := slot
+        }
+    }
 
     // ─── Modifiers ───────────────────────────────────────────────────────────
 
     /// @dev Restricts a function to the escrow contract that registered this escrowId.
+    ///      Uses msg.sender directly — the escrow contract (not the end-user) is the caller.
     modifier onlyBoundEscrow(uint256 escrowId) {
-        if (msg.sender != _boundEscrow[escrowId]) revert UnauthorizedCaller(escrowId);
+        if (msg.sender != _resolverBaseStorage().boundEscrow[escrowId]) revert UnauthorizedCaller(escrowId);
         _;
+    }
+
+    // ─── Init ─────────────────────────────────────────────────────────────────
+
+    function __ConditionResolverBase_init(
+        address initialOwner,
+        address trustedForwarder
+    ) internal onlyInitializing {
+        __TestnetCoreBase_init(initialOwner, trustedForwarder);
     }
 
     // ─── Internal helpers ─────────────────────────────────────────────────────
 
-    /// @notice Bind msg.sender as the only authorised caller for `escrowId`.
+    /// @notice Bind msg.sender (the escrow) as the only authorised caller for `escrowId`.
     /// @dev    Call this once at the start of `onConditionSet`.
     function _bindEscrow(uint256 escrowId) internal {
-        if (_boundEscrow[escrowId] != address(0)) revert ConditionAlreadySet(escrowId);
-        _boundEscrow[escrowId] = msg.sender;
+        ResolverBaseStorage storage $ = _resolverBaseStorage();
+        if ($.boundEscrow[escrowId] != address(0)) revert ConditionAlreadySet(escrowId);
+        $.boundEscrow[escrowId] = msg.sender;
     }
 
     // ─── ERC-165 ─────────────────────────────────────────────────────────────
@@ -48,4 +65,8 @@ abstract contract ConditionResolverBase is IConditionResolver, ERC165, TestnetCo
         return interfaceId == type(IConditionResolver).interfaceId
             || super.supportsInterface(interfaceId);
     }
+
+    // ─── Storage gap ──────────────────────────────────────────────────────────
+
+    uint256[50] private __gap;
 }

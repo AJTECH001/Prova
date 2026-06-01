@@ -15,20 +15,24 @@ interface AuthState {
   logout: () => void;
 }
 
+// Tokens are stored in sessionStorage (cleared on tab close) rather than localStorage
+// to reduce the persistent XSS attack surface. wallet_address and role are not secrets
+// and stay in localStorage for cross-tab persistence.
+const ss = (key: string) => typeof window !== 'undefined' ? sessionStorage.getItem(key) : null;
 const ls = (key: string) => typeof window !== 'undefined' ? localStorage.getItem(key) : null;
 
 export const useAuthStore = create<AuthState>((set, get) => ({
-  accessToken: ls('access_token'),
-  refreshToken: ls('refresh_token'),
-  walletAddress: ls('wallet_address'),
+  accessToken:    ss('access_token'),
+  refreshToken:   ss('refresh_token'),
+  walletAddress:  ls('wallet_address'),
   walletProvider: ls('wallet_provider'),
   role: (ls('user_role') as UserRole | null),
 
   isAuthorized: () => !!get().accessToken,
 
   setTokens: (access, refresh) => {
-    localStorage.setItem('access_token', access);
-    localStorage.setItem('refresh_token', refresh);
+    sessionStorage.setItem('access_token', access);
+    sessionStorage.setItem('refresh_token', refresh);
     set({ accessToken: access, refreshToken: refresh });
   },
 
@@ -44,8 +48,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
+    sessionStorage.removeItem('access_token');
+    sessionStorage.removeItem('refresh_token');
     localStorage.removeItem('wallet_address');
     localStorage.removeItem('wallet_provider');
     localStorage.removeItem('user_role');

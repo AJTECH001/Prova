@@ -3,8 +3,9 @@ import { z } from 'zod';
 import { BuyCoverageDtoSchema } from '../../../application/dto/escrow/buy-coverage.dto.js';
 import { BuyCoverageUseCase } from '../../../application/use-case/escrow/buy-coverage.use-case.js';
 import { ConfirmCoverageUseCase } from '../../../application/use-case/escrow/confirm-coverage.use-case.js';
+import { GetCoverageQuoteUseCase } from '../../../application/use-case/escrow/get-coverage-quote.use-case.js';
 import { container } from '../../../infrastructure/container.js';
-import { createHandler, sendResponse } from '../../../interface/handler-factory.js';
+import { createHandler, createGetHandler, sendResponse } from '../../../interface/handler-factory.js';
 import { withAuth } from '../../../interface/middleware/with-auth.js';
 import { withCors } from '../../../interface/middleware/with-cors.js';
 import { Response } from '../../../interface/response.js';
@@ -15,6 +16,12 @@ const buyCoverageUseCase = new BuyCoverageUseCase(
 );
 
 const confirmCoverageUseCase = new ConfirmCoverageUseCase(container.escrowRepo);
+
+const getCoverageQuoteUseCase = new GetCoverageQuoteUseCase(
+  container.escrowRepo,
+  container.userRepo,
+  container.computeCreditScoreUseCase,
+);
 
 const ConfirmCoverageDtoSchema = z.object({
   coverage_id: z.string().min(1),
@@ -46,8 +53,18 @@ const patchHandler = createHandler({
   },
 });
 
+const getHandler = createGetHandler({
+  operationName: 'GetCoverageQuote',
+  execute: async (req, authPayload) => {
+    const publicId = req.query.publicId as string;
+    const result = await getCoverageQuoteUseCase.execute(publicId, authPayload!.userId);
+    return Response.ok(result);
+  },
+});
+
 const handler = async (req: VercelRequest, res: VercelResponse): Promise<void> => {
-  if (req.method === 'POST') return postHandler(req, res);
+  if (req.method === 'GET')   return getHandler(req, res);
+  if (req.method === 'POST')  return postHandler(req, res);
   if (req.method === 'PATCH') return patchHandler(req, res);
   sendResponse(res, Response.badRequest('Method not allowed'));
 };

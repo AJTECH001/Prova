@@ -9,14 +9,18 @@ import { useTransactionStore } from '@/stores/transaction-store';
 import { useWithdrawalStore } from '@/stores/withdrawal-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { usePoolStore } from '@/stores/pool-store';
+import { useRefreshStore } from '@/stores/refresh-store';
+import { useWalletStore } from '@/stores/wallet-store';
 import { useBalance } from '@/hooks/use-balance';
-import { useCUsdcBalance } from '@/hooks/use-cUsdc-balance';
+import { useCUsdcBalance, type CUsdcBalance } from '@/hooks/use-cUsdc-balance';
+import { useUnshieldFlow } from '@/hooks/use-unshield-flow';
 import { useFundFlow, FUND_FLOW_STEPS } from '@/hooks/use-fund-flow';
 import { TransactionList } from '@/components/features/transaction-list';
 import { TransactionProgress } from '@/components/features/transaction-progress';
 import { WithdrawalList } from '@/components/features/withdrawal-list';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { isClaimEligible } from '@/hooks/use-claim-eligibility';
 import { ADDRESSES, ConfidentialEscrowABI } from '@/lib/contracts';
 import { TransactionService, type TransactionResponse } from '@/services/TransactionService';
@@ -37,6 +41,20 @@ const ROLE_LABEL: Record<string, string> = {
   BUYER: 'Customer',
   LP: 'Liquidity Provider',
 };
+
+// Parses a decimal string ("100.50") to raw bigint with `decimals` precision
+function parseAmountRaw(input: string, decimals = 6): bigint | null {
+  try {
+    const cleaned = input.trim().replace(/,/g, '');
+    if (!cleaned || cleaned === '.') return null;
+    const [whole = '0', frac = ''] = cleaned.split('.');
+    const fracTrimmed = frac.slice(0, decimals).padEnd(decimals, '0');
+    const total = BigInt(whole) * (10n ** BigInt(decimals)) + BigInt(fracTrimmed);
+    return total > 0n ? total : null;
+  } catch {
+    return null;
+  }
+}
 
 // ── Alert banner ──────────────────────────────────────────────────────────────
 function AlertBanner({
@@ -89,8 +107,8 @@ function StatCard({
   accent?: 'blue' | 'green' | 'purple';
 }) {
   const accentDot = {
-    blue: 'bg-[var(--accent-blue)]',
-    green: 'bg-[var(--status-success)]',
+    blue:   'bg-[var(--accent-blue)]',
+    green:  'bg-[var(--status-success)]',
     purple: 'bg-[hsl(var(--brand-purple))]',
   }[accent ?? 'blue'] ?? '';
 
@@ -310,6 +328,206 @@ function LpStakeRow({ stake }: { stake: { public_id: string; amount: number; cre
   );
 }
 
+// ── Confidential balance card ─────────────────────────────────────────────────
+function ConfidentialBalanceCard({
+  balance,
+  loading,
+  walletAddress,
+  onUnshieldClick,
+}: {
+  balance: CUsdcBalance | null;
+  loading: boolean;
+  walletAddress: string | null;
+  onUnshieldClick: () => void;
+}) {
+  const walletStoreAddress = useWalletStore((s) => s.address);
+  const awaitingWallet = !loading && balance === null && walletAddress && !walletStoreAddress;
+  const canUnshield = balance !== null && balance.raw > 0n && walletAddress !== null;
+
+  return (
+    <div className="flex flex-col gap-1 rounded-xl border border-[var(--border-dark)] bg-white px-4 py-4 shadow-[var(--shadow-card)] sm:px-5">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[hsl(var(--brand-purple))]" />
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] sm:text-xs truncate">
+            Confidential Balance
+          </p>
+        </div>
+        {canUnshield && (
+          <button
+            onClick={onUnshieldClick}
+            className="shrink-0 rounded-lg border border-[var(--border-dark)] px-2 py-0.5 text-[10px] font-semibold text-[var(--text-secondary)] transition-colors hover:border-[var(--accent-blue)] hover:text-[var(--accent-blue)] sm:text-xs"
+          >
+            Unshield →
+          </button>
+        )}
+      </div>
+
+      {loading && balance === null ? (
+        <Skeleton className="mt-2 h-6 w-24 sm:h-7 sm:w-28" />
+      ) : (
+        <p className="mt-1 text-xl font-bold tracking-tight text-[var(--text-primary)] sm:text-2xl tabular-nums leading-tight">
+          {balance !== null ? `${balance.formatted} USDC` : '—'}
+        </p>
+      )}
+
+      {awaitingWallet ? (
+        <p className="mt-0.5 text-[10px] text-[var(--text-muted)] sm:text-xs">Awaiting wallet connection to decrypt</p>
+      ) : (
+        <p className="mt-0.5 text-[10px] text-[var(--text-muted)] sm:text-xs">Privacy-protected cUSDC</p>
+      )}
+    </div>
+  );
+}
+
+// ── Unshield dialog ───────────────────────────────────────────────────────────
+function UnshieldDialog({
+  open,
+  onOpenChange,
+  balance,
+  walletAddress,
+  onSuccess,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  balance: CUsdcBalance;
+  walletAddress: string;
+  onSuccess: () => void;
+}) {
+  const { state, execute, reset } = useUnshieldFlow();
+  const [inputValue, setInputValue] = useState('');
+  const [inputError, setInputError] = useState<string | null>(null);
+
+  const isWorking = state.phase === 'working';
+  const isDone = state.phase === 'done';
+
+  function handleInputChange(v: string) {
+    setInputValue(v);
+    setInputError(null);
+    if (!v) return;
+    const parsed = parseAmountRaw(v);
+    if (!parsed) {
+      setInputError('Enter a valid amount');
+    } else if (parsed > balance.raw) {
+      setInputError('Exceeds available balance');
+    }
+  }
+
+  function handleMax() {
+    setInputValue(balance.formatted);
+    setInputError(null);
+  }
+
+  async function handleSubmit() {
+    const amountRaw = parseAmountRaw(inputValue);
+    if (!amountRaw || amountRaw <= 0n || amountRaw > balance.raw) return;
+    await execute(walletAddress, amountRaw);
+  }
+
+  // Trigger balance refresh as soon as the transaction lands, before user dismisses
+  useEffect(() => {
+    if (isDone) onSuccess();
+  }, [isDone]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleClose() {
+    if (isWorking) return;
+    reset();
+    setInputValue('');
+    setInputError(null);
+    onOpenChange(false);
+  }
+
+  const amountRaw = parseAmountRaw(inputValue);
+  const canSubmit =
+    !!amountRaw && amountRaw > 0n && amountRaw <= balance.raw && !inputError && !isWorking && !isDone;
+
+  const dialogTitle = isDone ? 'Unshield Complete' : 'Unshield to Wallet';
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
+      <DialogContent
+        title={dialogTitle}
+        onPointerDownOutside={(e) => { if (isWorking) e.preventDefault(); }}
+        onEscapeKeyDown={(e) => { if (isWorking) e.preventDefault(); }}
+      >
+        {isDone ? (
+          // ── Success state ──
+          <div className="flex flex-col items-center gap-5 pt-2 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[hsl(var(--tip-bg))]">
+              <svg width="26" height="26" viewBox="0 0 20 20" fill="currentColor" className="text-[var(--status-success)]">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <p className="text-sm text-[var(--text-muted)]">USDC is now in your available balance</p>
+            <Button onClick={handleClose} className="w-full">Done</Button>
+          </div>
+        ) : isWorking ? (
+          // ── In-progress state ──
+          <div className="flex flex-col gap-5 pt-1">
+            <div className="flex items-center gap-3">
+              <svg className="h-5 w-5 shrink-0 animate-spin text-[var(--accent-blue)]" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              <p className="text-sm font-medium text-[var(--text-primary)]">{state.statusLabel}</p>
+            </div>
+            <p className="text-xs text-[var(--text-muted)]">
+              This may take 30–60 seconds. Please keep this window open.
+            </p>
+          </div>
+        ) : (
+          // ── Input state ──
+          <div className="flex flex-col gap-5 pt-1">
+            <div className="rounded-lg bg-[hsl(var(--bg-surface-alt))] px-3 py-2.5">
+              <p className="text-xs text-[var(--text-muted)]">Available</p>
+              <p className="mt-0.5 text-base font-semibold text-[var(--text-primary)]">
+                {balance.formatted}{' '}
+                <span className="text-sm font-medium text-[var(--text-muted)]">cUSDC</span>
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-[var(--text-primary)]">Amount to unshield</label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  placeholder="0.00"
+                  value={inputValue}
+                  onChange={(e) => handleInputChange(e.target.value)}
+                  className={`w-full rounded-lg border px-3 py-2 text-sm bg-[var(--background)] text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--accent-blue)]/50 ${
+                    inputError ? 'border-[var(--status-error)]' : 'border-[var(--border-dark)]'
+                  }`}
+                />
+                <Button size="sm" variant="secondary" onClick={handleMax} type="button">
+                  Max
+                </Button>
+              </div>
+              {inputError && <p className="text-xs text-[var(--status-error)]">{inputError}</p>}
+            </div>
+
+            {state.phase === 'error' && state.error && (
+              <div className="rounded-lg border border-[var(--status-error)]/20 bg-red-50 px-3 py-2.5">
+                <p className="text-xs text-[var(--status-error)]">{state.error}</p>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <Button variant="secondary" onClick={handleClose} className="flex-1">
+                Cancel
+              </Button>
+              <Button onClick={handleSubmit} disabled={!canSubmit} className="flex-1">
+                Unshield →
+              </Button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Dashboard page ────────────────────────────────────────────────────────────
 export function DashboardPage() {
   const router = useRouter();
@@ -323,11 +541,15 @@ export function DashboardPage() {
   const fetchWithdrawals = useWithdrawalStore((s) => s.fetchWithdrawals);
   const poolStakes = usePoolStore((s) => s.stakes);
   const fetchPoolStatus = usePoolStore((s) => s.fetchStatus);
+  const triggerBalanceRefresh = useRefreshStore((s) => s.triggerBalanceRefresh);
 
-  const { balance, loading: balanceLoading, startPolling, stopPolling } = useBalance();
+  const [unshieldOpen, setUnshieldOpen] = useState(false);
+
+  const { balance, loading: balanceLoading, fetchBalance: fetchMainBalance, startPolling, stopPolling } = useBalance();
   const {
     balance: cUsdcBalance,
     loading: cUsdcLoading,
+    fetchBalance: fetchCUsdcBalance,
     startPolling: startCUsdcPolling,
     stopPolling: stopCUsdcPolling,
   } = useCUsdcBalance(walletAddress);
@@ -398,10 +620,17 @@ export function DashboardPage() {
     router.push('/transactions/' + transaction.public_id);
   }
 
+  function handleUnshieldSuccess() {
+    // Refresh both balances from on-chain state after the unshield settles
+    triggerBalanceRefresh();
+    fetchCUsdcBalance();
+    fetchMainBalance();
+  }
+
   const activeEscrows = transactions.filter((t) => ['PENDING', 'ON_CHAIN', 'PROCESSING'].includes(t.status)).length;
-  const activeWithdrawals = withdrawals.filter((w) => ['PENDING_REDEEM', 'PENDING_BRIDGE', 'BRIDGING'].includes(w.status)).length;
   const claimsReady = transactions.filter(isClaimEligible).length;
   const totalStaked = poolStakes.reduce((s, k) => s + k.amount, 0);
+  const insuredCount = transactions.filter((t) => !!t.coverage_id).length;
 
   const greeting = getGreeting();
   const shortWallet = walletAddress ? `${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}` : '';
@@ -427,7 +656,6 @@ export function DashboardPage() {
           </div>
         </div>
 
-        {/* Quick action buttons — full width on mobile, auto on desktop */}
         <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
           {role === 'SELLER' && (
             <Button size="sm" asChild className="flex-1 sm:flex-none justify-center min-w-[120px]">
@@ -448,7 +676,7 @@ export function DashboardPage() {
       {/* ── Summary Stat Cards ── */}
       <div className={`grid gap-3 sm:gap-4 ${
         role === 'SELLER' ? 'grid-cols-2 lg:grid-cols-4' :
-        role === 'LP' ? 'grid-cols-2 lg:grid-cols-3' :
+        role === 'LP'     ? 'grid-cols-2 lg:grid-cols-3' :
         'grid-cols-1 sm:grid-cols-2'
       }`}>
         <StatCard
@@ -460,12 +688,11 @@ export function DashboardPage() {
         />
 
         {(role === 'SELLER' || role === 'LP') && (
-          <StatCard
-            label="Confidential Balance"
-            value={cUsdcBalance !== null ? `${cUsdcBalance.formatted} USDC` : '—'}
-            sub="Privacy-protected"
+          <ConfidentialBalanceCard
+            balance={cUsdcBalance}
             loading={cUsdcLoading}
-            accent="purple"
+            walletAddress={walletAddress}
+            onUnshieldClick={() => setUnshieldOpen(true)}
           />
         )}
 
@@ -489,15 +716,16 @@ export function DashboardPage() {
 
         {role === 'SELLER' && (
           <StatCard
-            label="Pending Withdrawals"
-            value={activeWithdrawals}
-            sub="Awaiting transfer"
-            loading={withdrawalLoading}
+            label="Insured Invoices"
+            value={insuredCount}
+            sub="With active coverage"
+            loading={transactionLoading}
+            accent="purple"
           />
         )}
       </div>
 
-      {/* ── Alert banners (contextual, high priority) ── */}
+      {/* ── Alert banners ── */}
       {claimsReady > 0 && (
         <AlertBanner
           variant="amber"
@@ -511,10 +739,10 @@ export function DashboardPage() {
         />
       )}
 
-      {/* ── Buyer: payable invoices (highest priority) ── */}
+      {/* ── Buyer: payable invoices ── */}
       {role === 'BUYER' && <PayableInvoicesPanel />}
 
-      {/* ── Seller / admin: activity grid ── */}
+      {/* ── Seller: activity grid ── */}
       {role === 'SELLER' && (
         <div className="grid gap-5 xl:grid-cols-2">
           <SectionCard
@@ -574,7 +802,7 @@ export function DashboardPage() {
         </div>
       )}
 
-      {/* ── Seller / admin: payable invoices ── */}
+      {/* ── Seller: payable invoices ── */}
       {role === 'SELLER' && <PayableInvoicesPanel />}
 
       {/* ── LP: deposits list ── */}
@@ -615,6 +843,17 @@ export function DashboardPage() {
             </div>
           )}
         </SectionCard>
+      )}
+
+      {/* ── Unshield dialog (SELLER + LP) ── */}
+      {cUsdcBalance && walletAddress && (
+        <UnshieldDialog
+          open={unshieldOpen}
+          onOpenChange={setUnshieldOpen}
+          balance={cUsdcBalance}
+          walletAddress={walletAddress}
+          onSuccess={handleUnshieldSuccess}
+        />
       )}
     </div>
   );

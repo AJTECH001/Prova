@@ -71,14 +71,16 @@ export class FheService implements IFheService, ICreditScoreFheService {
   async encryptCreditScore(score: bigint, userAddress: string): Promise<EncryptedValue> {
     await this.ensureInitialized();
 
+    // TradeCreditInsurancePolicy.evaluateRisk uses euint32 for credit scores (0–1000).
+    // The CoFHE precompile rejects a euint64 handle where euint32 is expected.
     const response = await this.client.encryptBatch(userAddress, [
-      { type: 'euint64', value: score.toString() },
+      { type: 'euint32', value: score.toString() },
     ]);
 
     const [result] = response.results;
 
     return new EncryptedValue({
-      type: 'euint64',
+      type: 'euint32',
       data: result!.data,
       securityZone: result!.securityZone,
       utype: result!.utype,

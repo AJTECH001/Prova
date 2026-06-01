@@ -1,7 +1,6 @@
 import { useAuthStore } from '@/stores/auth-store';
 import { useWalletStore } from '@/stores/wallet-store';
 import { AuthService } from '@/services/AuthService';
-import { UserService } from '@/services/UserService';
 
 function buildSiweMessage(domain: string, address: string, statement: string, uri: string, nonce: string): string {
   const now = new Date().toISOString();
@@ -32,16 +31,6 @@ async function authenticateWithSiwe(address: string) {
 
   useAuthStore.getState().setTokens(tokenResponse.access_token, tokenResponse.refresh_token);
   useAuthStore.getState().setWallet(address, 'zerodev');
-
-  // Fetch role from backend and persist it
-  try {
-    const user = await UserService.getCurrentUser();
-    if (user.role) {
-      useAuthStore.getState().setRole(user.role);
-    }
-  } catch {
-    // Non-fatal: role will be null, onboarding screen will handle it
-  }
 }
 
 export function useAuth() {

@@ -16,4 +16,11 @@ interface IConditionResolver {
   /// @param escrowId The sequential escrow identifier.
   /// @param data ABI-encoded configuration specific to this resolver.
   function onConditionSet(uint256 escrowId, bytes calldata data) external;
+
+  /// @notice Return the condition fee charged at escrow creation.
+  /// @dev RSS §5.5.1 — must be implemented by all IConditionResolver plugins.
+  ///      Protocol uses this to stamp the Condition fee slot during create().
+  /// @return bps       Fee in basis points (100 = 1%, max 10000).
+  /// @return recipient Address that receives the condition fee.
+  function getConditionFee() external view returns (uint16 bps, address recipient);
 }

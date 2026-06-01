@@ -8,6 +8,16 @@ import { useWalletStore } from '@/stores/wallet-store';
 
 const ZERO_HANDLE = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
+function isZeroHandle(ctHash: unknown): boolean {
+  if (ctHash === null || ctHash === undefined) return true;
+  if (typeof ctHash === 'bigint') return ctHash === 0n;
+  if (typeof ctHash === 'string') {
+    const clean = ctHash.toLowerCase().replace(/^0x/, '').replace(/^0+$/, '');
+    return clean === '' || ctHash.toLowerCase() === ZERO_HANDLE;
+  }
+  return false;
+}
+
 export interface CUsdcBalance {
   /** Plain USDC-equivalent units (6 decimals) */
   raw: bigint;
@@ -34,17 +44,10 @@ export function useCUsdcBalance(walletAddress: string | null, pollingInterval = 
   const fetchBalance = useCallback(async () => {
     if (!walletAddress) return;
 
-    // getViemWalletClient() returns null until the user performs a wallet action
-    // in the current session (kernelClient is not persisted across page loads).
-    // Skip silently rather than failing — the refresh-store trigger fires after
-    // stake/unstake when the wallet IS live.
-    const viemWalletClient = useWalletStore.getState().getViemWalletClient();
-    if (!viemWalletClient) return;
-
     setLoading(true);
     setError(null);
     try {
-      // 1. read the encrypted balance handle from cUSDC
+      // 1. read the encrypted balance handle — no wallet client needed for this
       const ctHash = await publicClient.readContract({
         address: ADDRESSES.cUSDC as `0x${string}`,
         abi: cUSDCABI,
@@ -52,15 +55,21 @@ export function useCUsdcBalance(walletAddress: string | null, pollingInterval = 
         args: [walletAddress as `0x${string}`],
       });
 
-      // 2. zero handle means no cUSDC balance — skip costly decryption
-      if ((ctHash as string) === ZERO_HANDLE) {
+      // 2. zero handle = no cUSDC balance — show 0 immediately, no FHE needed
+      if (isZeroHandle(ctHash)) {
         setBalance({ raw: 0n, formatted: '0' });
         return;
       }
 
-      // 3. decrypt via cofhejs threshold network
+      // 3. non-zero handle: need the real kernel wallet client for permit signing
+      // kernelClient resets on page reload — skip silently and wait for ensureConnected()
+      // to fire, which sets walletStore.address and re-triggers this via the effect below.
+      const viemWalletClient = useWalletStore.getState().getViemWalletClient();
+      if (!viemWalletClient) return;
+
       await fheService.initialize(walletAddress, viemWalletClient);
-      const raw = await fheService.decryptUint64(BigInt(ctHash as string));
+      const ctHashBigInt = typeof ctHash === 'bigint' ? ctHash : BigInt(ctHash as string);
+      const raw = await fheService.decryptUint64(ctHashBigInt);
 
       setBalance({ raw, formatted: formatUnits(raw) });
     } catch (e) {

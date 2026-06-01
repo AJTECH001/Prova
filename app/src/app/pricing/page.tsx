@@ -9,7 +9,7 @@ const FAQS = [
   {
     question: 'How is my coverage premium calculated?',
     answer:
-      "Your premium is computed on-chain using Fully Homomorphic Encryption (FHE). The underwriting contract evaluates your buyer's payment history — days-to-pay, default rate, transaction volume — without ever reading the raw data in plaintext. The result is an encrypted premium in basis points applied to your invoice amount. Typical range is 0.5% to 5% depending on buyer risk.",
+      "Your premium is computed on-chain using Fully Homomorphic Encryption (FHE). The underwriting contract evaluates your buyer's payment history — days-to-pay, default rate, transaction volume — without ever reading the raw data in plaintext. The result is an encrypted premium in basis points applied to your invoice amount. Typical range is 1.5% to 10% depending on buyer risk.",
   },
   {
     question: 'Are there any monthly or setup fees?',
@@ -75,8 +75,8 @@ export default function PricingPage() {
                 </p>
                 <div className="mb-8 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface-alt))] p-6">
                   <div className="flex items-end gap-1.5">
-                    <span className="text-5xl font-black text-[hsl(var(--text-primary))]">0.5</span>
-                    <span className="mb-2 text-xl font-bold text-[hsl(var(--text-muted))]">– 5%</span>
+                    <span className="text-5xl font-black text-[hsl(var(--text-primary))]">1.5</span>
+                    <span className="mb-2 text-xl font-bold text-[hsl(var(--text-muted))]">– 10%</span>
                   </div>
                   <p className="mt-1 text-sm text-[hsl(var(--text-secondary))]">of invoice value, per invoice</p>
                 </div>
@@ -156,7 +156,7 @@ export default function PricingPage() {
                 </thead>
                 <tbody className="divide-y divide-[hsl(var(--border-subtle))]">
                   {[
-                    { item: 'Coverage premium',     rate: '0.5% – 5% per invoice', who: 'Seller' },
+                    { item: 'Coverage premium',     rate: '1.5% – 10% per invoice', who: 'Seller' },
                     { item: 'Monthly subscription', rate: 'None',                   who: '—' },
                     { item: 'Setup / onboarding',   rate: 'None',                   who: '—' },
                     { item: 'Claim processing fee', rate: 'None',                   who: '—' },

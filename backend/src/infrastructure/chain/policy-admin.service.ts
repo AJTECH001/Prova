@@ -1,6 +1,7 @@
 import { createWalletClient, createPublicClient, http, parseAbi } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { arbitrumSepolia } from 'viem/chains';
+import { arbitrumSepolia, arbitrum } from 'viem/chains';
+import type { Chain } from 'viem';
 import { getEnv } from '../../core/config.js';
 import { getLogger } from '../../core/logger.js';
 import { ApplicationHttpError } from '../../core/errors.js';
@@ -22,9 +23,6 @@ const INSURANCE_POOL_ABI = parseAbi([
   'function addPolicy(address policy_) external',
 ]);
 
-// InsurancePool has no insuranceManager() getter — _coverageManager is private.
-// Pool legitimacy is validated via PoolFactory.isPool(): if true, factory deployed it
-// with _coverageManager = CCM set during initialize().
 const POOL_FACTORY_VALIDATION_ABI = parseAbi([
   'function isPool(address) view returns (bool)',
 ]);
@@ -36,18 +34,39 @@ const CCM_ABI = parseAbi([
   'function setPoolFactory(address factory_) external',
 ]);
 
-// Reineira core — Arbitrum Sepolia (canonical, not env-overridable)
-const POLICY_REGISTRY_ADDRESS   = '0x962A6c7Be4fC765B0E8B601ab4BB210938660190' as const;
-const getCcmAddress = () => getEnv().COVERAGE_MANAGER_ADDRESS ?? '0x40A3A53d54D25cF079Bc9C2033224159d4EA3A67';
-const CONFIDENTIAL_ESCROW        = '0xbe1eEB78504B71beEE1b33D3E3D367A2F9a549A6' as const;
-const CONFIDENTIAL_POOL_FACTORY  = '0xCBD3815244ee96a92B3Ca3C71B6eD9acB3661e80' as const;
+const CHAIN_BY_ID: Record<number, Chain> = {
+  42161:  arbitrum,
+  421614: arbitrumSepolia,
+};
 
 const USDC_DECIMALS = 6;
+
+// ConfidentialEscrow stores `insuranceManager` in storage slot 2 (low 160 bits).
+// The escrow exposes no public getter and its FHE functions cannot be simulated via
+// eth_call, so reading this slot is the only reliable way to verify the escrow is wired
+// to the CCM before a purchase. Derived by disassembling setInsuranceManager
+// (selector 0xb51386f4 → SSTORE to slot 0x02 after a ZeroAddress guard).
+const ESCROW_INSURANCE_MANAGER_SLOT = '0x2' as const;
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+
+// Cache TTL: 30 minutes. After this the service re-checks on-chain state.
+const CACHE_TTL_MS = 30 * 60 * 1000;
+
+// Reineira core addresses — env-overridable so different networks/redeployments work
+// without code changes. Hardcoded values are the canonical Arbitrum Sepolia testnet defaults.
+const getPolicyRegistryAddress = (): `0x${string}` =>
+  (getEnv().POLICY_REGISTRY_ADDRESS ?? '0x962A6c7Be4fC765B0E8B601ab4BB210938660190') as `0x${string}`;
+const getCcmAddress = (): `0x${string}` =>
+  (getEnv().COVERAGE_MANAGER_ADDRESS ?? '0x40A3A53d54D25cF079Bc9C2033224159d4EA3A67') as `0x${string}`;
+const getConfidentialEscrow = (): `0x${string}` =>
+  (getEnv().ESCROW_CONTRACT_ADDRESS ?? '0xbe1eEB78504B71beEE1b33D3E3D367A2F9a549A6') as `0x${string}`;
+const getConfidentialPoolFactory = (): `0x${string}` =>
+  (getEnv().POOL_FACTORY_ADDRESS ?? '0xCBD3815244ee96a92B3Ca3C71B6eD9acB3661e80') as `0x${string}`;
 
 /**
  * Admin operations that must run before a coverage purchase can succeed.
  *
- * Three one-time setup checks (cached in memory, idempotent on retry):
+ * Three one-time setup checks (TTL-cached, idempotent on retry):
  *
  * 1. ensurePolicyInRegistry — registers TradeCreditInsurancePolicy in the global
  *    ConfidentialPolicyRegistry so that InsurancePool.addPolicy can accept it.
@@ -63,11 +82,23 @@ const USDC_DECIMALS = 6;
 export class PolicyAdminService {
   private readonly logger = getLogger('PolicyAdminService');
 
-  // Per-debtor cache: debtorId → cap already set
-  private readonly registered = new Set<string>();
+  // TTL-based cache: key → expiry timestamp (ms since epoch).
+  // Entries older than CACHE_TTL_MS are evicted on next access and re-checked on-chain.
+  private readonly cache = new Map<string, number>();
 
-  // Per-pool/policy pair cache: `${pool}:${policy}` → already configured
-  private readonly poolPolicyReady = new Set<string>();
+  private isCached(key: string): boolean {
+    const expiresAt = this.cache.get(key);
+    if (!expiresAt) return false;
+    if (Date.now() > expiresAt) {
+      this.cache.delete(key);
+      return false;
+    }
+    return true;
+  }
+
+  private setCached(key: string): void {
+    this.cache.set(key, Date.now() + CACHE_TTL_MS);
+  }
 
   private buildClients() {
     const env = getEnv();
@@ -83,16 +114,11 @@ export class PolicyAdminService {
       );
     }
 
+    const chain: Chain = CHAIN_BY_ID[env.CHAIN_ID] ?? arbitrumSepolia;
     const account = privateKeyToAccount(env.ADMIN_PRIVATE_KEY as `0x${string}`);
-    const walletClient = createWalletClient({
-      account,
-      chain: arbitrumSepolia,
-      transport: http(env.RPC_URL),
-    });
-    const publicClient = createPublicClient({
-      chain: arbitrumSepolia,
-      transport: http(env.RPC_URL),
-    });
+
+    const walletClient = createWalletClient({ account, chain, transport: http(env.RPC_URL) });
+    const publicClient = createPublicClient({ chain, transport: http(env.RPC_URL) });
 
     return { walletClient, publicClient };
   }
@@ -103,18 +129,17 @@ export class PolicyAdminService {
    * will succeed — CCM checks pool.isPolicy(policy) and pool validates via
    * PolicyRegistry.isPolicy(policy) inside addPolicy.
    *
-   * Called once per (pool, policy) pair per server process; idempotent on contract.
+   * Called once per (pool, policy) pair per TTL window; idempotent on contract.
    */
   async ensurePolicyReady(poolAddress: string, policyAddress: string): Promise<void> {
-    const key = `${poolAddress.toLowerCase()}:${policyAddress.toLowerCase()}`;
-    if (this.poolPolicyReady.has(key)) return;
+    const key = `policy_ready:${poolAddress.toLowerCase()}:${policyAddress.toLowerCase()}`;
+    if (this.isCached(key)) return;
 
     const { walletClient, publicClient } = this.buildClients();
+    const policyRegistryAddress = getPolicyRegistryAddress();
 
-    // 1. Register policy in ConfidentialPolicyRegistry if needed.
-    //    Anyone can call registerPolicy — no owner restriction.
     const isInRegistry = await publicClient.readContract({
-      address: POLICY_REGISTRY_ADDRESS,
+      address: policyRegistryAddress,
       abi: POLICY_REGISTRY_ABI,
       functionName: 'isPolicy',
       args: [policyAddress as `0x${string}`],
@@ -123,7 +148,7 @@ export class PolicyAdminService {
     if (!isInRegistry) {
       this.logger.info({ policyAddress }, 'Policy not in PolicyRegistry — registering');
       const hash = await walletClient.writeContract({
-        address: POLICY_REGISTRY_ADDRESS,
+        address: policyRegistryAddress,
         abi: POLICY_REGISTRY_ABI,
         functionName: 'registerPolicy',
         args: [policyAddress as `0x${string}`],
@@ -132,8 +157,6 @@ export class PolicyAdminService {
       this.logger.info({ policyAddress, hash }, 'Policy registered in PolicyRegistry');
     }
 
-    // 2. Add policy to the InsurancePool's whitelist if needed.
-    //    Requires admin wallet to be the pool's underwriter.
     const isInPool = await publicClient.readContract({
       address: poolAddress as `0x${string}`,
       abi: INSURANCE_POOL_ABI,
@@ -153,12 +176,10 @@ export class PolicyAdminService {
       this.logger.info({ poolAddress, policyAddress, hash }, 'Policy added to InsurancePool');
     }
 
-    // 3. Ensure CCM is whitelisted in the policy contract (Moat Registry P5).
-    //    Root cause of 0x19729203 (UnauthorizedPolicyCaller) / 0x484687d4 (NotAProvaContract).
     const whitelisted = await this.ensureManagerWhitelisted(policyAddress);
 
     if (whitelisted) {
-      this.poolPolicyReady.add(key);
+      this.setCached(key);
     }
   }
 
@@ -172,7 +193,7 @@ export class PolicyAdminService {
   async ensureManagerWhitelisted(policyAddress: string): Promise<boolean> {
     const ccmAddress = getCcmAddress();
     const key = `ccm_whitelisted:${policyAddress.toLowerCase()}:${ccmAddress.toLowerCase()}`;
-    if (this.poolPolicyReady.has(key)) return true;
+    if (this.isCached(key)) return true;
 
     const { walletClient, publicClient } = this.buildClients();
 
@@ -182,7 +203,7 @@ export class PolicyAdminService {
         address: policyAddress as `0x${string}`,
         abi: POLICY_ABI,
         functionName: 'isAllowedContract',
-        args: [ccmAddress as `0x${string}`],
+        args: [ccmAddress],
       })) as boolean;
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -193,16 +214,13 @@ export class PolicyAdminService {
     this.logger.info({ policyAddress, isAllowed, manager: ccmAddress }, 'Verifying Policy Manager Whitelist');
 
     if (!isAllowed) {
-      this.logger.warn(
-        { policyAddress, manager: ccmAddress },
-        'CCM not whitelisted in policy — repairing',
-      );
+      this.logger.warn({ policyAddress, manager: ccmAddress }, 'CCM not whitelisted in policy — repairing');
       try {
         const hash = await walletClient.writeContract({
           address: policyAddress as `0x${string}`,
           abi: POLICY_ABI,
           functionName: 'setAllowedContract',
-          args: [ccmAddress as `0x${string}`, true],
+          args: [ccmAddress, true],
         });
         await publicClient.waitForTransactionReceipt({ hash });
         this.logger.info({ policyAddress, hash }, 'CCM whitelisted in policy Moat registry');
@@ -213,32 +231,27 @@ export class PolicyAdminService {
       }
     }
 
-    this.poolPolicyReady.add(key);
+    this.setCached(key);
     return true;
   }
 
   /**
    * Verifies that CCM.poolFactory() returns the canonical factory address AND
    * that the pool is registered in that factory.
-   *
-   * Root cause of revert 0x4d13139e (InvalidPool): CCM.purchaseCoverage calls
-   * this.poolFactory.isPool(pool). We must validate against the factory CCM
-   * actually has stored — not a hardcoded constant — so backend pre-flight is
-   * perfectly aligned with what the on-chain simulation will do.
    */
   async ensurePoolManagerCorrect(poolAddress: string): Promise<void> {
-    const key = `manager:${poolAddress.toLowerCase()}`;
-    if (this.poolPolicyReady.has(key)) return;
+    const key = `pool_manager:${poolAddress.toLowerCase()}`;
+    if (this.isCached(key)) return;
 
     const { publicClient } = this.buildClients();
     const pool = poolAddress as `0x${string}`;
-
     const ccmAddress = getCcmAddress();
-    // Step 1: read the factory address CCM actually uses.
+    const expectedFactory = getConfidentialPoolFactory();
+
     let ccmFactory: string;
     try {
       ccmFactory = (await publicClient.readContract({
-        address: ccmAddress as `0x${string}`,
+        address: ccmAddress,
         abi: CCM_ABI,
         functionName: 'poolFactory',
       })) as string;
@@ -250,22 +263,20 @@ export class PolicyAdminService {
       );
     }
 
-    this.logger.info({ ccmFactory, expectedFactory: CONFIDENTIAL_POOL_FACTORY }, 'CCM.poolFactory()');
+    this.logger.info({ ccmFactory, expectedFactory }, 'CCM.poolFactory()');
 
-    if (ccmFactory.toLowerCase() !== CONFIDENTIAL_POOL_FACTORY.toLowerCase()) {
+    if (ccmFactory.toLowerCase() !== expectedFactory.toLowerCase()) {
       throw ApplicationHttpError.internalError(
-        `CCM.poolFactory() = ${ccmFactory} but expected ${CONFIDENTIAL_POOL_FACTORY}. ` +
+        `CCM.poolFactory() = ${ccmFactory} but expected ${expectedFactory}. ` +
           `Every purchaseCoverage call will revert with InvalidPool (0x4d13139e). ` +
-          `Fix: call CCM.setPoolFactory(${CONFIDENTIAL_POOL_FACTORY}) from CCM owner, ` +
-          `OR run: npx hardhat run scripts/diagnose-invalid-pool.ts --network arb-sepolia`,
+          `Fix: call CCM.setPoolFactory(${expectedFactory}) from CCM owner.`,
       );
     }
 
-    // Step 2: confirm pool is registered in the external factory registry.
     let isRegistered: boolean;
     try {
       isRegistered = await publicClient.readContract({
-        address: CONFIDENTIAL_POOL_FACTORY,
+        address: expectedFactory,
         abi: POOL_FACTORY_VALIDATION_ABI,
         functionName: 'isPool',
         args: [pool],
@@ -274,59 +285,55 @@ export class PolicyAdminService {
       const msg = e instanceof Error ? e.message : String(e);
       throw ApplicationHttpError.internalError(
         `PoolFactory.isPool() read failed for pool ${poolAddress}: ${msg}. ` +
-          `Cannot verify pool registration — coverage purchase blocked. ` +
-          `Check RPC_URL and ConfidentialPoolFactory (${CONFIDENTIAL_POOL_FACTORY}).`,
+          `Cannot verify pool registration — coverage purchase blocked.`,
       );
     }
 
     if (!isRegistered) {
       throw ApplicationHttpError.internalError(
-        `Pool ${poolAddress} is NOT registered in ConfidentialPoolFactory (${CONFIDENTIAL_POOL_FACTORY}). ` +
+        `Pool ${poolAddress} is NOT registered in ConfidentialPoolFactory (${expectedFactory}). ` +
           `CCM.purchaseCoverage will revert with InvalidPool (0x4d13139e). ` +
           `Action: deploy a new pool via ConfidentialPoolFactory.createPool(cUSDC), ` +
-          `then update POOL_ADDRESS in .env and restart. ` +
-          `Run: npx hardhat run scripts/repair-pool.ts --network arb-sepolia`,
+          `then update POOL_ADDRESS in .env and restart.`,
       );
     }
 
-    this.poolPolicyReady.add(key);
+    this.setCached(key);
   }
 
   /**
    * Verifies CCM.escrow() and CCM.poolFactory() are set to the canonical
    * Reineira addresses. These are one-time admin calls after CCM deployment.
-   *
-   * Cached in memory — idempotent on contract.
    */
   async ensureCcmWired(): Promise<void> {
     const ccmAddress = getCcmAddress();
     const key = `ccm_wired:${ccmAddress.toLowerCase()}`;
-    if (this.poolPolicyReady.has(key)) return;
+    if (this.isCached(key)) return;
 
     const { walletClient, publicClient } = this.buildClients();
+    const expectedEscrow = getConfidentialEscrow();
+    const expectedFactory = getConfidentialPoolFactory();
 
-    // Treat read failures as misconfigured — null means we cannot verify state.
     const [escrow, factory] = await Promise.all([
-      publicClient.readContract({ address: ccmAddress as `0x${string}`, abi: CCM_ABI, functionName: 'escrow' })
+      publicClient.readContract({ address: ccmAddress, abi: CCM_ABI, functionName: 'escrow' })
         .catch((e) => { this.logger.error({ err: e instanceof Error ? e.message : e }, 'CCM.escrow() read failed'); return null; }),
-      publicClient.readContract({ address: ccmAddress as `0x${string}`, abi: CCM_ABI, functionName: 'poolFactory' })
+      publicClient.readContract({ address: ccmAddress, abi: CCM_ABI, functionName: 'poolFactory' })
         .catch((e) => { this.logger.error({ err: e instanceof Error ? e.message : e }, 'CCM.poolFactory() read failed'); return null; }),
     ]);
 
-    // If reads failed, do not cache — allow retry on the next request.
     if (escrow === null || factory === null) {
       this.logger.error({ ccm: ccmAddress }, 'CCM read failed — skipping wiring check, will retry next request');
       return;
     }
 
-    this.logger.info({ escrow, factory, expectedEscrow: CONFIDENTIAL_ESCROW, expectedFactory: CONFIDENTIAL_POOL_FACTORY }, 'CCM wiring state');
+    this.logger.info({ escrow, factory, expectedEscrow, expectedFactory }, 'CCM wiring state');
 
     const repairErrors: string[] = [];
 
-    if ((escrow as string).toLowerCase() !== CONFIDENTIAL_ESCROW.toLowerCase()) {
-      this.logger.warn({ current: escrow, expected: CONFIDENTIAL_ESCROW }, 'CCM.escrow not set — calling setEscrow');
+    if ((escrow as string).toLowerCase() !== expectedEscrow.toLowerCase()) {
+      this.logger.warn({ current: escrow, expected: expectedEscrow }, 'CCM.escrow not set — calling setEscrow');
       try {
-        const hash = await walletClient.writeContract({ address: ccmAddress as `0x${string}`, abi: CCM_ABI, functionName: 'setEscrow', args: [CONFIDENTIAL_ESCROW] });
+        const hash = await walletClient.writeContract({ address: ccmAddress, abi: CCM_ABI, functionName: 'setEscrow', args: [expectedEscrow] });
         await publicClient.waitForTransactionReceipt({ hash });
         this.logger.info('CCM.setEscrow confirmed');
       } catch (e) {
@@ -336,10 +343,10 @@ export class PolicyAdminService {
       }
     }
 
-    if ((factory as string).toLowerCase() !== CONFIDENTIAL_POOL_FACTORY.toLowerCase()) {
-      this.logger.warn({ current: factory, expected: CONFIDENTIAL_POOL_FACTORY }, 'CCM.poolFactory not set — calling setPoolFactory');
+    if ((factory as string).toLowerCase() !== expectedFactory.toLowerCase()) {
+      this.logger.warn({ current: factory, expected: expectedFactory }, 'CCM.poolFactory not set — calling setPoolFactory');
       try {
-        const hash = await walletClient.writeContract({ address: ccmAddress as `0x${string}`, abi: CCM_ABI, functionName: 'setPoolFactory', args: [CONFIDENTIAL_POOL_FACTORY] });
+        const hash = await walletClient.writeContract({ address: ccmAddress, abi: CCM_ABI, functionName: 'setPoolFactory', args: [expectedFactory] });
         await publicClient.waitForTransactionReceipt({ hash });
         this.logger.info('CCM.setPoolFactory confirmed');
       } catch (e) {
@@ -349,20 +356,15 @@ export class PolicyAdminService {
       }
     }
 
-    // Only cache as wired when there were no unresolved failures.
-    // An unresolved failure means every coverage purchase will hit InvalidPool.
     if (repairErrors.length > 0) {
       this.logger.error(
         { errors: repairErrors },
-        'CCM wiring repairs failed — purchaseCoverage will revert with InvalidPool (0x4d13139e). ' +
-          'Run scripts/diagnose-invalid-pool.ts and scripts/repair-pool.ts to investigate. ' +
-          'The admin wallet may not own CCM — contact Reineira protocol team if setPoolFactory is unavailable.',
+        'CCM wiring repairs failed — purchaseCoverage will revert with InvalidPool (0x4d13139e).',
       );
-      // Do NOT cache — allow retry, and surface the problem clearly in logs.
       return;
     }
 
-    this.poolPolicyReady.add(key);
+    this.setCached(key);
   }
 
   /**
@@ -374,7 +376,8 @@ export class PolicyAdminService {
     policyAddress: string,
     debtorId: `0x${string}`,
   ): Promise<void> {
-    if (this.registered.has(debtorId)) return;
+    const key = `debtor:${debtorId}`;
+    if (this.isCached(key)) return;
 
     const env = getEnv();
     const capSmallest = BigInt(env.DEFAULT_CONCENTRATION_CAP_USDC) * BigInt(10 ** USDC_DECIMALS);
@@ -394,22 +397,16 @@ export class PolicyAdminService {
     });
 
     await publicClient.waitForTransactionReceipt({ hash });
-    this.registered.add(debtorId);
+    this.setCached(key);
 
     this.logger.info({ debtorId, hash }, 'Buyer registered — concentration cap set');
 
-    // Set encrypted oracle score so evaluateRisk has a valid CoFHE ciphertext.
-    // Without this, TradeCreditInsurancePolicy.evaluateRisk reverts when the CoFHE
-    // TaskManager rejects the missing/invalid ciphertext from MockDebtorProof.
     const oracleAddress = env.ORACLE_DEBTOR_PROOF_ADDRESS;
     if (oracleAddress) {
       const creditScore = env.DEFAULT_DEBTOR_CREDIT_SCORE;
       try {
         await oracleService.encryptAndSetScore(oracleAddress, debtorId, creditScore);
       } catch (e) {
-        // Non-fatal: log and continue. The coverage purchase will fail at evaluateRisk
-        // if the score is not set, surfacing a clear ScoreNotSet revert rather than
-        // an opaque CoFHE precompile error.
         this.logger.error(
           { err: e instanceof Error ? e.message : String(e), debtorId, oracleAddress },
           'Failed to set oracle score — coverage purchase may fail at evaluateRisk',

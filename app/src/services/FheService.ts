@@ -107,6 +107,16 @@ class FheService {
       .execute() as Promise<bigint>;
   }
 
+  async decryptForTx(ctHash: bigint | string): Promise<{ decryptedValue: bigint; signature: `0x${string}` }> {
+    this.assertReady();
+    // Uses global allowance (no permit) — valid after FHE.allowPublic() is called during unshield.
+    const result = await this.client
+      .decryptForTx(ctHash)
+      .withoutPermit()
+      .execute();
+    return { decryptedValue: result.decryptedValue, signature: result.signature };
+  }
+
   isReady(): boolean {
     return this.client !== null;
   }

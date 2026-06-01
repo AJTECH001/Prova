@@ -27,6 +27,17 @@ export interface UnstakeResponse {
   call: PoolContractCall;
 }
 
+export interface CoverageQuoteResponse {
+  escrow_public_id: string;
+  invoice_amount: number;
+  coverage_amount: number;
+  risk_score: number;
+  premium_rate_bps: number;
+  premium_rate_pct: string;
+  premium_cost: number;
+  expiry_ts: number;
+}
+
 export interface BuyCoverageRequest {
   pool_address?: string;
   coverage_amount?: number;
@@ -70,6 +81,13 @@ export class PoolService {
 
   static async confirmUnstake(stakePublicId: string): Promise<void> {
     await httpClient.post(`/v1/pool/confirm-unstake/${stakePublicId}`);
+  }
+
+  static async getCoverageQuote(escrowPublicId: string): Promise<CoverageQuoteResponse> {
+    const { data } = await httpClient.get<CoverageQuoteResponse>(
+      `/v1/escrows/${escrowPublicId}/coverage`,
+    );
+    return data;
   }
 
   static async buyCoverage(escrowPublicId: string, req: BuyCoverageRequest = {}): Promise<BuyCoverageResponse> {

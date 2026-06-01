@@ -1,29 +1,30 @@
-// ─── Deployed contract addresses ────────────────────────────────────────────
-// Source: contracts/deployments/arb-sepolia.json  (chainId 421614)
+// ─── Network config ──────────────────────────────────────────────────────────
+// Override via NEXT_PUBLIC_CHAIN_ID / NEXT_PUBLIC_* env vars for different networks.
+// Fallback values are canonical Arbitrum Sepolia (chainId 421614) testnet addresses.
 
-export const CHAIN_ID = 421614; // Arbitrum Sepolia
+export const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? 421614);
 
 // Mirrors TradeInvoiceResolver.MIN_WAITING_PERIOD (30 days in ms)
 export const MIN_WAITING_PERIOD_MS = 30 * 24 * 60 * 60 * 1000;
 
 export const ADDRESSES = {
   // PROVA contracts
-  TradeInvoiceResolver:       '0xfca7715a2C38E13Ecfa2f934E4B70758d0304738',
-  TradeCreditInsurancePolicy: '0xf131E7A869Ce4Ff54A7cdA9eC966576A9604B2b5',
-  DebtorExposureRegistry:     '0xe3b6a9E4BDF597899e79D13C4f73B16dff610fBE',
-  InsuranceClaimsRegistry:    '0x69e4fce78B3E1A4582FF2e35C51EA4364CB5D5dA',
-  MockDebtorProof:            '0x817A8DA1e6B5A7E45Dcf3784870d82C3E67F1576',
-  OracleDebtorProof:          '0xfcBf9E3df4AB09C4451b35cac0D995DA558E0A6e',
-  // Reineira core contracts redeployed
-  ConfidentialEscrow:          '0xbe1eEB78504B71beEE1b33D3E3D367A2F9a549A6',
-  ConfidentialCoverageManager: '0x40A3A53d54D25cF079Bc9C2033224159d4EA3A67',
-  PoolFactory:                 '0xCBD3815244ee96a92B3Ca3C71B6eD9acB3661e80',
-  PolicyRegistry:              '0x962A6c7Be4fC765B0E8B601ab4BB210938660190',
-  cUSDC:                       '0x42E47f9bA89712C317f60A72C81A610A2b68c48a',
-  USDC:                        '0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d',
+  TradeInvoiceResolver:       (process.env.NEXT_PUBLIC_TRADE_INVOICE_RESOLVER       ?? '0xfca7715a2C38E13Ecfa2f934E4B70758d0304738') as `0x${string}`,
+  TradeCreditInsurancePolicy: (process.env.NEXT_PUBLIC_TRADE_CREDIT_INSURANCE_POLICY ?? '0xf131E7A869Ce4Ff54A7cdA9eC966576A9604B2b5') as `0x${string}`,
+  DebtorExposureRegistry:     (process.env.NEXT_PUBLIC_DEBTOR_EXPOSURE_REGISTRY      ?? '0xe3b6a9E4BDF597899e79D13C4f73B16dff610fBE') as `0x${string}`,
+  InsuranceClaimsRegistry:    (process.env.NEXT_PUBLIC_INSURANCE_CLAIMS_REGISTRY     ?? '0x69e4fce78B3E1A4582FF2e35C51EA4364CB5D5dA') as `0x${string}`,
+  MockDebtorProof:            (process.env.NEXT_PUBLIC_MOCK_DEBTOR_PROOF             ?? '0x817A8DA1e6B5A7E45Dcf3784870d82C3E67F1576') as `0x${string}`,
+  OracleDebtorProof:          (process.env.NEXT_PUBLIC_ORACLE_DEBTOR_PROOF           ?? '0xfcBf9E3df4AB09C4451b35cac0D995DA558E0A6e') as `0x${string}`,
+  // Reineira core contracts
+  ConfidentialEscrow:          (process.env.NEXT_PUBLIC_CONFIDENTIAL_ESCROW          ?? '0xbe1eEB78504B71beEE1b33D3E3D367A2F9a549A6') as `0x${string}`,
+  ConfidentialCoverageManager: (process.env.NEXT_PUBLIC_COVERAGE_MANAGER             ?? '0x40A3A53d54D25cF079Bc9C2033224159d4EA3A67') as `0x${string}`,
+  PoolFactory:                 (process.env.NEXT_PUBLIC_POOL_FACTORY                 ?? '0xCBD3815244ee96a92B3Ca3C71B6eD9acB3661e80') as `0x${string}`,
+  PolicyRegistry:              (process.env.NEXT_PUBLIC_POLICY_REGISTRY              ?? '0x962A6c7Be4fC765B0E8B601ab4BB210938660190') as `0x${string}`,
+  cUSDC:                       (process.env.NEXT_PUBLIC_CUSDC                        ?? '0x42E47f9bA89712C317f60A72C81A610A2b68c48a') as `0x${string}`,
+  USDC:                        (process.env.NEXT_PUBLIC_USDC                         ?? '0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d') as `0x${string}`,
   // CoFHE infrastructure (hardcoded in FHE.sol — same address on all CoFHE-enabled chains)
-  CoFHETaskManager:            '0xeA30c4B8b44078Bbf8a6ef5b9f1eC1626C7848D9',
-} as const;
+  CoFHETaskManager:            (process.env.NEXT_PUBLIC_COFHE_TASK_MANAGER           ?? '0xeA30c4B8b44078Bbf8a6ef5b9f1eC1626C7848D9') as `0x${string}`,
+};
 
 // ─── ABIs ────────────────────────────────────────────────────────────────────
 // Sourced from: contracts/src/resolvers/TradeInvoiceResolver.sol
@@ -50,7 +51,6 @@ export const TradeInvoiceResolverABI = [
     anonymous: false,
     inputs: [
       { indexed: true, name: 'escrowId', type: 'uint256' },
-      { indexed: true, name: 'resolver', type: 'address' },
     ],
     type: 'event',
   },
@@ -105,8 +105,9 @@ export const TradeInvoiceResolverABI = [
   {
     name: 'initialize',
     inputs: [
-      { name: 'initialOwner',   type: 'address' },
+      { name: 'initialOwner',    type: 'address' },
       { name: '_escrowContract', type: 'address' },
+      { name: 'trustedForwarder', type: 'address' },
     ],
     outputs: [],
     stateMutability: 'nonpayable',
@@ -204,12 +205,6 @@ export const TradeCreditInsurancePolicyABI = [
     type: 'event',
   },
   {
-    name: 'ProtocolCallerSet',
-    anonymous: false,
-    inputs: [{ indexed: true, name: 'caller', type: 'address' }],
-    type: 'event',
-  },
-  {
     name: 'ClaimLogFailed',
     anonymous: false,
     inputs: [{ indexed: true, name: 'coverageId', type: 'uint256' }],
@@ -239,13 +234,6 @@ export const TradeCreditInsurancePolicyABI = [
   },
   {
     name: 'lossHistory',
-    inputs: [],
-    outputs: [{ type: 'address' }],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    name: 'protocolCaller',
     inputs: [],
     outputs: [{ type: 'address' }],
     stateMutability: 'view',
@@ -286,11 +274,11 @@ export const TradeCreditInsurancePolicyABI = [
   {
     name: 'initialize',
     inputs: [
-      { name: 'initialOwner',       type: 'address' },
+      { name: 'initialOwner',        type: 'address' },
       { name: '_debtorProofAdapter', type: 'address' },
       { name: '_exposureRegistry',   type: 'address' },
       { name: '_lossHistory',        type: 'address' },
-      { name: '_protocolCaller',     type: 'address' },
+      { name: 'trustedForwarder',    type: 'address' },
     ],
     outputs: [],
     stateMutability: 'nonpayable',
@@ -332,13 +320,6 @@ export const TradeCreditInsurancePolicyABI = [
       { name: 'debtorId', type: 'bytes32' },
       { name: 'cap',      type: 'uint64' },
     ],
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    name: 'setProtocolCaller',
-    inputs: [{ name: 'caller', type: 'address' }],
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
@@ -426,7 +407,10 @@ export const DebtorExposureRegistryABI = [
   // admin
   {
     name: 'initialize',
-    inputs: [{ name: 'initialOwner', type: 'address' }],
+    inputs: [
+      { name: 'initialOwner',    type: 'address' },
+      { name: 'trustedForwarder', type: 'address' },
+    ],
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
@@ -532,7 +516,10 @@ export const InsuranceClaimsRegistryABI = [
   // admin
   {
     name: 'initialize',
-    inputs: [{ name: 'initialOwner', type: 'address' }],
+    inputs: [
+      { name: 'initialOwner',    type: 'address' },
+      { name: 'trustedForwarder', type: 'address' },
+    ],
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
@@ -876,11 +863,27 @@ export const cUSDCABI = [
     type: 'function',
   },
   {
+    // Phase 1 of unshield: burns cUSDC and creates a pending claim.
+    // amount is an InEuint64 — encrypt it via fheService.encryptUint64() before calling.
+    // Returns the euint64 handle (bytes32 at ABI level) used as ctHash in claimUnshielded.
     name: 'unshield',
     inputs: [
       { name: 'from',   type: 'address' },
       { name: 'to',     type: 'address' },
       { name: 'amount', type: 'tuple', components: InEuintComponents },
+    ],
+    outputs: [{ name: '', type: 'bytes32' }],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    // Phase 2 of unshield: settles a pending claim with the CoFHE decryption result.
+    // decryptionProof is the signature returned by client.decryptForTx().withoutPermit().execute().
+    name: 'claimUnshielded',
+    inputs: [
+      { name: 'ctHash',          type: 'bytes32' },
+      { name: 'decryptedAmount', type: 'uint64' },
+      { name: 'decryptionProof', type: 'bytes' },
     ],
     outputs: [],
     stateMutability: 'nonpayable',
@@ -912,6 +915,26 @@ export const cUSDCABI = [
     outputs: [{ name: '', type: 'bytes32' }],
     stateMutability: 'view',
     type: 'function',
+  },
+  {
+    name: 'Unshielded',
+    type: 'event',
+    anonymous: false,
+    inputs: [
+      { indexed: true,  name: 'to',     type: 'address' },
+      { indexed: true,  name: 'amount', type: 'bytes32' },
+    ],
+  },
+  {
+    name: 'ClaimedUnshielded',
+    type: 'event',
+    anonymous: false,
+    inputs: [
+      { indexed: true,  name: 'to',              type: 'address' },
+      { indexed: false, name: 'ctHash',           type: 'bytes32' },
+      { indexed: false, name: 'ct',               type: 'bytes32' },
+      { indexed: false, name: 'decryptedAmount',  type: 'uint64' },
+    ],
   },
 ] as const;
 

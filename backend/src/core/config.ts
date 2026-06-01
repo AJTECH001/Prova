@@ -33,6 +33,7 @@ const EnvSchema = z.object({
   FHE_WORKER_URL: z.string().default('http://localhost:3001'),
   ADMIN_PRIVATE_KEY: z.string().optional(),
   DEFAULT_CONCENTRATION_CAP_USDC: z.coerce.number().default(1000000),
+  POLICY_REGISTRY_ADDRESS: z.string().optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

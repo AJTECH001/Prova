@@ -29,7 +29,7 @@ contract InsuranceClaimsRegistry is TestnetCoreBase {
     /// @param  policy Address of the registered policy contract.
     event PolicyRegistered(address indexed policy);
 
-    // ─── Storage ─────────────────────────────────────────────────────────────
+    // ─── ERC-7201 namespaced storage ─────────────────────────────────────────
 
     /// @dev A single claim record. The encrypted amount is an FHE handle — never plaintext.
     struct LossEntry {
@@ -39,11 +39,20 @@ contract InsuranceClaimsRegistry is TestnetCoreBase {
         uint32  curveVersion;    // premium curve version active at judgment time
     }
 
-    /// @dev Entry store keyed by opaque keccak256 hashes — never sequential integers.
-    mapping(bytes32 => LossEntry) private _entries;
+    struct ClaimsStorage {
+        /// @dev Entry store keyed by opaque keccak256 hashes — never sequential integers.
+        mapping(bytes32 => LossEntry) entries;
+        /// @dev Ordered list of entry keys for cursor-based iteration in recordsForCurve.
+        bytes32[] entryKeys;
+    }
 
-    /// @dev Ordered list of entry keys for cursor-based iteration in recordsForCurve.
-    bytes32[] private _entryKeys;
+    function _claimsStorage() private pure returns (ClaimsStorage storage $) {
+        bytes32 slot = keccak256(abi.encode(uint256(keccak256("reineira.storage.InsuranceClaimsRegistry")) - 1))
+            & ~bytes32(uint256(0xff));
+        assembly {
+            $.slot := slot
+        }
+    }
 
     // ─── Constructor ─────────────────────────────────────────────────────────
 
@@ -54,9 +63,10 @@ contract InsuranceClaimsRegistry is TestnetCoreBase {
     // ─── Initializer ─────────────────────────────────────────────────────────
 
     /// @notice Initialize the loss history log and assign ownership.
-    /// @param  initialOwner Address that will own this contract.
-    function initialize(address initialOwner) external initializer {
-        __TestnetCoreBase_init(initialOwner);
+    /// @param  initialOwner     Address that will own this contract.
+    /// @param  trustedForwarder ERC-2771 forwarder address (address(0) to disable).
+    function initialize(address initialOwner, address trustedForwarder) external initializer {
+        __TestnetCoreBase_init(initialOwner, trustedForwarder);
     }
 
     // ─── Owner administration ─────────────────────────────────────────────────
@@ -64,7 +74,7 @@ contract InsuranceClaimsRegistry is TestnetCoreBase {
     /// @notice Grant a policy contract write and read access to this log.
     /// @param  policy Address of the policy contract to authorise.
     function registerPolicy(address policy) external onlyOwner {
-        _allowedContracts[policy] = true;
+        _setAllowedFlag(policy, true);
         emit PolicyRegistered(policy);
     }
 
@@ -80,16 +90,17 @@ contract InsuranceClaimsRegistry is TestnetCoreBase {
         external
         onlyProvaContract
     {
+        ClaimsStorage storage $ = _claimsStorage();
         FHE.allowThis(encClaimAmount);
 
-        bytes32 key = keccak256(abi.encodePacked(coverageId, version, _entryKeys.length));
-        _entries[key] = LossEntry({
+        bytes32 key = keccak256(abi.encodePacked(coverageId, version, $.entryKeys.length));
+        $.entries[key] = LossEntry({
             coverageId:     coverageId,
             encClaimAmount: encClaimAmount,
             timestamp:      block.timestamp,
             curveVersion:   version
         });
-        _entryKeys.push(key);
+        $.entryKeys.push(key);
     }
 
     // ─── Read API ─────────────────────────────────────────────────────────────
@@ -107,20 +118,21 @@ contract InsuranceClaimsRegistry is TestnetCoreBase {
         onlyProvaContract
         returns (LossEntry[] memory)
     {
-        uint256 total = _entryKeys.length;
+        ClaimsStorage storage $ = _claimsStorage();
+        uint256 total = $.entryKeys.length;
         if (cursor >= total) return new LossEntry[](0);
 
         uint256 end = cursor + limit > total ? total : cursor + limit;
 
         uint256 resultCount = 0;
         for (uint256 i = cursor; i < end; i++) {
-            if (_entries[_entryKeys[i]].curveVersion == version) resultCount++;
+            if ($.entries[$.entryKeys[i]].curveVersion == version) resultCount++;
         }
 
         LossEntry[] memory result = new LossEntry[](resultCount);
         uint256 j = 0;
         for (uint256 i = cursor; i < end; i++) {
-            LossEntry storage e = _entries[_entryKeys[i]];
+            LossEntry storage e = $.entries[$.entryKeys[i]];
             if (e.curveVersion == version) {
                 result[j] = e;
                 j++;
@@ -128,4 +140,8 @@ contract InsuranceClaimsRegistry is TestnetCoreBase {
         }
         return result;
     }
+
+    // ─── Storage gap ──────────────────────────────────────────────────────────
+
+    uint256[50] private __gap;
 }

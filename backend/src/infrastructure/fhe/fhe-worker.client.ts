@@ -4,7 +4,7 @@ import { getLogger } from '../../core/logger.js';
 import { ApplicationHttpError } from '../../core/errors.js';
 
 export interface FheEncryptionItem {
-  type: 'euint64' | 'eaddress' | 'ebool';
+  type: 'euint32' | 'euint64' | 'eaddress' | 'ebool';
   value: string | boolean;
 }
 

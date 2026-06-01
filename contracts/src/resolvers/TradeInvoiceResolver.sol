@@ -11,7 +11,8 @@ import {ConditionResolverBase} from "../shared/extensions/ConditionResolverBase.
 ///         identities are decoded for input validation and double-insurance detection
 ///         but are never stored on-chain.
 ///
-/// @dev    Inherits caller-binding and ERC-165 from ConditionResolverBase.
+/// @dev    Inherits caller-binding, ERC-165, ERC-7201 storage, and ERC-2771 from
+///         ConditionResolverBase and TestnetCoreBase.
 contract TradeInvoiceResolver is ConditionResolverBase {
 
     // ─── Constants ───────────────────────────────────────────────────────────
@@ -30,11 +31,11 @@ contract TradeInvoiceResolver is ConditionResolverBase {
     error InvalidAmount();
     error InvalidDueDate();
     error InvalidWaitingPeriod();
-    error ZeroAddress();
+    error InvalidFeeBps();
     /// @dev Raised when the same invoice hash is already registered under another escrow.
     error InvoiceAlreadyRegistered(bytes32 invoiceHash);
 
-    // ─── Storage ─────────────────────────────────────────────────────────────
+    // ─── ERC-7201 namespaced storage ─────────────────────────────────────────
 
     /// @dev Only time parameters are stored. Party identities and invoice amount
     ///      are validated then discarded to minimise on-chain data exposure.
@@ -44,21 +45,29 @@ contract TradeInvoiceResolver is ConditionResolverBase {
         bool    set;           // guard against uninitialised reads
     }
 
-    /// @dev Private — escrow terms must not be world-readable.
-    mapping(uint256 => InvoiceCondition) private _conditions;
+    struct ResolverStorage {
+        /// @dev Private — escrow terms must not be world-readable.
+        mapping(uint256 => InvoiceCondition) conditions;
+        /// @dev Maps a canonical invoice hash to the first escrow that registered it,
+        ///      preventing the same real-world invoice from being double-insured.
+        mapping(bytes32 => uint256) invoiceHashToEscrow;
+        /// @dev Sentinel for escrowId == 0: uint256 default (0) is a valid escrowId.
+        mapping(bytes32 => bool) invoiceRegistered;
+        /// @notice Authorised escrow contract permitted to register conditions.
+        address escrowContract;
+        /// @notice Condition fee charged at escrow creation (basis points, 100 = 1%).
+        uint16 conditionFeeBps;
+        /// @notice Address that receives the condition fee.
+        address conditionFeeRecipient;
+    }
 
-    /// @dev Maps a canonical invoice hash to the first escrow that registered it,
-    ///      preventing the same real-world invoice from being double-insured.
-    ///      Hash is derived from (buyer, seller, invoiceAmount, dueDate) — invariants
-    ///      that identify an invoice independently of the escrow wrapping it.
-    mapping(bytes32 => uint256) private _invoiceHashToEscrow;
-
-    /// @dev Sentinel to handle escrowId == 0. Tracks whether a hash was ever registered
-    ///      because the uint256 default (0) is a valid escrowId.
-    mapping(bytes32 => bool) private _invoiceRegistered;
-
-    /// @notice Authorised escrow contract permitted to register conditions.
-    address public escrowContract;
+    function _resolverStorage() private pure returns (ResolverStorage storage $) {
+        bytes32 slot = keccak256(abi.encode(uint256(keccak256("reineira.storage.TradeInvoiceResolver")) - 1))
+            & ~bytes32(uint256(0xff));
+        assembly {
+            $.slot := slot
+        }
+    }
 
     // ─── Events ──────────────────────────────────────────────────────────────
 
@@ -71,6 +80,11 @@ contract TradeInvoiceResolver is ConditionResolverBase {
     /// @param  caller The new escrow contract address.
     event EscrowContractSet(address indexed caller);
 
+    /// @notice Emitted when the condition fee parameters are updated.
+    /// @param  bps       New fee in basis points.
+    /// @param  recipient New fee recipient address.
+    event ConditionFeeSet(uint16 bps, address indexed recipient);
+
     // ─── Constructor ─────────────────────────────────────────────────────────
 
     constructor() {
@@ -80,12 +94,17 @@ contract TradeInvoiceResolver is ConditionResolverBase {
     // ─── Initializer ─────────────────────────────────────────────────────────
 
     /// @notice Initialize the resolver and assign ownership.
-    /// @param  initialOwner    Address that will own this contract.
-    /// @param  _escrowContract Address of the ConfidentialEscrow contract.
-    function initialize(address initialOwner, address _escrowContract) external initializer {
-        __TestnetCoreBase_init(initialOwner);
+    /// @param  initialOwner     Address that will own this contract.
+    /// @param  _escrowContract  Address of the ConfidentialEscrow contract.
+    /// @param  trustedForwarder ERC-2771 forwarder address (address(0) to disable).
+    function initialize(
+        address initialOwner,
+        address _escrowContract,
+        address trustedForwarder
+    ) external initializer {
+        __ConditionResolverBase_init(initialOwner, trustedForwarder);
         if (_escrowContract == address(0)) revert ZeroAddress();
-        escrowContract = _escrowContract;
+        _resolverStorage().escrowContract = _escrowContract;
         emit EscrowContractSet(_escrowContract);
     }
 
@@ -95,8 +114,27 @@ contract TradeInvoiceResolver is ConditionResolverBase {
     /// @param  _escrowContract Address of the new ConfidentialEscrow contract.
     function setEscrowContract(address _escrowContract) external onlyOwner {
         if (_escrowContract == address(0)) revert ZeroAddress();
-        escrowContract = _escrowContract;
+        _resolverStorage().escrowContract = _escrowContract;
         emit EscrowContractSet(_escrowContract);
+    }
+
+    /// @notice Update the condition fee parameters.
+    /// @param  bps       Fee in basis points (0 to disable, max 10000).
+    /// @param  recipient Address that receives the fee (may be address(0) when bps == 0).
+    function setConditionFee(uint16 bps, address recipient) external onlyOwner {
+        if (bps > 10000) revert InvalidFeeBps();
+        if (bps > 0 && recipient == address(0)) revert ZeroAddress();
+        ResolverStorage storage $ = _resolverStorage();
+        $.conditionFeeBps = bps;
+        $.conditionFeeRecipient = recipient;
+        emit ConditionFeeSet(bps, recipient);
+    }
+
+    // ─── View helpers ─────────────────────────────────────────────────────────
+
+    /// @notice Returns the authorised escrow contract address.
+    function escrowContract() external view returns (address) {
+        return _resolverStorage().escrowContract;
     }
 
     // ─── IConditionResolver ──────────────────────────────────────────────────
@@ -110,7 +148,8 @@ contract TradeInvoiceResolver is ConditionResolverBase {
     /// @param  escrowId Unique identifier of the escrow being registered.
     /// @param  data     ABI-encoded invoice terms — buyer, seller, amount, dueDate, waitingPeriod.
     function onConditionSet(uint256 escrowId, bytes calldata data) external override {
-        if (msg.sender != escrowContract) revert UnauthorizedCaller(escrowId);
+        ResolverStorage storage $ = _resolverStorage();
+        if (msg.sender != $.escrowContract) revert UnauthorizedCaller(escrowId);
         // Binds the caller as the only authorised address for this escrowId.
         // Reverts ConditionAlreadySet if called a second time for the same escrowId.
         _bindEscrow(escrowId);
@@ -131,17 +170,15 @@ contract TradeInvoiceResolver is ConditionResolverBase {
             waitingPeriod > MAX_WAITING_PERIOD)      revert InvalidWaitingPeriod();
 
         // Prevent the same invoice from being registered under two different escrows.
-        // Hash uses invoice invariants (buyer, seller, amount, dueDate) so the check
-        // fires even when the same invoice is wrapped under a different escrow ID.
         // _invoiceRegistered is required because escrowId == 0 is a valid ID —
         // checking _invoiceHashToEscrow[hash] != 0 alone would silently fail for it.
         bytes32 hash = _invoiceHash(buyer, seller, invoiceAmount, dueDate);
-        if (_invoiceRegistered[hash]) revert InvoiceAlreadyRegistered(hash);
-        _invoiceRegistered[hash] = true;
-        _invoiceHashToEscrow[hash] = escrowId;
+        if ($.invoiceRegistered[hash]) revert InvoiceAlreadyRegistered(hash);
+        $.invoiceRegistered[hash] = true;
+        $.invoiceHashToEscrow[hash] = escrowId;
 
         // Only time parameters are persisted — party identities are not retained.
-        _conditions[escrowId] = InvoiceCondition({
+        $.conditions[escrowId] = InvoiceCondition({
             dueDate:       dueDate,
             waitingPeriod: waitingPeriod,
             set:           true
@@ -161,16 +198,23 @@ contract TradeInvoiceResolver is ConditionResolverBase {
         onlyBoundEscrow(escrowId)
         returns (bool)
     {
-        InvoiceCondition memory c = _conditions[escrowId];
+        InvoiceCondition memory c = _resolverStorage().conditions[escrowId];
         if (!c.set) return false;
         return block.timestamp >= c.dueDate + c.waitingPeriod;
+    }
+
+    /// @notice Return the condition fee charged at escrow creation.
+    /// @dev    RSS §5.5.1 — protocol stamps the Condition fee slot using this value during create().
+    /// @return bps       Fee in basis points (100 = 1%).
+    /// @return recipient Address that receives the condition fee.
+    function getConditionFee() external view override returns (uint16 bps, address recipient) {
+        ResolverStorage storage $ = _resolverStorage();
+        return ($.conditionFeeBps, $.conditionFeeRecipient);
     }
 
     // ─── Internal helpers ────────────────────────────────────────────────────
 
     /// @notice Produces a canonical hash to detect duplicate invoice registrations.
-    /// @dev    Hashes invoice invariants (buyer, seller, amount, dueDate) so the same
-    ///         real-world invoice always maps to the same hash regardless of escrow ID.
     /// @param  buyer         Buyer address.
     /// @param  seller        Seller address.
     /// @param  invoiceAmount Invoice face value.
@@ -184,4 +228,8 @@ contract TradeInvoiceResolver is ConditionResolverBase {
     ) internal pure returns (bytes32) {
         return keccak256(abi.encode(buyer, seller, invoiceAmount, dueDate));
     }
+
+    // ─── Storage gap ──────────────────────────────────────────────────────────
+
+    uint256[50] private __gap;
 }

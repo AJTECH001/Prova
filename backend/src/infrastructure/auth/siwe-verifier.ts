@@ -1,10 +1,27 @@
 import { SiweMessage } from 'siwe';
 import { createPublicClient, http } from 'viem';
-import { arbitrumSepolia } from 'viem/chains';
+import { arbitrumSepolia, arbitrum, mainnet, optimism } from 'viem/chains';
+import type { Chain } from 'viem';
 import { getEnv } from '../../core/config.js';
 import { getLogger } from '../../core/logger.js';
 
 const logger = getLogger('SiweVerifier');
+
+const CHAIN_BY_ID: Record<number, Chain> = {
+  1:      mainnet,
+  10:     optimism,
+  42161:  arbitrum,
+  421614: arbitrumSepolia,
+};
+
+function getChain(chainId: number): Chain {
+  const chain = CHAIN_BY_ID[chainId];
+  if (!chain) {
+    logger.warn({ chainId }, 'Unknown chainId — falling back to arbitrumSepolia');
+    return arbitrumSepolia;
+  }
+  return chain;
+}
 
 export class SiweVerifier {
   async verify(message: string, signature: string): Promise<{ address: string; valid: boolean }> {
@@ -14,13 +31,14 @@ export class SiweVerifier {
 
       logger.info({ address, nonce: siweMessage.nonce }, 'Verifying SIWE signature');
 
-      const rpcUrl = getEnv().RPC_URL || undefined;
+      const env = getEnv();
+      const rpcUrl = env.RPC_URL || undefined;
       if (!rpcUrl) {
         logger.warn('RPC_URL not set, ERC-6492 verification will fail for smart accounts');
       }
 
       const publicClient = createPublicClient({
-        chain: arbitrumSepolia,
+        chain: getChain(env.CHAIN_ID),
         transport: http(rpcUrl),
       });
 

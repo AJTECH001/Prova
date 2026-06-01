@@ -10,6 +10,13 @@ import {
   primaryKey,
 } from 'drizzle-orm/pg-core';
 
+export const disputeStatusEnum = pgEnum('dispute_status', [
+  'PENDING',
+  'FILED',
+  'ACCEPTED',
+  'REJECTED',
+]);
+
 export const escrowStatusEnum = pgEnum('escrow_status', [
   'PENDING',
   'ON_CHAIN',
@@ -116,6 +123,7 @@ export const escrows = pgTable(
     onChainEscrowId: text('on_chain_escrow_id'),
     txHash: text('tx_hash'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
     settledAt: timestamp('settled_at'),
     resolverAddress: text('resolver_address'),
     poolAddress: text('pool_address'),
@@ -228,6 +236,33 @@ export const poolStakes = pgTable(
     index('pool_stakes_public_id_idx').on(t.publicId),
     index('pool_stakes_user_id_idx').on(t.userId),
     index('pool_stakes_pool_address_idx').on(t.poolAddress),
+  ],
+);
+
+export const disputes = pgTable(
+  'disputes',
+  {
+    id: text('id').primaryKey(),
+    publicId: text('public_id').unique().notNull(),
+    escrowId: text('escrow_id')
+      .references(() => escrows.id)
+      .notNull(),
+    coverageId: text('coverage_id').notNull(),
+    userId: text('user_id')
+      .references(() => users.id)
+      .notNull(),
+    walletId: text('wallet_id').notNull(),
+    status: disputeStatusEnum('status').notNull().default('PENDING'),
+    disputeProof: text('dispute_proof'),
+    txHash: text('tx_hash'),
+    errorMessage: text('error_message'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (t) => [
+    index('disputes_public_id_idx').on(t.publicId),
+    index('disputes_escrow_id_idx').on(t.escrowId),
+    index('disputes_user_id_status_idx').on(t.userId, t.status),
   ],
 );
 
