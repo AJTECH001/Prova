@@ -36,3 +36,10 @@ Thumbs.db
 *.pem
 *.key
 *.p12
+
+# Internal ops / strategy (not for public release)
+.claude/
+brief.md
+
+# Tooling
+.qodo/
