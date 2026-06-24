@@ -29,13 +29,13 @@ const DialogContent = forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        'fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl border border-[var(--border-dark)] bg-[var(--background)] p-6 shadow-lg',
+        'fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl border border-[var(--color-border-default)] bg-[var(--color-bg-page)] p-6 shadow-lg',
         className,
       )}
       {...props}
     >
       {title && (
-        <DialogPrimitive.Title className="mb-4 text-lg font-semibold text-[var(--text-primary)]">
+        <DialogPrimitive.Title className="mb-4 text-lg font-semibold text-[var(--color-text-primary)]">
           {title}
         </DialogPrimitive.Title>
       )}

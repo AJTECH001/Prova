@@ -77,43 +77,43 @@ export function WithdrawalForm({ transactions, onSubmit }: WithdrawalFormProps) 
     <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
       {settledTransactions.length > 0 ? (
         <div className="flex flex-col gap-2">
-          <p className="text-sm font-medium text-[var(--text-primary)]">Select escrows to redeem or claim</p>
-          <div className="max-h-48 overflow-y-auto rounded-lg border border-[var(--border-dark)]">
+          <p className="text-sm font-medium text-[var(--color-text-primary)]">Select escrows to redeem or claim</p>
+          <div className="max-h-48 overflow-y-auto rounded-lg border border-[var(--color-border-default)]">
             {settledTransactions.map((txn) => (
               <label
                 key={txn.public_id}
-                className="flex cursor-pointer items-center gap-3 border-b border-[var(--border-dark)] px-4 py-3 last:border-0 hover:bg-[var(--background-secondary)] transition-colors"
+                className="flex cursor-pointer items-center gap-3 border-b border-[var(--color-border-default)] px-4 py-3 last:border-0 hover:bg-[var(--color-bg-section)] transition-colors"
               >
                 <input
                   type="checkbox"
                   checked={selectedIds.has(Number(txn.on_chain_id))}
                   onChange={() => toggleTransaction(txn.on_chain_id)}
-                  className="h-4 w-4 rounded border-[var(--border-dark)] accent-[var(--accent-blue)]"
+                  className="h-4 w-4 rounded border-[var(--color-border-default)] accent-[var(--color-brand-primary)]"
                 />
-                <span className="flex-1 text-sm text-[var(--text-primary)]">
+                <span className="flex-1 text-sm text-[var(--color-text-primary)]">
                   {txn.external_reference || txn.public_id}
                 </span>
-                <span className="text-sm font-medium text-[var(--text-primary)]">{txn.amount} USDC</span>
+                <span className="text-sm font-medium text-[var(--color-text-primary)]">{txn.amount} USDC</span>
               </label>
             ))}
           </div>
           {selectedIds.size > 0 && (
-            <p className="text-sm text-[var(--text-secondary)]">
-              Total: <span className="font-medium text-[var(--text-primary)]">{selectedTotal.toFixed(2)} USDC</span>
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              Total: <span className="font-medium text-[var(--color-text-primary)]">{selectedTotal.toFixed(2)} USDC</span>
             </p>
           )}
         </div>
       ) : (
-        <p className="text-sm text-[var(--text-secondary)]">No redeemable escrows yet. Funded escrows are available immediately; insurance claims open after the waiting period passes.</p>
+        <p className="text-sm text-[var(--color-text-secondary)]">No redeemable escrows yet. Funded escrows are available immediately; insurance claims open after the waiting period passes.</p>
       )}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-[var(--text-primary)]">Destination Chain</label>
+          <label className="text-sm font-medium text-[var(--color-text-primary)]">Destination Chain</label>
           <select
             value={destinationChain}
             onChange={(e) => setDestinationChain(e.target.value)}
-            className="w-full rounded-lg border border-[var(--border-dark)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--text-primary)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--accent-blue)]/50"
+            className="w-full rounded-lg border border-[var(--color-border-default)] bg-[var(--color-bg-page)] px-3 py-2 text-sm text-[var(--color-text-primary)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]/50"
           >
             {chainOptions.map((chain) => (
               <option key={chain.value} value={chain.value}>

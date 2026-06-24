@@ -64,7 +64,7 @@ export function WalletConnectButton() {
             onChange={(e) => setUsername(e.target.value)}
             placeholder="Choose a username"
             disabled={loading}
-            className="w-full rounded-lg border border-[var(--border-dark)] bg-[var(--background)] px-4 py-2.5 text-sm outline-none transition-colors focus:border-[var(--accent-blue)]"
+            className="w-full rounded-lg border border-[var(--color-border-default)] bg-[var(--color-bg-page)] px-4 py-2.5 text-sm outline-none transition-colors focus:border-[var(--color-brand-primary)]"
             onKeyDown={(e) => e.key === 'Enter' && handleRegister()}
           />
           <Button size="lg" loading={loading && showRegister} disabled={loading} onClick={handleRegister}>
@@ -77,7 +77,7 @@ export function WalletConnectButton() {
         <button
           type="button"
           disabled={loading}
-          className="text-sm text-[var(--text-secondary)] underline-offset-2 transition-colors hover:text-[var(--text-primary)] hover:underline"
+          className="text-sm text-[var(--color-text-secondary)] underline-offset-2 transition-colors hover:text-[var(--color-text-primary)] hover:underline"
           onClick={toggleRegister}
         >
           Create new account
@@ -88,14 +88,14 @@ export function WalletConnectButton() {
         <button
           type="button"
           disabled={loading}
-          className="text-sm text-[var(--text-secondary)] underline-offset-2 transition-colors hover:text-[var(--text-primary)] hover:underline"
+          className="text-sm text-[var(--color-text-secondary)] underline-offset-2 transition-colors hover:text-[var(--color-text-primary)] hover:underline"
           onClick={toggleRegister}
         >
           Already have an account? Sign in
         </button>
       )}
 
-      {error && <p className="text-center text-sm text-[var(--status-error)]">{error}</p>}
+      {error && <p className="text-center text-sm text-[var(--color-error)]">{error}</p>}
     </div>
   );
 }

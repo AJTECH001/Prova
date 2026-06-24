@@ -38,14 +38,14 @@ export function ZKPrivacyShowcase() {
           {/* Left — feature pillars */}
           <div className="space-y-10">
             <div className="space-y-4">
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[hsl(var(--text-muted))]">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[hsl(var(--ds-ink-400))]">
                 Privacy &amp; Security
               </p>
-              <h2 className="text-4xl font-black tracking-tight text-[hsl(var(--text-primary))] sm:text-5xl">
+              <h2 className="text-4xl font-black tracking-tight text-[hsl(var(--ds-ink-900))] sm:text-5xl">
                 Institutional infrastructure.<br />
                 No institutional friction.
               </h2>
-              <p className="text-base text-[hsl(var(--text-secondary))]">
+              <p className="text-base text-[hsl(var(--ds-ink-600))]">
                 FHE-encrypted underwriting, passkey accounts, and auditable on-chain settlement — available to any business selling on credit.
               </p>
             </div>
@@ -53,8 +53,8 @@ export function ZKPrivacyShowcase() {
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
               {FEATURES.map((f) => (
                 <div key={f.title} className="space-y-2">
-                  <h4 className="font-bold text-[hsl(var(--text-primary))]">{f.title}</h4>
-                  <p className="text-sm leading-relaxed text-[hsl(var(--text-secondary))]">
+                  <h4 className="font-bold text-[hsl(var(--ds-ink-900))]">{f.title}</h4>
+                  <p className="text-sm leading-relaxed text-[hsl(var(--ds-ink-600))]">
                     {f.description}
                   </p>
                 </div>
@@ -64,15 +64,15 @@ export function ZKPrivacyShowcase() {
 
           {/* Right — how it works */}
           <div className="flex items-center">
-            <div className="w-full rounded-2xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface-alt))] p-8 space-y-7">
+            <div className="w-full rounded-2xl border border-[hsl(var(--ds-line-light))] bg-[hsl(var(--ds-surface-section))] p-8 space-y-7">
               <div className="space-y-2">
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-[hsl(var(--text-muted))]">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-[hsl(var(--ds-ink-400))]">
                   How it works
                 </p>
-                <h3 className="text-2xl font-black tracking-tight text-[hsl(var(--text-primary))]">
+                <h3 className="text-2xl font-black tracking-tight text-[hsl(var(--ds-ink-900))]">
                   From wallet to settlement.
                 </h3>
-                <p className="text-sm leading-relaxed text-[hsl(var(--text-secondary))]">
+                <p className="text-sm leading-relaxed text-[hsl(var(--ds-ink-600))]">
                   How an invoice moves through Prova: from your passkey wallet into a secure escrow, through encrypted underwriting, to final settlement.
                 </p>
               </div>
@@ -80,12 +80,12 @@ export function ZKPrivacyShowcase() {
               <div className="flex flex-wrap items-center gap-2">
                 {FLOW_STEPS.map((step, i) => (
                   <div key={step} className="flex items-center gap-2">
-                    <div className="flex items-center gap-2 rounded-full border border-[hsl(var(--border-strong))] bg-white px-4 py-1.5">
-                      <div className="h-1.5 w-1.5 rounded-full bg-[hsl(var(--brand-primary))]" />
-                      <span className="text-xs font-semibold text-[hsl(var(--text-secondary))]">{step}</span>
+                    <div className="flex items-center gap-2 rounded-full border border-[hsl(var(--ds-line-strong))] bg-white px-4 py-1.5">
+                      <div className="h-1.5 w-1.5 rounded-full bg-[hsl(var(--ds-teal-600))]" />
+                      <span className="text-xs font-semibold text-[hsl(var(--ds-ink-600))]">{step}</span>
                     </div>
                     {i < FLOW_STEPS.length - 1 && (
-                      <svg className="h-4 w-4 shrink-0 text-[hsl(var(--text-muted))]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <svg className="h-4 w-4 shrink-0 text-[hsl(var(--ds-ink-400))]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                         <path d="M5 12h14M12 5l7 7-7 7" />
                       </svg>
                     )}
@@ -93,10 +93,10 @@ export function ZKPrivacyShowcase() {
                 ))}
               </div>
 
-              <ul className="space-y-3 border-t border-[hsl(var(--border-subtle))] pt-6">
+              <ul className="space-y-3 border-t border-[hsl(var(--ds-line-light))] pt-6">
                 {FLOW_BULLETS.map((b) => (
-                  <li key={b} className="flex items-start gap-3 text-sm text-[hsl(var(--text-secondary))]">
-                    <div className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[hsl(var(--brand-primary))]" />
+                  <li key={b} className="flex items-start gap-3 text-sm text-[hsl(var(--ds-ink-600))]">
+                    <div className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[hsl(var(--ds-teal-600))]" />
                     {b}
                   </li>
                 ))}

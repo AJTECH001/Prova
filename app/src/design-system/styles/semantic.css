@@ -1,0 +1,103 @@
+/* =========================================================================
+   PROVA DESIGN SYSTEM · SEMANTIC (roles)
+   -------------------------------------------------------------------------
+   Maps foundation values to roles AND generates Tailwind v4 utilities.
+   Each `--color-*` entry both defines a CSS variable (consumed by the
+   component + compat layers) and emits a utility, e.g.:
+       --color-action-primary  ->  bg-action-primary / text-action-primary
+       --color-text-secondary   ->  text-text-secondary
+   Roles reference foundation only — never a raw hex. Mirrors
+   src/design-system/tokens/semantic/index.ts.
+   ========================================================================= */
+@theme {
+  /* ── Background (page level) ── */
+  --color-bg-page: hsl(var(--ds-surface-page));
+  --color-bg-section: hsl(var(--ds-surface-section));
+  --color-bg-subtle: hsl(var(--ds-surface-subtle));
+
+  /* ── Surface (raised) ── */
+  --color-surface: hsl(var(--ds-surface-white));
+  --color-surface-subtle: hsl(var(--ds-surface-subtle));
+  --color-surface-hover: hsl(var(--ds-surface-subtle));
+  --color-surface-active: hsl(var(--ds-teal-50));
+
+  /* ── Card ── */
+  --color-card: hsl(var(--ds-surface-white));
+  --color-card-border: hsl(var(--ds-line-light));
+
+  /* ── Text ── */
+  --color-text-primary: hsl(var(--ds-ink-900));
+  --color-text-secondary: hsl(var(--ds-ink-600));
+  --color-text-tertiary: hsl(var(--ds-ink-400));
+  --color-text-disabled: hsl(var(--ds-ink-300));
+  --color-text-on-brand: hsl(var(--ds-surface-white));
+
+  /* ── Border ── */
+  --color-border-light: hsl(var(--ds-line-light));
+  --color-border-default: hsl(var(--ds-line-default));
+  --color-border-strong: hsl(var(--ds-line-strong));
+
+  /* ── Action / Brand (Trade Credit Teal — the only brand color) ── */
+  --color-action-primary: hsl(var(--ds-teal-600));
+  --color-action-hover: hsl(var(--ds-teal-700));
+  --color-action-active: hsl(var(--ds-teal-800));
+  --color-action-subtle: hsl(var(--ds-teal-50));
+  --color-action-fg: hsl(var(--ds-surface-white));
+  /* Ergonomic brand-* aliases (same source — not a second color). */
+  --color-brand-primary: hsl(var(--ds-teal-600));
+  --color-brand-hover: hsl(var(--ds-teal-700));
+  --color-brand-active: hsl(var(--ds-teal-800));
+  --color-brand-subtle: hsl(var(--ds-teal-50));
+
+  /* ── Status · success ── */
+  --color-success: hsl(var(--ds-green-main));
+  --color-success-bg: hsl(var(--ds-green-bg));
+  --color-success-border: hsl(var(--ds-green-border));
+  --color-success-text: hsl(var(--ds-green-text));
+
+  /* ── Status · warning ── */
+  --color-warning: hsl(var(--ds-amber-main));
+  --color-warning-bg: hsl(var(--ds-amber-bg));
+  --color-warning-border: hsl(var(--ds-amber-border));
+  --color-warning-text: hsl(var(--ds-amber-text));
+
+  /* ── Status · error ── */
+  --color-error: hsl(var(--ds-red-main));
+  --color-error-bg: hsl(var(--ds-red-bg));
+  --color-error-border: hsl(var(--ds-red-border));
+  --color-error-text: hsl(var(--ds-red-text));
+
+  /* ── Status · info (teal family, never blue) ── */
+  --color-info: hsl(var(--ds-teal-600));
+  --color-info-bg: hsl(var(--ds-teal-50));
+  --color-info-border: hsl(var(--ds-teal-border));
+  --color-info-text: hsl(var(--ds-teal-700));
+
+  /* ── Neutral ── */
+  --color-neutral: hsl(var(--ds-ink-600));
+  --color-neutral-bg: hsl(var(--ds-surface-subtle));
+  --color-neutral-border: hsl(var(--ds-line-default));
+  --color-neutral-text: hsl(var(--ds-ink-700));
+
+  /* ── Data visualization (charts only) ── */
+  --color-dv-revenue: hsl(var(--ds-dv-revenue));
+  --color-dv-risk: hsl(var(--ds-dv-risk));
+  --color-dv-protected: hsl(var(--ds-dv-protected));
+  --color-dv-claims: hsl(var(--ds-dv-claims));
+  --color-dv-exposure: hsl(var(--ds-dv-exposure));
+  --color-dv-health: hsl(var(--ds-dv-health));
+
+  /* ── Non-color theme extensions (radius / shadow / motion / z) ── */
+  --radius-minimal: 4px;
+  --radius-subtle: 8px;
+  --radius-button: 10px;
+  --radius-block: 16px;
+  --radius-lg: 20px;
+
+  --shadow-card: 0 1px 3px rgba(10, 25, 41, 0.08), 0 1px 2px rgba(10, 25, 41, 0.04);
+
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+  --font-sans: var(--font-sans);
+}

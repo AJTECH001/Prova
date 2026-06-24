@@ -83,7 +83,7 @@ function formatAmount(amount: number) {
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{label}</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-tertiary)]">{label}</p>
       <div className="mt-1">{children}</div>
     </div>
   );
@@ -93,17 +93,17 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
 function AdvancedDetails({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="border-t border-[var(--border-dark)] pt-4">
+    <div className="border-t border-[var(--color-border-default)] pt-4">
       <button
         onClick={() => setOpen((v) => !v)}
         className="group flex w-full items-center justify-between text-left"
       >
-        <span className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] transition-colors group-hover:text-[var(--text-secondary)]">
+        <span className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-tertiary)] transition-colors group-hover:text-[var(--color-text-secondary)]">
           Advanced Details
         </span>
         <svg
           width="14" height="14" viewBox="0 0 20 20" fill="currentColor"
-          className={`text-[var(--text-muted)] transition-transform ${open ? 'rotate-180' : ''}`}
+          className={`text-[var(--color-text-tertiary)] transition-transform ${open ? 'rotate-180' : ''}`}
         >
           <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
         </svg>
@@ -184,10 +184,10 @@ export function TransactionDetail({ transaction }: TransactionDetailProps) {
 
         {/* ── Status banners ── */}
         {canRedeem && (
-          <div className="flex items-center justify-between rounded-xl border border-[var(--status-success)] bg-[hsl(var(--tip-bg))] px-4 py-3">
+          <div className="flex items-center justify-between rounded-xl border border-[var(--color-success)] bg-[hsl(var(--ds-green-bg))] px-4 py-3">
             <div>
-              <p className="text-sm font-semibold text-[var(--status-success)]">Ready to redeem</p>
-              <p className="text-xs text-[var(--text-secondary)]">The buyer has paid and the waiting period has passed. Go to Withdrawals to collect your funds.</p>
+              <p className="text-sm font-semibold text-[var(--color-success)]">Ready to redeem</p>
+              <p className="text-xs text-[var(--color-text-secondary)]">The buyer has paid and the waiting period has passed. Go to Withdrawals to collect your funds.</p>
             </div>
             <Button size="sm" onClick={() => router.push('/withdrawals')} className="ml-4 shrink-0">
               Redeem Now
@@ -196,10 +196,10 @@ export function TransactionDetail({ transaction }: TransactionDetailProps) {
         )}
 
         {buyerDefaulted && (
-          <div className="flex items-center justify-between rounded-xl border border-[var(--status-warning)] bg-[hsl(var(--warning-bg))] px-4 py-3">
+          <div className="flex items-center justify-between rounded-xl border border-[var(--color-warning)] bg-[hsl(var(--ds-amber-bg))] px-4 py-3">
             <div>
-              <p className="text-sm font-semibold text-[var(--status-warning)]">Payment not received</p>
-              <p className="text-xs text-[var(--text-secondary)]">
+              <p className="text-sm font-semibold text-[var(--color-warning)]">Payment not received</p>
+              <p className="text-xs text-[var(--color-text-secondary)]">
                 {hasCoverage
                   ? 'The waiting period has passed with no payment. You can file an insurance claim to recover funds.'
                   : 'The waiting period has passed with no payment. No coverage was purchased — funds cannot be recovered.'}
@@ -214,8 +214,8 @@ export function TransactionDetail({ transaction }: TransactionDetailProps) {
         )}
 
         {claimPending && openAt && (
-          <div className="rounded-xl border border-[var(--border-dark)] bg-[hsl(var(--bg-surface-alt))] px-4 py-3">
-            <p className="text-xs text-[var(--text-muted)]">
+          <div className="rounded-xl border border-[var(--color-border-default)] bg-[hsl(var(--ds-surface-section))] px-4 py-3">
+            <p className="text-xs text-[var(--color-text-tertiary)]">
               Claim window opens {new Date(openAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
             </p>
           </div>
@@ -224,10 +224,10 @@ export function TransactionDetail({ transaction }: TransactionDetailProps) {
         {/* ── Amount + status header ── */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-medium text-[var(--text-muted)]">Payment amount</p>
-            <p className="mt-1 text-3xl font-bold tabular-nums tracking-tight text-[var(--text-primary)]">
+            <p className="text-xs font-medium text-[var(--color-text-tertiary)]">Payment amount</p>
+            <p className="mt-1 text-3xl font-bold tabular-nums tracking-tight text-[var(--color-text-primary)]">
               {formatAmount(transaction.amount)}
-              <span className="ml-1.5 text-base font-normal text-[var(--text-muted)]">USDC</span>
+              <span className="ml-1.5 text-base font-normal text-[var(--color-text-tertiary)]">USDC</span>
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
@@ -237,33 +237,33 @@ export function TransactionDetail({ transaction }: TransactionDetailProps) {
         </div>
 
         {/* ── Core details grid ── */}
-        <div className="grid gap-5 sm:grid-cols-2 rounded-xl border border-[var(--border-dark)] bg-[hsl(var(--bg-surface-alt))] p-4">
+        <div className="grid gap-5 sm:grid-cols-2 rounded-xl border border-[var(--color-border-default)] bg-[hsl(var(--ds-surface-section))] p-4">
           <DetailRow label={isBuyer ? 'From account' : 'To account'}>
-            <p className="text-sm font-medium text-[var(--text-primary)]">
+            <p className="text-sm font-medium text-[var(--color-text-primary)]">
               {transaction.counterparty
                 ? `Account ••••${transaction.counterparty.slice(-4).toUpperCase()}`
                 : '—'}
             </p>
           </DetailRow>
           <DetailRow label="Reference">
-            <p className="text-sm font-medium text-[var(--text-primary)]">
-              {transaction.external_reference || <span className="text-[var(--text-muted)]">—</span>}
+            <p className="text-sm font-medium text-[var(--color-text-primary)]">
+              {transaction.external_reference || <span className="text-[var(--color-text-tertiary)]">—</span>}
             </p>
           </DetailRow>
           <DetailRow label="Due Date">
-            <p className="text-sm font-medium text-[var(--text-primary)]">{formatDate(transaction.deadline)}</p>
+            <p className="text-sm font-medium text-[var(--color-text-primary)]">{formatDate(transaction.deadline)}</p>
           </DetailRow>
           <DetailRow label="Created">
-            <p className="text-sm font-medium text-[var(--text-primary)]">{formatDate(transaction.created_at)}</p>
+            <p className="text-sm font-medium text-[var(--color-text-primary)]">{formatDate(transaction.created_at)}</p>
           </DetailRow>
         </div>
 
         {/* ── Coverage Quote + Buy Coverage ── */}
         {canBuyCoverage && !showCoverageFlow && (
-          <div className="flex flex-col gap-0 rounded-xl border border-[var(--border-dark)] overflow-hidden">
-            <div className="bg-[hsl(var(--bg-surface-alt))] px-4 py-3 border-b border-[var(--border-dark)]">
-              <p className="text-sm font-semibold text-[var(--text-primary)]">Coverage quote</p>
-              <p className="text-xs text-[var(--text-muted)]">Estimated rate based on buyer payment history. Final rate is set on-chain.</p>
+          <div className="flex flex-col gap-0 rounded-xl border border-[var(--color-border-default)] overflow-hidden">
+            <div className="bg-[hsl(var(--ds-surface-section))] px-4 py-3 border-b border-[var(--color-border-default)]">
+              <p className="text-sm font-semibold text-[var(--color-text-primary)]">Coverage quote</p>
+              <p className="text-xs text-[var(--color-text-tertiary)]">Estimated rate based on buyer payment history. Final rate is set on-chain.</p>
             </div>
 
             {quoteLoading && (
@@ -276,7 +276,7 @@ export function TransactionDetail({ transaction }: TransactionDetailProps) {
 
             {quoteError && !quoteLoading && (
               <div className="flex items-center justify-between gap-3 px-4 py-4">
-                <p className="text-sm text-[var(--status-error)]">{quoteError}</p>
+                <p className="text-sm text-[var(--color-error)]">{quoteError}</p>
                 <Button size="sm" variant="secondary" onClick={fetchQuote}>Retry</Button>
               </div>
             )}
@@ -284,30 +284,30 @@ export function TransactionDetail({ transaction }: TransactionDetailProps) {
             {quote && !quoteLoading && (
               <div className="bg-white px-4 py-4 flex flex-col gap-3">
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                  <span className="text-[var(--text-muted)]">Invoice value</span>
-                  <span className="font-medium text-[var(--text-primary)] text-right tabular-nums">
+                  <span className="text-[var(--color-text-tertiary)]">Invoice value</span>
+                  <span className="font-medium text-[var(--color-text-primary)] text-right tabular-nums">
                     {new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(quote.invoice_amount)} USDC
                   </span>
 
-                  <span className="text-[var(--text-muted)]">Coverage amount</span>
-                  <span className="font-medium text-[var(--text-primary)] text-right tabular-nums">
+                  <span className="text-[var(--color-text-tertiary)]">Coverage amount</span>
+                  <span className="font-medium text-[var(--color-text-primary)] text-right tabular-nums">
                     {new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(quote.coverage_amount)} USDC
                   </span>
 
-                  <span className="text-[var(--text-muted)]">Buyer risk score</span>
-                  <span className="font-medium text-[var(--text-primary)] text-right tabular-nums">
+                  <span className="text-[var(--color-text-tertiary)]">Buyer risk score</span>
+                  <span className="font-medium text-[var(--color-text-primary)] text-right tabular-nums">
                     {quote.risk_score} / 1000
                   </span>
 
-                  <span className="text-[var(--text-muted)]">Premium rate</span>
-                  <span className="font-medium text-[var(--text-primary)] text-right tabular-nums">
+                  <span className="text-[var(--color-text-tertiary)]">Premium rate</span>
+                  <span className="font-medium text-[var(--color-text-primary)] text-right tabular-nums">
                     {quote.premium_rate_pct}%
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between rounded-lg border border-[var(--border-dark)] bg-[hsl(var(--bg-surface-alt))] px-3 py-2.5">
-                  <span className="text-sm font-semibold text-[var(--text-primary)]">Premium due</span>
-                  <span className="text-sm font-bold tabular-nums text-[var(--text-primary)]">
+                <div className="flex items-center justify-between rounded-lg border border-[var(--color-border-default)] bg-[hsl(var(--ds-surface-section))] px-3 py-2.5">
+                  <span className="text-sm font-semibold text-[var(--color-text-primary)]">Premium due</span>
+                  <span className="text-sm font-bold tabular-nums text-[var(--color-text-primary)]">
                     {new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(quote.premium_cost)} USDC
                   </span>
                 </div>
@@ -321,22 +321,22 @@ export function TransactionDetail({ transaction }: TransactionDetailProps) {
         )}
 
         {showCoverageFlow && (
-          <div className="flex flex-col gap-4 rounded-xl border border-[var(--border-dark)] bg-[hsl(var(--bg-surface-alt))] px-4 py-4">
-            <p className="text-sm font-semibold text-[var(--text-primary)]">Adding coverage…</p>
+          <div className="flex flex-col gap-4 rounded-xl border border-[var(--color-border-default)] bg-[hsl(var(--ds-surface-section))] px-4 py-4">
+            <p className="text-sm font-semibold text-[var(--color-text-primary)]">Adding coverage…</p>
             <TransactionProgress steps={COVERAGE_FLOW_STEPS} currentStep={coverageFlow.currentStep} />
             {coverageFlow.inProgress && !coverageFlow.error && (
-              <div className="flex items-center gap-2 rounded-lg bg-[var(--accent-blue-bg)] px-4 py-3">
-                <svg className="h-4 w-4 animate-spin text-[var(--accent-blue)]" viewBox="0 0 24 24" fill="none">
+              <div className="flex items-center gap-2 rounded-lg bg-[var(--color-brand-subtle)] px-4 py-3">
+                <svg className="h-4 w-4 animate-spin text-[var(--color-brand-primary)]" viewBox="0 0 24 24" fill="none">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-                <p className="text-sm text-[var(--accent-blue)]">Processing your coverage…</p>
+                <p className="text-sm text-[var(--color-brand-primary)]">Processing your coverage…</p>
               </div>
             )}
             {coverageFlow.error && (
               <div className="flex flex-col gap-3">
-                <div className="rounded-lg border border-[hsl(var(--danger-border))] bg-[hsl(var(--danger-bg))] px-4 py-3">
-                  <p className="text-sm text-[var(--status-error)]">{coverageFlow.error}</p>
+                <div className="rounded-lg border border-[hsl(var(--ds-red-border))] bg-[hsl(var(--ds-red-bg))] px-4 py-3">
+                  <p className="text-sm text-[var(--color-error)]">{coverageFlow.error}</p>
                 </div>
                 <div className="flex justify-end gap-2">
                   <Button size="sm" variant="secondary" onClick={() => { coverageFlow.reset(); setShowCoverageFlow(false); }}>
@@ -351,10 +351,10 @@ export function TransactionDetail({ transaction }: TransactionDetailProps) {
 
         {/* ── Pay Invoice ── */}
         {canPay && !showFundFlow && (
-          <div className="flex items-center justify-between rounded-xl border border-[var(--border-dark)] bg-[hsl(var(--bg-surface-alt))] px-4 py-3">
+          <div className="flex items-center justify-between rounded-xl border border-[var(--color-border-default)] bg-[hsl(var(--ds-surface-section))] px-4 py-3">
             <div>
-              <p className="text-sm font-semibold text-[var(--text-primary)]">Pay this invoice</p>
-              <p className="text-xs text-[var(--text-muted)]">
+              <p className="text-sm font-semibold text-[var(--color-text-primary)]">Pay this invoice</p>
+              <p className="text-xs text-[var(--color-text-tertiary)]">
                 Send {transaction.amount.toFixed(2)} USDC to complete this payment.
               </p>
             </div>
@@ -363,22 +363,22 @@ export function TransactionDetail({ transaction }: TransactionDetailProps) {
         )}
 
         {showFundFlow && (
-          <div className="flex flex-col gap-4 rounded-xl border border-[var(--border-dark)] bg-[hsl(var(--bg-surface-alt))] px-4 py-4">
-            <p className="text-sm font-semibold text-[var(--text-primary)]">Sending payment…</p>
+          <div className="flex flex-col gap-4 rounded-xl border border-[var(--color-border-default)] bg-[hsl(var(--ds-surface-section))] px-4 py-4">
+            <p className="text-sm font-semibold text-[var(--color-text-primary)]">Sending payment…</p>
             <TransactionProgress steps={FUND_FLOW_STEPS} currentStep={fundFlow.currentStep} />
             {fundFlow.inProgress && !fundFlow.error && (
-              <div className="flex items-center gap-2 rounded-lg bg-[var(--accent-blue-bg)] px-4 py-3">
-                <svg className="h-4 w-4 animate-spin text-[var(--accent-blue)]" viewBox="0 0 24 24" fill="none">
+              <div className="flex items-center gap-2 rounded-lg bg-[var(--color-brand-subtle)] px-4 py-3">
+                <svg className="h-4 w-4 animate-spin text-[var(--color-brand-primary)]" viewBox="0 0 24 24" fill="none">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-                <p className="text-sm text-[var(--accent-blue)]">Processing your payment…</p>
+                <p className="text-sm text-[var(--color-brand-primary)]">Processing your payment…</p>
               </div>
             )}
             {fundFlow.error && (
               <div className="flex flex-col gap-3">
-                <div className="rounded-lg border border-[hsl(var(--danger-border))] bg-[hsl(var(--danger-bg))] px-4 py-3">
-                  <p className="text-sm text-[var(--status-error)]">{fundFlow.error}</p>
+                <div className="rounded-lg border border-[hsl(var(--ds-red-border))] bg-[hsl(var(--ds-red-bg))] px-4 py-3">
+                  <p className="text-sm text-[var(--color-error)]">{fundFlow.error}</p>
                 </div>
                 <div className="flex justify-end gap-2">
                   <Button size="sm" variant="secondary" onClick={() => { fundFlow.reset(); setShowFundFlow(false); }}>
@@ -389,7 +389,7 @@ export function TransactionDetail({ transaction }: TransactionDetailProps) {
               </div>
             )}
             {!fundFlow.inProgress && !fundFlow.error && fundFlow.currentStep === 6 && (
-              <p className="text-sm font-medium text-[var(--status-success)]">Payment sent successfully.</p>
+              <p className="text-sm font-medium text-[var(--color-success)]">Payment sent successfully.</p>
             )}
           </div>
         )}
@@ -399,7 +399,7 @@ export function TransactionDetail({ transaction }: TransactionDetailProps) {
           <AdvancedDetails>
             {transaction.on_chain_id && (
               <DetailRow label="Internal Reference">
-                <p className="break-all font-mono text-xs text-[var(--text-primary)]">
+                <p className="break-all font-mono text-xs text-[var(--color-text-primary)]">
                   #{transaction.on_chain_id}
                 </p>
               </DetailRow>
@@ -410,7 +410,7 @@ export function TransactionDetail({ transaction }: TransactionDetailProps) {
                   href={`https://sepolia.arbiscan.io/tx/${transaction.tx_hash}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="break-all font-mono text-xs text-[var(--accent-blue)] hover:underline"
+                  className="break-all font-mono text-xs text-[var(--color-brand-primary)] hover:underline"
                 >
                   {transaction.tx_hash}
                 </a>

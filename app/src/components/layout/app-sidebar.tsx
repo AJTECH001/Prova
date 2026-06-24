@@ -97,9 +97,9 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 const ROLE_COLOR: Record<string, string> = {
-  SELLER: 'bg-[hsl(var(--bg-active))] text-[var(--accent-blue)]',
-  BUYER: 'bg-[hsl(var(--tip-bg))] text-[var(--status-success)]',
-  LP: 'bg-[hsl(var(--brand-purple-light))] text-[hsl(var(--brand-purple))]',
+  SELLER: 'bg-[hsl(var(--ds-teal-50))] text-[var(--color-brand-primary)]',
+  BUYER: 'bg-[hsl(var(--ds-green-bg))] text-[var(--color-success)]',
+  LP: 'bg-[hsl(var(--ds-teal-50))] text-[hsl(var(--ds-teal-600))]',
 };
 
 // ── Nav config per role ─────────────────────────────────────────────────────
@@ -162,21 +162,21 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   const accountId = walletAddress ? `••••${walletAddress.slice(-4).toUpperCase()}` : '';
   const roleLabel = role ? ROLE_LABEL[role] : null;
   const roleColorClass = role
-    ? (ROLE_COLOR[role] ?? 'bg-[hsl(var(--bg-surface-alt))] text-[var(--text-muted)]')
+    ? (ROLE_COLOR[role] ?? 'bg-[hsl(var(--ds-surface-section))] text-[var(--color-text-tertiary)]')
     : '';
 
   return (
     <div className="flex h-full flex-col">
       {/* Logo row */}
-      <div className="flex h-14 items-center justify-between border-b border-[var(--border-dark)] px-4">
+      <div className="flex h-14 items-center justify-between border-b border-[var(--color-border-default)] px-4">
         <Link href="/dashboard" className="flex items-center gap-2.5" onClick={onClose}>
           <Image src="/prova_logo.png" alt="Prova" width={26} height={26} className="rounded-sm" />
-          <span className="text-[15px] font-bold tracking-tight text-[var(--text-primary)]">Prova</span>
+          <span className="text-[15px] font-bold tracking-tight text-[var(--color-text-primary)]">Prova</span>
         </Link>
         {onClose && (
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-[var(--text-muted)] transition-colors hover:bg-[hsl(var(--bg-hover))] hover:text-[var(--text-primary)] lg:hidden"
+            className="rounded-lg p-1.5 text-[var(--color-text-tertiary)] transition-colors hover:bg-[hsl(var(--ds-surface-subtle))] hover:text-[var(--color-text-primary)] lg:hidden"
           >
             <CloseIcon />
           </button>
@@ -187,7 +187,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
       <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-5">
         {navSections.map((section) => (
           <div key={section.label}>
-            <p className="mb-1 px-2.5 text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
+            <p className="mb-1 px-2.5 text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-tertiary)]">
               {section.label}
             </p>
             <ul className="space-y-0.5">
@@ -201,18 +201,18 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                       className={[
                         'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium transition-all duration-150',
                         active
-                          ? 'bg-[hsl(var(--bg-active))] text-[var(--accent-blue)]'
-                          : 'text-[var(--text-muted)] hover:bg-[hsl(var(--bg-hover))] hover:text-[var(--text-primary)]',
+                          ? 'bg-[hsl(var(--ds-teal-50))] text-[var(--color-brand-primary)]'
+                          : 'text-[var(--color-text-tertiary)] hover:bg-[hsl(var(--ds-surface-subtle))] hover:text-[var(--color-text-primary)]',
                       ].join(' ')}
                     >
                       <span
-                        className={`shrink-0 transition-colors ${active ? 'text-[var(--accent-blue)]' : 'text-[var(--text-muted)]'}`}
+                        className={`shrink-0 transition-colors ${active ? 'text-[var(--color-brand-primary)]' : 'text-[var(--color-text-tertiary)]'}`}
                       >
                         <link.icon />
                       </span>
                       {link.name}
                       {active && (
-                        <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[var(--accent-blue)] opacity-80" />
+                        <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[var(--color-brand-primary)] opacity-80" />
                       )}
                     </Link>
                   </li>
@@ -224,20 +224,20 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
       </nav>
 
       {/* Bottom — account + logout */}
-      <div className="space-y-1 border-t border-[var(--border-dark)] p-3">
+      <div className="space-y-1 border-t border-[var(--color-border-default)] p-3">
         {walletAddress && (
           <Link
             href="/profile"
             onClick={onClose}
-            className="group flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 transition-colors hover:bg-[hsl(var(--bg-hover))]"
+            className="group flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 transition-colors hover:bg-[hsl(var(--ds-surface-subtle))]"
           >
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--accent-blue-bg)]">
-              <span className="text-[10px] font-bold text-[var(--accent-blue)]">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-brand-subtle)]">
+              <span className="text-[10px] font-bold text-[var(--color-brand-primary)]">
                 {walletAddress.slice(2, 4).toUpperCase()}
               </span>
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-medium text-[var(--text-secondary)]">
+              <p className="text-[11px] font-medium text-[var(--color-text-secondary)]">
                 Account <span className="font-mono">{accountId}</span>
               </p>
               {roleLabel && (
@@ -250,7 +250,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             </div>
             <svg
               width="12" height="12" viewBox="0 0 20 20" fill="currentColor"
-              className="shrink-0 text-[var(--text-muted)] opacity-0 transition-opacity group-hover:opacity-100"
+              className="shrink-0 text-[var(--color-text-tertiary)] opacity-0 transition-opacity group-hover:opacity-100"
             >
               <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
             </svg>
@@ -258,7 +258,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         )}
         <button
           onClick={handleLogout}
-          className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] text-[var(--text-muted)] transition-colors hover:bg-[hsl(var(--danger-bg))] hover:text-[var(--status-error)]"
+          className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] text-[var(--color-text-tertiary)] transition-colors hover:bg-[hsl(var(--ds-red-bg))] hover:text-[var(--color-error)]"
         >
           <LogoutIcon />
           Sign out
@@ -273,7 +273,7 @@ function MobileTopBarAccount() {
   const walletAddress = useAuthStore((s) => s.walletAddress);
   if (!walletAddress) return null;
   return (
-    <span className="rounded-full bg-[hsl(var(--bg-surface-alt))] px-3 py-1 text-[11px] font-medium text-[var(--text-secondary)]">
+    <span className="rounded-full bg-[hsl(var(--ds-surface-section))] px-3 py-1 text-[11px] font-medium text-[var(--color-text-secondary)]">
       ••••{walletAddress.slice(-4).toUpperCase()}
     </span>
   );
@@ -286,25 +286,25 @@ export function AppSidebar() {
   return (
     <>
       {/* Mobile top bar */}
-      <div className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b border-[var(--border-dark)] bg-white px-4 lg:hidden">
+      <div className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b border-[var(--color-border-default)] bg-white px-4 lg:hidden">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setMobileOpen(true)}
-            className="rounded-lg p-1.5 text-[var(--text-secondary)] transition-colors hover:bg-[hsl(var(--bg-hover))]"
+            className="rounded-lg p-1.5 text-[var(--color-text-secondary)] transition-colors hover:bg-[hsl(var(--ds-surface-subtle))]"
             aria-label="Open menu"
           >
             <MenuIcon />
           </button>
           <div className="flex items-center gap-2">
             <Image src="/prova_logo.png" alt="Prova" width={22} height={22} className="rounded-sm" />
-            <span className="text-sm font-bold text-[var(--text-primary)]">Prova</span>
+            <span className="text-sm font-bold text-[var(--color-text-primary)]">Prova</span>
           </div>
         </div>
         <MobileTopBarAccount />
       </div>
 
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex lg:h-screen lg:w-56 lg:shrink-0 lg:sticky lg:top-0 lg:flex-col lg:border-r lg:border-[var(--border-dark)] lg:bg-white">
+      <aside className="hidden lg:flex lg:h-screen lg:w-56 lg:shrink-0 lg:sticky lg:top-0 lg:flex-col lg:border-r lg:border-[var(--color-border-default)] lg:bg-white">
         <SidebarContent />
       </aside>
 

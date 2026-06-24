@@ -70,16 +70,16 @@ const PARTNERS = [
 
 export function PartnersBar() {
   return (
-    <div className="border-b border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-surface-alt))] py-10">
+    <div className="border-b border-[hsl(var(--ds-line-light))] bg-[hsl(var(--ds-surface-section))] py-10">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <p className="mb-8 text-center text-[11px] font-bold uppercase tracking-[0.22em] text-[hsl(var(--text-faint))]">
+        <p className="mb-8 text-center text-[11px] font-bold uppercase tracking-[0.22em] text-[hsl(var(--ds-ink-300))]">
           Built with 
         </p>
         <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-6 sm:gap-x-14">
           {PARTNERS.map((p) => (
             <div
               key={p.name}
-              className="text-[hsl(var(--text-muted))] opacity-50 grayscale transition-all duration-200 hover:opacity-90 hover:grayscale-0"
+              className="text-[hsl(var(--ds-ink-400))] opacity-50 grayscale transition-all duration-200 hover:opacity-90 hover:grayscale-0"
             >
               {p.logo}
             </div>

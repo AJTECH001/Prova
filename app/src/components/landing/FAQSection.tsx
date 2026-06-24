@@ -43,28 +43,28 @@ export function FAQSection() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 
         <div className="mb-16 text-center space-y-4">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[hsl(var(--text-muted))]">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[hsl(var(--ds-ink-400))]">
             Got questions?
           </p>
-          <h2 className="text-4xl font-black tracking-tight text-[hsl(var(--text-primary))] sm:text-5xl">
+          <h2 className="text-4xl font-black tracking-tight text-[hsl(var(--ds-ink-900))] sm:text-5xl">
             Frequently asked.
           </h2>
-          <p className="mx-auto max-w-md text-base text-[hsl(var(--text-secondary))]">
+          <p className="mx-auto max-w-md text-base text-[hsl(var(--ds-ink-600))]">
             Everything you need to know about how Prova works and what happens to your money.
           </p>
         </div>
 
-        <div className="mx-auto max-w-3xl divide-y divide-[hsl(var(--border-subtle))] border-t border-[hsl(var(--border-subtle))]">
+        <div className="mx-auto max-w-3xl divide-y divide-[hsl(var(--ds-line-light))] border-t border-[hsl(var(--ds-line-light))]">
           {FAQS.map((faq, i) => (
             <div key={i} className="py-7">
               <button
                 onClick={() => setOpenIndex(openIndex === i ? null : i)}
                 className="flex w-full items-center justify-between gap-8 text-left"
               >
-                <span className="text-lg font-bold text-[hsl(var(--text-primary))]">
+                <span className="text-lg font-bold text-[hsl(var(--ds-ink-900))]">
                   {faq.question}
                 </span>
-                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-all duration-300 ${openIndex === i ? 'border-[hsl(var(--brand-primary))] bg-[hsl(var(--brand-primary))] text-[hsl(var(--text-on-brand))]' : 'border-[hsl(var(--border-strong))] text-[hsl(var(--text-primary))]'}`}>
+                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-all duration-300 ${openIndex === i ? 'border-[hsl(var(--ds-teal-600))] bg-[hsl(var(--ds-teal-600))] text-[hsl(var(--ds-surface-white))]' : 'border-[hsl(var(--ds-line-strong))] text-[hsl(var(--ds-ink-900))]'}`}>
                   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     {openIndex === i
                       ? <path d="M18 6L6 18M6 6l12 12" />
@@ -75,7 +75,7 @@ export function FAQSection() {
               </button>
 
               <div className={`overflow-hidden transition-all duration-300 ease-in-out ${openIndex === i ? 'max-h-96 mt-4 opacity-100' : 'max-h-0 opacity-0'}`}>
-                <p className="text-base leading-relaxed text-[hsl(var(--text-secondary))]">
+                <p className="text-base leading-relaxed text-[hsl(var(--ds-ink-600))]">
                   {faq.answer}
                 </p>
               </div>

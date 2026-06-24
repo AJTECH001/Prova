@@ -1,0 +1,111 @@
+/* =========================================================================
+   PROVA DESIGN SYSTEM · FOUNDATION (raw scales)
+   -------------------------------------------------------------------------
+   The single runtime source of truth for raw values. HSL triplets so they
+   compose with alpha via `hsl(var(--ds-x) / <a>)`. Mirrors
+   src/design-system/tokens/foundation/*. Nothing here is consumed directly
+   by components — the semantic layer (semantic.css) maps these to roles.
+   Trade Credit Teal (#0D7377) is the only brand color.
+   ========================================================================= */
+:root {
+  /* ── Color · Trade Credit Teal (the only brand color) ── */
+  --ds-teal-600: 182 80% 26%; /* #0D7377 */
+  --ds-teal-700: 182 83% 20%; /* #095C5F */
+  --ds-teal-800: 183 82% 15%; /* #074548 */
+  --ds-teal-50: 180 39% 93%; /* #E6F4F4 */
+  --ds-teal-border: 183 45% 72%; /* #99D5D8 */
+
+  /* ── Color · Ink (navy/slate text ramp) ── */
+  --ds-ink-900: 211 61% 10%; /* #0A1929 */
+  --ds-ink-700: 218 23% 23%; /* #2D3748 */
+  --ds-ink-600: 218 17% 35%; /* #4A5568 */
+  --ds-ink-400: 210 13% 59%; /* #8896A4 */
+  --ds-ink-300: 208 18% 79%; /* #C1CBD4 */
+
+  /* ── Color · Surfaces ── */
+  --ds-surface-page: 210 25% 98%; /* #FAFBFC */
+  --ds-surface-section: 180 15% 95%; /* #F0F4F4 */
+  --ds-surface-subtle: 220 23% 97%; /* #F7F8FA */
+  --ds-surface-white: 0 0% 100%; /* #FFFFFF */
+
+  /* ── Color · Lines ── */
+  --ds-line-light: 210 21% 93%; /* #E8ECF0 */
+  --ds-line-default: 208 19% 85%; /* #D1D9E0 */
+  --ds-line-strong: 210 15% 69%; /* #A3AFBB */
+
+  /* ── Color · Green (success) ── */
+  --ds-green-main: 161 94% 30%; /* #059669 */
+  --ds-green-bg: 152 81% 96%; /* #ECFDF5 */
+  --ds-green-border: 152 76% 80%; /* #A7F3D0 */
+  --ds-green-text: 163 88% 20%; /* #065F46 */
+
+  /* ── Color · Amber (warning) ── */
+  --ds-amber-main: 32 95% 44%; /* #D97706 */
+  --ds-amber-bg: 48 100% 96%; /* #FFFBEB */
+  --ds-amber-border: 46 97% 65%; /* #FCD34D */
+  --ds-amber-text: 23 83% 31%; /* #92400E */
+
+  /* ── Color · Red (error) ── */
+  --ds-red-main: 0 72% 51%; /* #DC2626 */
+  --ds-red-bg: 0 86% 97%; /* #FEF2F2 */
+  --ds-red-border: 0 96% 89%; /* #FECACA */
+  --ds-red-text: 0 70% 35%; /* #991B1B */
+
+  /* ── Color · Data visualization (charts only) ── */
+  --ds-dv-revenue: 182 80% 26%; /* #0D7377 */
+  --ds-dv-risk: 32 95% 44%; /* #D97706 */
+  --ds-dv-protected: 161 94% 30%; /* #059669 */
+  --ds-dv-claims: 347 77% 50%; /* #E11D48 */
+  --ds-dv-exposure: 215 19% 35%; /* #475569 */
+  --ds-dv-health: 176 56% 55%; /* #4ECDC4 */
+
+  /* ── Space (4px grid) ── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ── Radius ── */
+  --radius-minimal: 4px;
+  --radius-subtle: 8px;
+  --radius-button: 10px;
+  --radius-input: 10px;
+  --radius-block: 16px;
+  --radius-lg: 20px;
+  --radius-full: 9999px;
+
+  /* ── Shadow (navy-tinted elevation) ── */
+  --shadow-sm: 0 1px 2px rgba(10, 25, 41, 0.05);
+  --shadow-card: 0 1px 3px rgba(10, 25, 41, 0.08), 0 1px 2px rgba(10, 25, 41, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(10, 25, 41, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(10, 25, 41, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(10, 25, 41, 0.1);
+
+  /* ── Typography ── */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "SF Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* ── Motion ── */
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+  --duration-slow: 300ms;
+
+  /* ── Z-index ── */
+  --z-base: 0;
+  --z-sticky: 10;
+  --z-header: 50;
+  --z-modal: 100;
+
+  /* ── Layout ── */
+  --header-height: 72px;
+  --content-max-width: 1280px;
+}

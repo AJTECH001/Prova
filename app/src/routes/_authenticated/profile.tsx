@@ -14,9 +14,9 @@ const CHANGEABLE_ROLES: UserRole[] = ['SELLER', 'BUYER', 'LP'];
 
 function InfoRow({ label, value, mono }: { label: string; value?: string | null; mono?: boolean }) {
   return (
-    <div className="flex flex-col gap-1 border-b border-[var(--border-dark)] py-4 last:border-0 sm:flex-row sm:items-center sm:justify-between">
-      <p className="text-sm text-[var(--text-muted)]">{label}</p>
-      <p className={`text-sm font-medium text-[var(--text-primary)] ${mono ? 'break-all font-mono' : ''}`}>
+    <div className="flex flex-col gap-1 border-b border-[var(--color-border-default)] py-4 last:border-0 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-sm text-[var(--color-text-tertiary)]">{label}</p>
+      <p className={`text-sm font-medium text-[var(--color-text-primary)] ${mono ? 'break-all font-mono' : ''}`}>
         {value ?? '—'}
       </p>
     </div>
@@ -68,29 +68,29 @@ export function ProfilePage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-bold tracking-tight text-[var(--text-primary)] sm:text-2xl">Profile</h1>
-        <p className="mt-0.5 text-sm text-[var(--text-muted)]">Your account and wallet details</p>
+        <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-primary)] sm:text-2xl">Profile</h1>
+        <p className="mt-0.5 text-sm text-[var(--color-text-tertiary)]">Your account and wallet details</p>
       </div>
 
       {loading ? (
-        <div className="rounded-xl border border-[var(--border-dark)] bg-white p-6 shadow-[var(--shadow-sm)]">
+        <div className="rounded-xl border border-[var(--color-border-default)] bg-white p-6 shadow-[var(--shadow-sm)]">
           <div className="flex flex-col gap-4">
             {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
           </div>
         </div>
       ) : (
-        <div className="rounded-xl border border-[var(--border-dark)] bg-white shadow-[var(--shadow-sm)]">
-          <div className="flex items-center gap-3 border-b border-[var(--border-dark)] px-4 py-4 sm:gap-4 sm:px-6 sm:py-5">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--accent-blue-bg)] sm:h-14 sm:w-14">
-              <span className="text-lg font-bold text-[var(--accent-blue)] sm:text-xl">{initials}</span>
+        <div className="rounded-xl border border-[var(--color-border-default)] bg-white shadow-[var(--shadow-sm)]">
+          <div className="flex items-center gap-3 border-b border-[var(--color-border-default)] px-4 py-4 sm:gap-4 sm:px-6 sm:py-5">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--color-brand-subtle)] sm:h-14 sm:w-14">
+              <span className="text-lg font-bold text-[var(--color-brand-primary)] sm:text-xl">{initials}</span>
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-[var(--text-primary)]">
+              <p className="text-sm font-semibold text-[var(--color-text-primary)]">
                 Account ••••{walletAddress ? walletAddress.slice(-4).toUpperCase() : '??'}
               </p>
               <div className="mt-1 flex items-center gap-1.5">
-                <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--status-success)]" />
-                <span className="text-xs capitalize text-[var(--text-muted)]">{walletProvider ?? 'Connected'}</span>
+                <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-success)]" />
+                <span className="text-xs capitalize text-[var(--color-text-tertiary)]">{walletProvider ?? 'Connected'}</span>
               </div>
             </div>
           </div>
@@ -102,16 +102,16 @@ export function ProfilePage() {
             {user?.created_at && <InfoRow label="Member since" value={formatDate(user.created_at)} />}
 
             {/* Role row */}
-            <div className="flex flex-col gap-3 border-b border-[var(--border-dark)] py-4 last:border-0 sm:flex-row sm:items-start sm:justify-between">
-              <p className="text-sm text-[var(--text-muted)]">Role</p>
+            <div className="flex flex-col gap-3 border-b border-[var(--color-border-default)] py-4 last:border-0 sm:flex-row sm:items-start sm:justify-between">
+              <p className="text-sm text-[var(--color-text-tertiary)]">Role</p>
               {!editingRole ? (
                 <div className="flex items-center gap-3">
-                  <p className="text-sm font-medium text-[var(--text-primary)]">
+                  <p className="text-sm font-medium text-[var(--color-text-primary)]">
                     {currentRole ? ROLE_LABELS[currentRole] : '—'}
                   </p>
                   <button
                     onClick={() => { setEditingRole(true); setSelectedRole(currentRole); }}
-                    className="text-xs text-[var(--accent-blue)] hover:underline"
+                    className="text-xs text-[var(--color-brand-primary)] hover:underline"
                   >
                     Change
                   </button>
@@ -126,15 +126,15 @@ export function ProfilePage() {
                         className={[
                           'rounded-[var(--radius-button)] border px-3 py-1.5 text-xs font-medium transition-all',
                           selectedRole === r
-                            ? 'border-[var(--accent-blue)] bg-[var(--accent-blue-bg)] text-[var(--accent-blue)]'
-                            : 'border-[var(--border-dark)] text-[var(--text-secondary)] hover:border-[var(--accent-blue)]',
+                            ? 'border-[var(--color-brand-primary)] bg-[var(--color-brand-subtle)] text-[var(--color-brand-primary)]'
+                            : 'border-[var(--color-border-default)] text-[var(--color-text-secondary)] hover:border-[var(--color-brand-primary)]',
                         ].join(' ')}
                       >
                         {ROLE_LABELS[r]}
                       </button>
                     ))}
                   </div>
-                  {roleError && <p className="text-xs text-[var(--status-error)]">{roleError}</p>}
+                  {roleError && <p className="text-xs text-[var(--color-error)]">{roleError}</p>}
                   <div className="flex gap-2">
                     <Button size="sm" loading={roleLoading} disabled={!selectedRole || selectedRole === currentRole} onClick={handleRoleSave}>
                       Save
@@ -150,10 +150,10 @@ export function ProfilePage() {
         </div>
       )}
 
-      <div className="rounded-xl border border-[var(--border-dark)] bg-white shadow-[var(--shadow-sm)]">
-        <div className="border-b border-[var(--border-dark)] px-4 py-3.5 sm:px-6 sm:py-4">
-          <h2 className="text-sm font-semibold text-[var(--text-primary)]">Network</h2>
-          <p className="text-xs text-[var(--text-muted)]">Active chain information</p>
+      <div className="rounded-xl border border-[var(--color-border-default)] bg-white shadow-[var(--shadow-sm)]">
+        <div className="border-b border-[var(--color-border-default)] px-4 py-3.5 sm:px-6 sm:py-4">
+          <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">Network</h2>
+          <p className="text-xs text-[var(--color-text-tertiary)]">Active chain information</p>
         </div>
         <div className="px-4 sm:px-6">
           <InfoRow label="Chain" value="Arbitrum Sepolia" />

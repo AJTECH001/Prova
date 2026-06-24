@@ -1,0 +1,55 @@
+/* =========================================================================
+   PROVA DESIGN SYSTEM · BASE (element defaults)
+   -------------------------------------------------------------------------
+   Global element styling driven entirely by tokens. No hardcoded colors.
+   ========================================================================= */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: hsl(var(--ds-surface-page));
+  color: hsl(var(--ds-ink-900));
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Light brand: keep native pickers on a light scheme (was forced dark). */
+input[type="date"] {
+  color-scheme: light;
+}
+
+::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+}

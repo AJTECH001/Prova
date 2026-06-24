@@ -69,7 +69,7 @@ export function WithdrawalList({ withdrawals, loading, hasMore, onLoadMore }: Wi
   return (
     <div>
       {/* ── Mobile card list (hidden on sm+) ── */}
-      <div className="sm:hidden flex flex-col divide-y divide-[var(--border-dark)]">
+      <div className="sm:hidden flex flex-col divide-y divide-[var(--color-border-default)]">
         {loading && withdrawals.length === 0
           ? skeletonRows.map((_, i) => (
               <div key={i} className="py-4 flex flex-col gap-2">
@@ -81,22 +81,22 @@ export function WithdrawalList({ withdrawals, loading, hasMore, onLoadMore }: Wi
               <div key={w.public_id} className="py-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold text-[var(--text-primary)] tabular-nums">
+                    <p className="text-sm font-bold text-[var(--color-text-primary)] tabular-nums">
                       {formatAmount(w.actual_amount ?? w.estimated_amount)}{' '}
-                      <span className="text-xs font-normal text-[var(--text-muted)]">USDC</span>
+                      <span className="text-xs font-normal text-[var(--color-text-tertiary)]">USDC</span>
                     </p>
-                    <p className="mt-0.5 text-xs text-[var(--text-muted)] capitalize">
+                    <p className="mt-0.5 text-xs text-[var(--color-text-tertiary)] capitalize">
                       {w.destination_chain} · {truncateAddress(w.recipient_address)}
                     </p>
                   </div>
                   <Badge variant={statusVariant(w.status)}>{friendlyStatus(w.status)}</Badge>
                 </div>
-                <p className="mt-1.5 text-xs text-[var(--text-muted)]">{formatDate(w.created_at)}</p>
+                <p className="mt-1.5 text-xs text-[var(--color-text-tertiary)]">{formatDate(w.created_at)}</p>
               </div>
             ))}
 
         {!loading && withdrawals.length === 0 && (
-          <p className="py-8 text-center text-sm text-[var(--text-secondary)]">No withdrawals yet</p>
+          <p className="py-8 text-center text-sm text-[var(--color-text-secondary)]">No withdrawals yet</p>
         )}
       </div>
 
@@ -104,18 +104,18 @@ export function WithdrawalList({ withdrawals, loading, hasMore, onLoadMore }: Wi
       <div className="hidden sm:block overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead>
-            <tr className="border-b border-[var(--border-dark)]">
-              <th className="pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Amount</th>
-              <th className="pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Chain</th>
-              <th className="hidden pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] md:table-cell">Recipient</th>
-              <th className="pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Status</th>
-              <th className="hidden pb-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] lg:table-cell">Created</th>
+            <tr className="border-b border-[var(--color-border-default)]">
+              <th className="pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--color-text-tertiary)]">Amount</th>
+              <th className="pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--color-text-tertiary)]">Chain</th>
+              <th className="hidden pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--color-text-tertiary)] md:table-cell">Recipient</th>
+              <th className="pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wide text-[var(--color-text-tertiary)]">Status</th>
+              <th className="hidden pb-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--color-text-tertiary)] lg:table-cell">Created</th>
             </tr>
           </thead>
           <tbody>
             {loading && withdrawals.length === 0
               ? skeletonRows.map((_, i) => (
-                  <tr key={i} className="border-b border-[var(--border-dark)]">
+                  <tr key={i} className="border-b border-[var(--color-border-default)]">
                     <td className="py-3 pr-4"><Skeleton className="h-4 w-20" /></td>
                     <td className="py-3 pr-4"><Skeleton className="h-4 w-16" /></td>
                     <td className="hidden py-3 pr-4 md:table-cell"><Skeleton className="h-4 w-24" /></td>
@@ -124,28 +124,28 @@ export function WithdrawalList({ withdrawals, loading, hasMore, onLoadMore }: Wi
                   </tr>
                 ))
               : withdrawals.map((w) => (
-                  <tr key={w.public_id} className="border-b border-[var(--border-dark)] last:border-0 hover:bg-[hsl(var(--bg-hover))] transition-colors">
+                  <tr key={w.public_id} className="border-b border-[var(--color-border-default)] last:border-0 hover:bg-[hsl(var(--ds-surface-subtle))] transition-colors">
                     <td className="py-3.5 pr-4">
-                      <span className="text-sm font-semibold text-[var(--text-primary)] tabular-nums">
+                      <span className="text-sm font-semibold text-[var(--color-text-primary)] tabular-nums">
                         {formatAmount(w.actual_amount ?? w.estimated_amount)}
                       </span>
-                      <span className="ml-1 text-xs font-normal text-[var(--text-muted)]">USDC</span>
+                      <span className="ml-1 text-xs font-normal text-[var(--color-text-tertiary)]">USDC</span>
                     </td>
-                    <td className="py-3.5 pr-4 text-sm capitalize text-[var(--text-secondary)]">{w.destination_chain}</td>
-                    <td className="hidden py-3.5 pr-4 font-mono text-xs text-[var(--text-secondary)] md:table-cell">
+                    <td className="py-3.5 pr-4 text-sm capitalize text-[var(--color-text-secondary)]">{w.destination_chain}</td>
+                    <td className="hidden py-3.5 pr-4 font-mono text-xs text-[var(--color-text-secondary)] md:table-cell">
                       {truncateAddress(w.recipient_address)}
                     </td>
                     <td className="py-3.5 pr-4">
                       <Badge variant={statusVariant(w.status)}>{friendlyStatus(w.status)}</Badge>
                     </td>
-                    <td className="hidden py-3.5 text-sm text-[var(--text-secondary)] lg:table-cell">{formatDate(w.created_at)}</td>
+                    <td className="hidden py-3.5 text-sm text-[var(--color-text-secondary)] lg:table-cell">{formatDate(w.created_at)}</td>
                   </tr>
                 ))}
           </tbody>
         </table>
 
         {!loading && withdrawals.length === 0 && (
-          <p className="py-8 text-center text-sm text-[var(--text-secondary)]">No withdrawals yet</p>
+          <p className="py-8 text-center text-sm text-[var(--color-text-secondary)]">No withdrawals yet</p>
         )}
       </div>
 

@@ -73,18 +73,18 @@ export function ContactPage() {
       <LandingNavbar />
       <main>
 
-        <section className="border-b border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-surface-alt))] px-4 pb-20 pt-[120px] sm:px-6 lg:px-8">
+        <section className="border-b border-[hsl(var(--ds-line-light))] bg-[hsl(var(--ds-surface-section))] px-4 pb-20 pt-[120px] sm:px-6 lg:px-8">
           <div className="mx-auto max-w-3xl text-center">
             <div className="mb-6 flex items-center justify-center gap-2.5">
-              <div className="h-2 w-2 rounded-full bg-[hsl(var(--brand-primary))]" />
-              <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[hsl(var(--brand-primary))]">
+              <div className="h-2 w-2 rounded-full bg-[hsl(var(--ds-teal-600))]" />
+              <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[hsl(var(--ds-teal-600))]">
                 Get in touch
               </span>
             </div>
-            <h1 className="text-[clamp(2.5rem,5vw,4rem)] font-black tracking-tight text-[hsl(var(--text-primary))]">
+            <h1 className="text-[clamp(2.5rem,5vw,4rem)] font-black tracking-tight text-[hsl(var(--ds-ink-900))]">
               We'd love to hear from you.
             </h1>
-            <p className="mx-auto mt-5 max-w-lg text-lg text-[hsl(var(--text-secondary))]">
+            <p className="mx-auto mt-5 max-w-lg text-lg text-[hsl(var(--ds-ink-600))]">
               Whether you have a question about coverage, want to explore a partnership,
               or need to report a security issue — we're here.
             </p>
@@ -94,22 +94,22 @@ export function ContactPage() {
         <section className="bg-white py-24">
           <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
             <div className="mb-12 space-y-3">
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[hsl(var(--text-muted))]">Departments</p>
-              <h2 className="text-3xl font-black tracking-tight text-[hsl(var(--text-primary))]">Find the right team.</h2>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[hsl(var(--ds-ink-400))]">Departments</p>
+              <h2 className="text-3xl font-black tracking-tight text-[hsl(var(--ds-ink-900))]">Find the right team.</h2>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {DEPARTMENTS.map((dept) => (
                 <a
                   key={dept.name}
                   href={`mailto:${dept.email}`}
-                  className="group flex flex-col rounded-2xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface-alt))] p-7 transition-shadow hover:shadow-md"
+                  className="group flex flex-col rounded-2xl border border-[hsl(var(--ds-line-light))] bg-[hsl(var(--ds-surface-section))] p-7 transition-shadow hover:shadow-md"
                 >
-                  <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-[hsl(var(--brand-primary-light))] text-[hsl(var(--brand-primary))]">
+                  <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-[hsl(var(--ds-teal-50))] text-[hsl(var(--ds-teal-600))]">
                     {dept.icon}
                   </div>
-                  <h3 className="mb-2 text-base font-black text-[hsl(var(--text-primary))]">{dept.name}</h3>
-                  <p className="mb-5 text-sm leading-relaxed text-[hsl(var(--text-secondary))]">{dept.description}</p>
-                  <span className="mt-auto flex items-center gap-2 text-sm font-medium text-[hsl(var(--brand-primary))] underline-offset-2 transition-colors group-hover:underline">
+                  <h3 className="mb-2 text-base font-black text-[hsl(var(--ds-ink-900))]">{dept.name}</h3>
+                  <p className="mb-5 text-sm leading-relaxed text-[hsl(var(--ds-ink-600))]">{dept.description}</p>
+                  <span className="mt-auto flex items-center gap-2 text-sm font-medium text-[hsl(var(--ds-teal-600))] underline-offset-2 transition-colors group-hover:underline">
                     {dept.email}
                     <svg className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <path d="M5 12h14M12 5l7 7-7 7" />
@@ -121,15 +121,15 @@ export function ContactPage() {
           </div>
         </section>
 
-        <section className="bg-[hsl(var(--bg-surface-alt))] py-24">
+        <section className="bg-[hsl(var(--ds-surface-section))] py-24">
           <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col items-start gap-10 rounded-2xl border border-[hsl(var(--border-default))] bg-white p-10 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-col items-start gap-10 rounded-2xl border border-[hsl(var(--ds-line-light))] bg-white p-10 lg:flex-row lg:items-center lg:justify-between">
               <div className="space-y-3">
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-[hsl(var(--text-muted))]">30-minute call</p>
-                <h2 className="text-3xl font-black tracking-tight text-[hsl(var(--text-primary))]">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-[hsl(var(--ds-ink-400))]">30-minute call</p>
+                <h2 className="text-3xl font-black tracking-tight text-[hsl(var(--ds-ink-900))]">
                   Talk to a founder directly.
                 </h2>
-                <p className="max-w-md text-base text-[hsl(var(--text-secondary))]">
+                <p className="max-w-md text-base text-[hsl(var(--ds-ink-600))]">
                   If you're evaluating Prova for your business, want to discuss a partnership,
                   or are an investor — book a call and we'll get back to you same day.
                 </p>
@@ -138,7 +138,7 @@ export function ContactPage() {
                 href="https://cal.com/jamiu-damilola-alade-zgtrvz/30min"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex shrink-0 items-center gap-2 rounded-full bg-[hsl(var(--brand-primary))] px-8 py-3.5 text-sm font-bold text-[hsl(var(--text-on-brand))] shadow-md shadow-[hsl(var(--brand-primary)/0.2)] transition-colors hover:bg-[hsl(var(--brand-primary-hover))]"
+                className="flex shrink-0 items-center gap-2 rounded-full bg-[hsl(var(--ds-teal-600))] px-8 py-3.5 text-sm font-bold text-[hsl(var(--ds-surface-white))] shadow-md shadow-[hsl(var(--ds-teal-600)/0.2)] transition-colors hover:bg-[hsl(var(--ds-teal-700))]"
               >
                 Schedule a call
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -152,8 +152,8 @@ export function ContactPage() {
         <section className="bg-white py-24">
           <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
             <div className="mb-10 space-y-3">
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[hsl(var(--text-muted))]">Follow along</p>
-              <h2 className="text-3xl font-black tracking-tight text-[hsl(var(--text-primary))]">Stay in the loop.</h2>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[hsl(var(--ds-ink-400))]">Follow along</p>
+              <h2 className="text-3xl font-black tracking-tight text-[hsl(var(--ds-ink-900))]">Stay in the loop.</h2>
             </div>
             <div className="flex flex-wrap gap-4">
               {SOCIAL.map((s) => (
@@ -162,12 +162,12 @@ export function ContactPage() {
                   href={s.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-3 rounded-2xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface-alt))] px-6 py-4 text-sm transition-shadow hover:shadow-md"
+                  className="flex items-center gap-3 rounded-2xl border border-[hsl(var(--ds-line-light))] bg-[hsl(var(--ds-surface-section))] px-6 py-4 text-sm transition-shadow hover:shadow-md"
                 >
-                  <span className="text-[hsl(var(--text-secondary))]">{s.icon}</span>
+                  <span className="text-[hsl(var(--ds-ink-600))]">{s.icon}</span>
                   <div>
-                    <p className="font-bold text-[hsl(var(--text-primary))]">{s.label}</p>
-                    <p className="text-xs text-[hsl(var(--text-muted))]">{s.handle}</p>
+                    <p className="font-bold text-[hsl(var(--ds-ink-900))]">{s.label}</p>
+                    <p className="text-xs text-[hsl(var(--ds-ink-400))]">{s.handle}</p>
                   </div>
                 </a>
               ))}

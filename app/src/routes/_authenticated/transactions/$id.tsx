@@ -94,7 +94,7 @@ export function TransactionDetailPage({ id }: { id: string }) {
           </svg>
           <span className="hidden sm:inline">Back</span>
         </Button>
-        <h1 className="text-lg font-bold text-[var(--text-primary)] sm:text-2xl">Payment Details</h1>
+        <h1 className="text-lg font-bold text-[var(--color-text-primary)] sm:text-2xl">Payment Details</h1>
       </div>
 
       {loading && !currentTransaction ? (
@@ -104,7 +104,7 @@ export function TransactionDetailPage({ id }: { id: string }) {
       ) : currentTransaction ? (
         <TransactionDetail transaction={currentTransaction} />
       ) : (
-        <p className="text-center text-sm text-[var(--text-secondary)]">Transaction not found</p>
+        <p className="text-center text-sm text-[var(--color-text-secondary)]">Transaction not found</p>
       )}
     </div>
   );

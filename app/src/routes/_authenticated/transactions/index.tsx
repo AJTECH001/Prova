@@ -47,8 +47,8 @@ export function TransactionsPage() {
       {/* Page header */}
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-[var(--text-primary)] sm:text-2xl">Transactions</h1>
-          <p className="mt-0.5 text-sm text-[var(--text-muted)]">Manage your payments and invoices</p>
+          <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-primary)] sm:text-2xl">Transactions</h1>
+          <p className="mt-0.5 text-sm text-[var(--color-text-tertiary)]">Manage your payments and invoices</p>
         </div>
         <Button
           size="sm"
@@ -62,10 +62,10 @@ export function TransactionsPage() {
 
       {/* Create form panel */}
       {showForm && (
-        <div className="rounded-xl border border-[var(--border-dark)] bg-white shadow-[var(--shadow-sm)]">
-          <div className="border-b border-[var(--border-dark)] px-4 py-3.5 sm:px-5 sm:py-4">
-            <h2 className="text-sm font-semibold text-[var(--text-primary)]">New Payment</h2>
-            <p className="text-xs text-[var(--text-muted)]">Enter the payment details to get started</p>
+        <div className="rounded-xl border border-[var(--color-border-default)] bg-white shadow-[var(--shadow-sm)]">
+          <div className="border-b border-[var(--color-border-default)] px-4 py-3.5 sm:px-5 sm:py-4">
+            <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">New Payment</h2>
+            <p className="text-xs text-[var(--color-text-tertiary)]">Enter the payment details to get started</p>
           </div>
           <div className="px-4 py-4 sm:px-5 sm:py-5">
             {escrowFlow.currentStep < 0 && !escrowFlow.inProgress ? (
@@ -74,17 +74,17 @@ export function TransactionsPage() {
               <div className="flex flex-col gap-4">
                 <TransactionProgress steps={escrowFlow.steps} currentStep={escrowFlow.currentStep} />
                 {escrowFlow.inProgress && !escrowFlow.error && (
-                  <div className="flex items-center gap-2 rounded-lg bg-[var(--accent-blue-bg)] px-4 py-3">
-                    <svg className="h-4 w-4 animate-spin shrink-0 text-[var(--accent-blue)]" viewBox="0 0 24 24" fill="none">
+                  <div className="flex items-center gap-2 rounded-lg bg-[var(--color-brand-subtle)] px-4 py-3">
+                    <svg className="h-4 w-4 animate-spin shrink-0 text-[var(--color-brand-primary)]" viewBox="0 0 24 24" fill="none">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
-                    <p className="text-sm text-[var(--accent-blue)]">Processing your payment…</p>
+                    <p className="text-sm text-[var(--color-brand-primary)]">Processing your payment…</p>
                   </div>
                 )}
                 {escrowFlow.error && (
-                  <div className="rounded-lg border border-[hsl(var(--danger-border))] bg-[hsl(var(--danger-bg))] px-4 py-3">
-                    <p className="text-sm text-[var(--status-error)]">{escrowFlow.error}</p>
+                  <div className="rounded-lg border border-[hsl(var(--ds-red-border))] bg-[hsl(var(--ds-red-bg))] px-4 py-3">
+                    <p className="text-sm text-[var(--color-error)]">{escrowFlow.error}</p>
                   </div>
                 )}
                 {escrowFlow.error && (
@@ -99,10 +99,10 @@ export function TransactionsPage() {
       )}
 
       {/* Transactions list */}
-      <div className="rounded-xl border border-[var(--border-dark)] bg-white shadow-[var(--shadow-sm)]">
-        <div className="border-b border-[var(--border-dark)] px-4 py-3.5 sm:px-5 sm:py-4">
-          <h2 className="text-sm font-semibold text-[var(--text-primary)]">All Payments</h2>
-          <p className="text-xs text-[var(--text-muted)]">Tap any item to view full details</p>
+      <div className="rounded-xl border border-[var(--color-border-default)] bg-white shadow-[var(--shadow-sm)]">
+        <div className="border-b border-[var(--color-border-default)] px-4 py-3.5 sm:px-5 sm:py-4">
+          <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">All Payments</h2>
+          <p className="text-xs text-[var(--color-text-tertiary)]">Tap any item to view full details</p>
         </div>
         <div className="px-4 py-4 sm:px-5">
           <TransactionList

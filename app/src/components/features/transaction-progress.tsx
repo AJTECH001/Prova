@@ -19,10 +19,10 @@ export function TransactionProgress({ steps, currentStep }: TransactionProgressP
               className={[
                 'flex h-8 w-8 items-center justify-center rounded-full text-xs font-medium transition-colors',
                 index < currentStep
-                  ? 'bg-[var(--status-success)] text-white'
+                  ? 'bg-[var(--color-success)] text-white'
                   : index === currentStep
-                    ? 'bg-[var(--accent-blue)] text-white'
-                    : 'bg-[var(--background-secondary)] text-[var(--text-secondary)] border border-[var(--border-dark)]',
+                    ? 'bg-[var(--color-brand-primary)] text-white'
+                    : 'bg-[var(--color-bg-section)] text-[var(--color-text-secondary)] border border-[var(--color-border-default)]',
               ].join(' ')}
             >
               {index < currentStep ? (
@@ -40,13 +40,13 @@ export function TransactionProgress({ steps, currentStep }: TransactionProgressP
             <p
               className={[
                 'mt-2 text-center text-xs font-medium max-w-[80px]',
-                index <= currentStep ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)]',
+                index <= currentStep ? 'text-[var(--color-text-primary)]' : 'text-[var(--color-text-secondary)]',
               ].join(' ')}
             >
               {step.label}
             </p>
             {step.description && (
-              <p className="mt-0.5 text-center text-[10px] text-[var(--text-secondary)] max-w-[80px]">
+              <p className="mt-0.5 text-center text-[10px] text-[var(--color-text-secondary)] max-w-[80px]">
                 {step.description}
               </p>
             )}
@@ -55,7 +55,7 @@ export function TransactionProgress({ steps, currentStep }: TransactionProgressP
             <div
               className={[
                 'mt-4 h-0.5 flex-1 min-w-[40px]',
-                index < currentStep ? 'bg-[var(--status-success)]' : 'bg-[var(--border-dark)]',
+                index < currentStep ? 'bg-[var(--color-success)]' : 'bg-[var(--color-border-default)]',
               ].join(' ')}
             />
           )}

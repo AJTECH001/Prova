@@ -11,7 +11,7 @@ export function MetricBlock({ label, value, sub, loading }: MetricBlockProps) {
   return (
     <div className="flex flex-col gap-0.5">
       {label && (
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] sm:text-xs">{label}</p>
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)] sm:text-xs">{label}</p>
       )}
       {loading ? (
         <div className="flex flex-col gap-1.5 mt-1">
@@ -20,8 +20,8 @@ export function MetricBlock({ label, value, sub, loading }: MetricBlockProps) {
         </div>
       ) : (
         <div className="mt-1">
-          <p className="text-lg font-bold tracking-tight text-[var(--text-primary)] tabular-nums leading-tight sm:text-2xl">{value}</p>
-          {sub && <p className="mt-0.5 text-[10px] text-[var(--text-muted)] sm:text-xs">{sub}</p>}
+          <p className="text-lg font-bold tracking-tight text-[var(--color-text-primary)] tabular-nums leading-tight sm:text-2xl">{value}</p>
+          {sub && <p className="mt-0.5 text-[10px] text-[var(--color-text-tertiary)] sm:text-xs">{sub}</p>}
         </div>
       )}
     </div>

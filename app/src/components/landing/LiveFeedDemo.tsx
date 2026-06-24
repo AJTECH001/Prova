@@ -61,21 +61,21 @@ export function LiveFeedDemo() {
   const active = POOLS.find((p) => p.id === activeId)!
 
   return (
-    <section id="demo" className="bg-[hsl(var(--bg-surface-alt))] py-28">
+    <section id="demo" className="bg-[hsl(var(--ds-surface-section))] py-28">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 
         <div className="mb-14 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-lg space-y-4">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[hsl(var(--text-muted))]">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[hsl(var(--ds-ink-400))]">
               How Prova works
             </p>
-            <h2 className="text-4xl font-black tracking-tight text-[hsl(var(--text-primary))] sm:text-5xl">
+            <h2 className="text-4xl font-black tracking-tight text-[hsl(var(--ds-ink-900))] sm:text-5xl">
               Pick your role.<br />Start in minutes.
             </h2>
           </div>
           <a
             href="#faq"
-            className="flex shrink-0 items-center gap-1.5 text-sm font-semibold text-[hsl(var(--brand-primary))] underline-offset-4 hover:underline"
+            className="flex shrink-0 items-center gap-1.5 text-sm font-semibold text-[hsl(var(--ds-teal-600))] underline-offset-4 hover:underline"
           >
             Have questions?
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -95,38 +95,38 @@ export function LiveFeedDemo() {
                   onClick={() => setActiveId(pool.id)}
                   className={`w-full rounded-2xl border p-6 text-left transition-all duration-200 ${
                     isActive
-                      ? 'border-[hsl(var(--brand-primary)/0.4)] bg-white shadow-sm'
-                      : 'border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface-alt))] hover:border-[hsl(var(--border-strong))]'
+                      ? 'border-[hsl(var(--ds-teal-600)/0.4)] bg-white shadow-sm'
+                      : 'border-[hsl(var(--ds-line-light))] bg-[hsl(var(--ds-surface-section))] hover:border-[hsl(var(--ds-line-strong))]'
                   }`}
                 >
-                  <p className={`mb-1 text-xs font-bold uppercase tracking-[0.18em] ${isActive ? 'text-[hsl(var(--brand-primary))]' : 'text-[hsl(var(--text-muted))]'}`}>
+                  <p className={`mb-1 text-xs font-bold uppercase tracking-[0.18em] ${isActive ? 'text-[hsl(var(--ds-teal-600))]' : 'text-[hsl(var(--ds-ink-400))]'}`}>
                     {pool.category}
                   </p>
-                  <p className="text-base font-black text-[hsl(var(--text-primary))]">{pool.name}</p>
-                  <p className="mt-1.5 text-sm text-[hsl(var(--text-secondary))]">{pool.summary}</p>
+                  <p className="text-base font-black text-[hsl(var(--ds-ink-900))]">{pool.name}</p>
+                  <p className="mt-1.5 text-sm text-[hsl(var(--ds-ink-600))]">{pool.summary}</p>
                 </button>
               )
             })}
           </div>
 
-          <div className="rounded-2xl border border-[hsl(var(--border-default))] bg-white p-10 shadow-sm">
-            <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-[hsl(var(--brand-primary))]">
+          <div className="rounded-2xl border border-[hsl(var(--ds-line-light))] bg-white p-10 shadow-sm">
+            <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-[hsl(var(--ds-teal-600))]">
               {active.detail.label}
             </p>
-            <h3 className="text-3xl font-black tracking-tight text-[hsl(var(--text-primary))]">
+            <h3 className="text-3xl font-black tracking-tight text-[hsl(var(--ds-ink-900))]">
               {active.detail.headline}
             </h3>
-            <p className="mt-2 text-sm font-semibold text-[hsl(var(--text-secondary))]">
+            <p className="mt-2 text-sm font-semibold text-[hsl(var(--ds-ink-600))]">
               {active.detail.subtitle}
             </p>
-            <p className="mt-5 text-sm leading-relaxed text-[hsl(var(--text-secondary))]">
+            <p className="mt-5 text-sm leading-relaxed text-[hsl(var(--ds-ink-600))]">
               {active.detail.body}
             </p>
 
             <ul className="mt-6 space-y-3">
               {active.detail.bullets.map((b) => (
-                <li key={b} className="flex items-center gap-3 text-sm font-semibold text-[hsl(var(--text-secondary))]">
-                  <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-[hsl(var(--brand-primary))]" />
+                <li key={b} className="flex items-center gap-3 text-sm font-semibold text-[hsl(var(--ds-ink-600))]">
+                  <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-[hsl(var(--ds-teal-600))]" />
                   {b}
                 </li>
               ))}
@@ -135,7 +135,7 @@ export function LiveFeedDemo() {
             <div className="mt-8">
               <a
                 href="/auth"
-                className="inline-flex items-center gap-2 rounded-full bg-[hsl(var(--brand-primary))] px-6 py-2.5 text-sm font-bold text-[hsl(var(--text-on-brand))] shadow-md shadow-[hsl(var(--brand-primary)/0.2)] transition-colors hover:bg-[hsl(var(--brand-primary-hover))]"
+                className="inline-flex items-center gap-2 rounded-full bg-[hsl(var(--ds-teal-600))] px-6 py-2.5 text-sm font-bold text-[hsl(var(--ds-surface-white))] shadow-md shadow-[hsl(var(--ds-teal-600)/0.2)] transition-colors hover:bg-[hsl(var(--ds-teal-700))]"
               >
                 Get started
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">

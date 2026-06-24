@@ -29,10 +29,10 @@ export function AppNavbar() {
   }
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-[var(--border-dark)] bg-[hsl(var(--bg-glass-white))] backdrop-blur-md">
+    <nav className="sticky top-0 z-50 border-b border-[var(--color-border-default)] bg-[hsl(var(--ds-surface-white))] backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-8">
-          <Link href="/dashboard" className="text-lg font-bold text-[var(--text-primary)]">
+          <Link href="/dashboard" className="text-lg font-bold text-[var(--color-text-primary)]">
             Reineira Modules
           </Link>
           <div className="hidden items-center gap-1 sm:flex">
@@ -43,8 +43,8 @@ export function AppNavbar() {
                 className={[
                   'rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                   isActive(link.href)
-                    ? 'bg-[var(--accent-blue)]/10 text-[var(--accent-blue)]'
-                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--background-secondary)]',
+                    ? 'bg-[var(--color-brand-primary)]/10 text-[var(--color-brand-primary)]'
+                    : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-section)]',
                 ].join(' ')}
               >
                 {link.name}
@@ -56,13 +56,13 @@ export function AppNavbar() {
           {walletAddress && (
             <Link
               href="/profile"
-              className="hidden rounded-lg bg-[var(--background-secondary)] px-3 py-1.5 text-xs font-mono text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors sm:block"
+              className="hidden rounded-lg bg-[var(--color-bg-section)] px-3 py-1.5 text-xs font-mono text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors sm:block"
             >
               {truncatedAddress}
             </Link>
           )}
           <button
-            className="rounded-lg p-2 text-[var(--text-secondary)] hover:bg-[var(--background-secondary)] hover:text-[var(--status-error)] transition-colors cursor-pointer"
+            className="rounded-lg p-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-section)] hover:text-[var(--color-error)] transition-colors cursor-pointer"
             onClick={handleLogout}
           >
             <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">

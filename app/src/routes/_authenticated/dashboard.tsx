@@ -69,9 +69,9 @@ function AlertBanner({
   action?: { label: string; href: string };
 }) {
   const styles = {
-    blue:  'bg-[var(--accent-blue-bg)] border-[var(--accent-blue)] text-[var(--accent-blue)]',
-    amber: 'bg-[hsl(var(--warning-bg))] border-[hsl(var(--warning-border))] text-[var(--status-warning)]',
-    green: 'bg-[hsl(var(--tip-bg))] border-[hsl(var(--tip-border))] text-[var(--status-success)]',
+    blue:  'bg-[var(--color-brand-subtle)] border-[var(--color-brand-primary)] text-[var(--color-brand-primary)]',
+    amber: 'bg-[hsl(var(--ds-amber-bg))] border-[hsl(var(--ds-amber-border))] text-[var(--color-warning)]',
+    green: 'bg-[hsl(var(--ds-green-bg))] border-[hsl(var(--ds-green-border))] text-[var(--color-success)]',
   }[variant];
 
   return (
@@ -107,23 +107,23 @@ function StatCard({
   accent?: 'blue' | 'green' | 'purple';
 }) {
   const accentDot = {
-    blue:   'bg-[var(--accent-blue)]',
-    green:  'bg-[var(--status-success)]',
-    purple: 'bg-[hsl(var(--brand-purple))]',
+    blue:   'bg-[var(--color-brand-primary)]',
+    green:  'bg-[var(--color-success)]',
+    purple: 'bg-[hsl(var(--ds-teal-600))]',
   }[accent ?? 'blue'] ?? '';
 
   return (
-    <div className="flex flex-col gap-1 rounded-xl border border-[var(--border-dark)] bg-white px-4 py-4 shadow-[var(--shadow-card)] sm:px-5">
+    <div className="flex flex-col gap-1 rounded-xl border border-[var(--color-border-default)] bg-white px-4 py-4 shadow-[var(--shadow-card)] sm:px-5">
       <div className="flex items-center gap-1.5">
         {accent && <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${accentDot}`} />}
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] sm:text-xs truncate">{label}</p>
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)] sm:text-xs truncate">{label}</p>
       </div>
       {loading ? (
         <Skeleton className="mt-2 h-6 w-24 sm:h-7 sm:w-28" />
       ) : (
-        <p className="mt-1 text-xl font-bold tracking-tight text-[var(--text-primary)] sm:text-2xl tabular-nums leading-tight break-words">{value}</p>
+        <p className="mt-1 text-xl font-bold tracking-tight text-[var(--color-text-primary)] sm:text-2xl tabular-nums leading-tight break-words">{value}</p>
       )}
-      {sub && <p className="mt-0.5 text-[10px] text-[var(--text-muted)] sm:text-xs">{sub}</p>}
+      {sub && <p className="mt-0.5 text-[10px] text-[var(--color-text-tertiary)] sm:text-xs">{sub}</p>}
     </div>
   );
 }
@@ -141,11 +141,11 @@ function SectionCard({
   children: ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-[var(--border-dark)] bg-white shadow-[var(--shadow-card)]">
-      <div className="flex items-center justify-between gap-3 border-b border-[var(--border-dark)] px-4 py-3.5 sm:px-5 sm:py-4">
+    <div className="rounded-xl border border-[var(--color-border-default)] bg-white shadow-[var(--shadow-card)]">
+      <div className="flex items-center justify-between gap-3 border-b border-[var(--color-border-default)] px-4 py-3.5 sm:px-5 sm:py-4">
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-[var(--text-primary)]">{title}</h2>
-          {subtitle && <p className="mt-0.5 text-xs text-[var(--text-muted)]">{subtitle}</p>}
+          <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">{title}</h2>
+          {subtitle && <p className="mt-0.5 text-xs text-[var(--color-text-tertiary)]">{subtitle}</p>}
         </div>
         {action && <div className="shrink-0">{action}</div>}
       </div>
@@ -169,12 +169,12 @@ function EmptyState({
   return (
     <div className="flex flex-col items-center justify-center py-10 text-center">
       {icon ? (
-        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--accent-blue-bg)] text-[var(--accent-blue)]">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--color-brand-subtle)] text-[var(--color-brand-primary)]">
           {icon}
         </div>
       ) : null}
-      <p className="text-sm font-semibold text-[var(--text-primary)]">{title}</p>
-      <p className="mt-1 max-w-xs text-sm text-[var(--text-muted)]">{desc}</p>
+      <p className="text-sm font-semibold text-[var(--color-text-primary)]">{title}</p>
+      <p className="mt-1 max-w-xs text-sm text-[var(--color-text-tertiary)]">{desc}</p>
       {action && <div className="mt-4">{action}</div>}
     </div>
   );
@@ -198,16 +198,16 @@ function PayInvoiceRow({ invoice, onPaid }: { invoice: TransactionResponse; onPa
     : '—';
 
   return (
-    <div className="border-b border-[var(--border-dark)] py-4 last:border-0">
+    <div className="border-b border-[var(--color-border-default)] py-4 last:border-0">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-            <p className="text-sm font-semibold text-[var(--text-primary)]">{refLabel}</p>
-            <span className="rounded-full bg-[var(--accent-blue-bg)] px-2 py-0.5 text-xs font-medium text-[var(--accent-blue)]">
+            <p className="text-sm font-semibold text-[var(--color-text-primary)]">{refLabel}</p>
+            <span className="rounded-full bg-[var(--color-brand-subtle)] px-2 py-0.5 text-xs font-medium text-[var(--color-brand-primary)]">
               {invoice.amount.toFixed(2)} USDC
             </span>
           </div>
-          <p className="mt-0.5 text-xs text-[var(--text-muted)]">
+          <p className="mt-0.5 text-xs text-[var(--color-text-tertiary)]">
             Due {dueDate}{invoice.counterparty ? ` · Account ••••${invoice.counterparty.slice(-4).toUpperCase()}` : ''}
           </p>
         </div>
@@ -217,20 +217,20 @@ function PayInvoiceRow({ invoice, onPaid }: { invoice: TransactionResponse; onPa
       </div>
 
       {active && (
-        <div className="mt-3 flex flex-col gap-3 rounded-xl border border-[var(--border-dark)] bg-[hsl(var(--bg-surface-alt))] px-4 py-3">
+        <div className="mt-3 flex flex-col gap-3 rounded-xl border border-[var(--color-border-default)] bg-[hsl(var(--ds-surface-section))] px-4 py-3">
           <TransactionProgress steps={FUND_FLOW_STEPS} currentStep={fundFlow.currentStep} />
           {fundFlow.inProgress && !fundFlow.error && (
             <div className="flex items-center gap-2">
-              <svg className="h-4 w-4 animate-spin text-[var(--accent-blue)]" viewBox="0 0 24 24" fill="none">
+              <svg className="h-4 w-4 animate-spin text-[var(--color-brand-primary)]" viewBox="0 0 24 24" fill="none">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
-              <p className="text-xs text-[var(--accent-blue)]">Sending your payment…</p>
+              <p className="text-xs text-[var(--color-brand-primary)]">Sending your payment…</p>
             </div>
           )}
           {fundFlow.error && (
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs text-[var(--status-error)]">{fundFlow.error}</p>
+              <p className="text-xs text-[var(--color-error)]">{fundFlow.error}</p>
               <div className="flex gap-2 shrink-0">
                 <Button size="sm" variant="secondary" onClick={() => { fundFlow.reset(); setActive(false); }}>Cancel</Button>
                 <Button size="sm" onClick={handlePay}>Retry</Button>
@@ -238,7 +238,7 @@ function PayInvoiceRow({ invoice, onPaid }: { invoice: TransactionResponse; onPa
             </div>
           )}
           {!fundFlow.inProgress && !fundFlow.error && fundFlow.currentStep === 6 && (
-            <p className="text-xs font-medium text-[var(--status-success)]">Payment sent successfully.</p>
+            <p className="text-xs font-medium text-[var(--color-success)]">Payment sent successfully.</p>
           )}
         </div>
       )}
@@ -272,8 +272,8 @@ function PayableInvoicesPanel() {
       action={
         <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
           invoices.length > 0
-            ? 'bg-[var(--accent-blue-bg)] text-[var(--accent-blue)]'
-            : 'bg-[hsl(var(--bg-surface-alt))] text-[var(--text-muted)]'
+            ? 'bg-[var(--color-brand-subtle)] text-[var(--color-brand-primary)]'
+            : 'bg-[hsl(var(--ds-surface-section))] text-[var(--color-text-tertiary)]'
         }`}>
           {loading ? '…' : invoices.length}
         </span>
@@ -306,23 +306,23 @@ function PayableInvoicesPanel() {
 // ── LP deposit row ────────────────────────────────────────────────────────────
 function LpStakeRow({ stake }: { stake: { public_id: string; amount: number; created_at: string; on_chain_stake_id?: string; pool_address: string } }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border-dark)] py-3.5 last:border-0">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--color-border-default)] py-3.5 last:border-0">
       <div className="flex items-center gap-3">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-blue-bg)]">
-          <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" className="text-[var(--accent-blue)]">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-subtle)]">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" className="text-[var(--color-brand-primary)]">
             <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" />
             <path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd" />
           </svg>
         </div>
         <div>
-          <p className="text-sm font-semibold text-[var(--text-primary)]">{stake.amount.toFixed(2)} USDC</p>
-          <p className="text-xs text-[var(--text-muted)]">
+          <p className="text-sm font-semibold text-[var(--color-text-primary)]">{stake.amount.toFixed(2)} USDC</p>
+          <p className="text-xs text-[var(--color-text-tertiary)]">
             Deposited {new Date(stake.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
           </p>
         </div>
       </div>
       <div className="flex items-center gap-3">
-        <span className="rounded-full bg-[hsl(var(--tip-bg))] px-2 py-0.5 text-xs font-medium text-[var(--status-success)]">Active</span>
+        <span className="rounded-full bg-[hsl(var(--ds-green-bg))] px-2 py-0.5 text-xs font-medium text-[var(--color-success)]">Active</span>
       </div>
     </div>
   );
@@ -345,18 +345,18 @@ function ConfidentialBalanceCard({
   const canUnshield = balance !== null && balance.raw > 0n && walletAddress !== null;
 
   return (
-    <div className="flex flex-col gap-1 rounded-xl border border-[var(--border-dark)] bg-white px-4 py-4 shadow-[var(--shadow-card)] sm:px-5">
+    <div className="flex flex-col gap-1 rounded-xl border border-[var(--color-border-default)] bg-white px-4 py-4 shadow-[var(--shadow-card)] sm:px-5">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0">
-          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[hsl(var(--brand-purple))]" />
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] sm:text-xs truncate">
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[hsl(var(--ds-teal-600))]" />
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)] sm:text-xs truncate">
             Confidential Balance
           </p>
         </div>
         {canUnshield && (
           <button
             onClick={onUnshieldClick}
-            className="shrink-0 rounded-lg border border-[var(--border-dark)] px-2 py-0.5 text-[10px] font-semibold text-[var(--text-secondary)] transition-colors hover:border-[var(--accent-blue)] hover:text-[var(--accent-blue)] sm:text-xs"
+            className="shrink-0 rounded-lg border border-[var(--color-border-default)] px-2 py-0.5 text-[10px] font-semibold text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-brand-primary)] hover:text-[var(--color-brand-primary)] sm:text-xs"
           >
             Unshield →
           </button>
@@ -366,15 +366,15 @@ function ConfidentialBalanceCard({
       {loading && balance === null ? (
         <Skeleton className="mt-2 h-6 w-24 sm:h-7 sm:w-28" />
       ) : (
-        <p className="mt-1 text-xl font-bold tracking-tight text-[var(--text-primary)] sm:text-2xl tabular-nums leading-tight">
+        <p className="mt-1 text-xl font-bold tracking-tight text-[var(--color-text-primary)] sm:text-2xl tabular-nums leading-tight">
           {balance !== null ? `${balance.formatted} USDC` : '—'}
         </p>
       )}
 
       {awaitingWallet ? (
-        <p className="mt-0.5 text-[10px] text-[var(--text-muted)] sm:text-xs">Awaiting wallet connection to decrypt</p>
+        <p className="mt-0.5 text-[10px] text-[var(--color-text-tertiary)] sm:text-xs">Awaiting wallet connection to decrypt</p>
       ) : (
-        <p className="mt-0.5 text-[10px] text-[var(--text-muted)] sm:text-xs">Privacy-protected cUSDC</p>
+        <p className="mt-0.5 text-[10px] text-[var(--color-text-tertiary)] sm:text-xs">Privacy-protected cUSDC</p>
       )}
     </div>
   );
@@ -453,41 +453,41 @@ function UnshieldDialog({
         {isDone ? (
           // ── Success state ──
           <div className="flex flex-col items-center gap-5 pt-2 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[hsl(var(--tip-bg))]">
-              <svg width="26" height="26" viewBox="0 0 20 20" fill="currentColor" className="text-[var(--status-success)]">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[hsl(var(--ds-green-bg))]">
+              <svg width="26" height="26" viewBox="0 0 20 20" fill="currentColor" className="text-[var(--color-success)]">
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
               </svg>
             </div>
-            <p className="text-sm text-[var(--text-muted)]">USDC is now in your available balance</p>
+            <p className="text-sm text-[var(--color-text-tertiary)]">USDC is now in your available balance</p>
             <Button onClick={handleClose} className="w-full">Done</Button>
           </div>
         ) : isWorking ? (
           // ── In-progress state ──
           <div className="flex flex-col gap-5 pt-1">
             <div className="flex items-center gap-3">
-              <svg className="h-5 w-5 shrink-0 animate-spin text-[var(--accent-blue)]" viewBox="0 0 24 24" fill="none">
+              <svg className="h-5 w-5 shrink-0 animate-spin text-[var(--color-brand-primary)]" viewBox="0 0 24 24" fill="none">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
-              <p className="text-sm font-medium text-[var(--text-primary)]">{state.statusLabel}</p>
+              <p className="text-sm font-medium text-[var(--color-text-primary)]">{state.statusLabel}</p>
             </div>
-            <p className="text-xs text-[var(--text-muted)]">
+            <p className="text-xs text-[var(--color-text-tertiary)]">
               This may take 30–60 seconds. Please keep this window open.
             </p>
           </div>
         ) : (
           // ── Input state ──
           <div className="flex flex-col gap-5 pt-1">
-            <div className="rounded-lg bg-[hsl(var(--bg-surface-alt))] px-3 py-2.5">
-              <p className="text-xs text-[var(--text-muted)]">Available</p>
-              <p className="mt-0.5 text-base font-semibold text-[var(--text-primary)]">
+            <div className="rounded-lg bg-[hsl(var(--ds-surface-section))] px-3 py-2.5">
+              <p className="text-xs text-[var(--color-text-tertiary)]">Available</p>
+              <p className="mt-0.5 text-base font-semibold text-[var(--color-text-primary)]">
                 {balance.formatted}{' '}
-                <span className="text-sm font-medium text-[var(--text-muted)]">cUSDC</span>
+                <span className="text-sm font-medium text-[var(--color-text-tertiary)]">cUSDC</span>
               </p>
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-[var(--text-primary)]">Amount to unshield</label>
+              <label className="text-sm font-medium text-[var(--color-text-primary)]">Amount to unshield</label>
               <div className="flex gap-2">
                 <input
                   type="number"
@@ -496,20 +496,20 @@ function UnshieldDialog({
                   placeholder="0.00"
                   value={inputValue}
                   onChange={(e) => handleInputChange(e.target.value)}
-                  className={`w-full rounded-lg border px-3 py-2 text-sm bg-[var(--background)] text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--accent-blue)]/50 ${
-                    inputError ? 'border-[var(--status-error)]' : 'border-[var(--border-dark)]'
+                  className={`w-full rounded-lg border px-3 py-2 text-sm bg-[var(--color-bg-page)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-secondary)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]/50 ${
+                    inputError ? 'border-[var(--color-error)]' : 'border-[var(--color-border-default)]'
                   }`}
                 />
                 <Button size="sm" variant="secondary" onClick={handleMax} type="button">
                   Max
                 </Button>
               </div>
-              {inputError && <p className="text-xs text-[var(--status-error)]">{inputError}</p>}
+              {inputError && <p className="text-xs text-[var(--color-error)]">{inputError}</p>}
             </div>
 
             {state.phase === 'error' && state.error && (
-              <div className="rounded-lg border border-[var(--status-error)]/20 bg-red-50 px-3 py-2.5">
-                <p className="text-xs text-[var(--status-error)]">{state.error}</p>
+              <div className="rounded-lg border border-[var(--color-error)]/20 bg-red-50 px-3 py-2.5">
+                <p className="text-xs text-[var(--color-error)]">{state.error}</p>
               </div>
             )}
 
@@ -641,15 +641,15 @@ export function DashboardPage() {
       {/* ── Page header ── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-[var(--text-primary)] sm:text-2xl">
+          <h1 className="text-xl font-bold tracking-tight text-[var(--color-text-primary)] sm:text-2xl">
             {greeting}{role === 'SELLER' ? ', merchant' : role === 'BUYER' ? ', customer' : ''}
           </h1>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             {shortWallet && (
-              <p className="font-mono text-xs text-[var(--text-muted)]">Account {shortWallet}</p>
+              <p className="font-mono text-xs text-[var(--color-text-tertiary)]">Account {shortWallet}</p>
             )}
             {role && (
-              <span className="rounded-full bg-[hsl(var(--bg-surface-alt))] px-2 py-0.5 text-[11px] font-semibold text-[var(--text-secondary)]">
+              <span className="rounded-full bg-[hsl(var(--ds-surface-section))] px-2 py-0.5 text-[11px] font-semibold text-[var(--color-text-secondary)]">
                 {ROLE_LABEL[role] ?? role}
               </span>
             )}
@@ -749,7 +749,7 @@ export function DashboardPage() {
             title="Recent Activity"
             subtitle="Your most recent payment activity"
             action={
-              <Link href="/transactions" className="text-xs font-medium text-[var(--accent-blue)] hover:opacity-70 transition-opacity">
+              <Link href="/transactions" className="text-xs font-medium text-[var(--color-brand-primary)] hover:opacity-70 transition-opacity">
                 View all →
               </Link>
             }
@@ -779,7 +779,7 @@ export function DashboardPage() {
             title="Recent Withdrawals"
             subtitle="Your withdrawal history"
             action={
-              <Link href="/withdrawals" className="text-xs font-medium text-[var(--accent-blue)] hover:opacity-70 transition-opacity">
+              <Link href="/withdrawals" className="text-xs font-medium text-[var(--color-brand-primary)] hover:opacity-70 transition-opacity">
                 View all →
               </Link>
             }
@@ -811,7 +811,7 @@ export function DashboardPage() {
           title="My Deposits"
           subtitle="Your funding positions"
           action={
-            <Link href="/pool" className="text-xs font-medium text-[var(--accent-blue)] hover:opacity-70 transition-opacity">
+            <Link href="/pool" className="text-xs font-medium text-[var(--color-brand-primary)] hover:opacity-70 transition-opacity">
               Manage →
             </Link>
           }
@@ -835,7 +835,7 @@ export function DashboardPage() {
               ))}
               {poolStakes.length > 6 && (
                 <div className="pt-3 text-center">
-                  <Link href="/pool" className="text-xs font-medium text-[var(--accent-blue)] hover:opacity-70 transition-opacity">
+                  <Link href="/pool" className="text-xs font-medium text-[var(--color-brand-primary)] hover:opacity-70 transition-opacity">
                     View all {poolStakes.length} deposits →
                   </Link>
                 </div>

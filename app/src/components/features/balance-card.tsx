@@ -15,7 +15,7 @@ export function BalanceCard() {
   const truncated = walletAddress ? `${walletAddress.slice(0, 8)}...${walletAddress.slice(-6)}` : '—';
 
   return (
-    <div className="relative overflow-hidden rounded-[var(--radius-block)] bg-[var(--accent-blue)] p-6 text-white shadow-[var(--shadow-lg)]">
+    <div className="relative overflow-hidden rounded-[var(--radius-block)] bg-[var(--color-brand-primary)] p-6 text-white shadow-[var(--shadow-lg)]">
       {/* Subtle background pattern */}
       <div className="pointer-events-none absolute inset-0 opacity-10">
         <div className="absolute -right-8 -top-8 h-48 w-48 rounded-full bg-white/30" />

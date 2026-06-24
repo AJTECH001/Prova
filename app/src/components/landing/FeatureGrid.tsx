@@ -26,10 +26,10 @@ export function FeatureGrid() {
 
         <div className="mb-16 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-lg space-y-4">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[hsl(var(--text-muted))]">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[hsl(var(--ds-ink-400))]">
               Built for modern trade finance
             </p>
-            <h2 className="text-4xl font-black tracking-tight text-[hsl(var(--text-primary))] sm:text-5xl">
+            <h2 className="text-4xl font-black tracking-tight text-[hsl(var(--ds-ink-900))] sm:text-5xl">
               Three roles.<br />One protocol.
             </h2>
           </div>
@@ -38,7 +38,7 @@ export function FeatureGrid() {
             {['FHE-Encrypted', 'Non-Custodial', 'Arbitrum L2'].map((tag) => (
               <span
                 key={tag}
-                className="rounded-full border border-[hsl(var(--border-strong))] px-4 py-1.5 text-xs font-semibold text-[hsl(var(--text-secondary))]"
+                className="rounded-full border border-[hsl(var(--ds-line-strong))] px-4 py-1.5 text-xs font-semibold text-[hsl(var(--ds-ink-600))]"
               >
                 {tag}
               </span>
@@ -50,16 +50,16 @@ export function FeatureGrid() {
           {POOLS.map((pool) => (
             <div
               key={pool.category}
-              className="flex flex-col justify-between rounded-2xl bg-[hsl(var(--bg-surface-alt))] p-8 transition-shadow hover:shadow-md"
+              className="flex flex-col justify-between rounded-2xl bg-[hsl(var(--ds-surface-section))] p-8 transition-shadow hover:shadow-md"
             >
               <div className="space-y-3">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-[hsl(var(--text-muted))]">
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-[hsl(var(--ds-ink-400))]">
                   {pool.category}
                 </p>
-                <h3 className="text-2xl font-black tracking-tight text-[hsl(var(--text-primary))]">
+                <h3 className="text-2xl font-black tracking-tight text-[hsl(var(--ds-ink-900))]">
                   {pool.title}
                 </h3>
-                <p className="text-sm leading-relaxed text-[hsl(var(--text-secondary))]">
+                <p className="text-sm leading-relaxed text-[hsl(var(--ds-ink-600))]">
                   {pool.description}
                 </p>
               </div>
@@ -68,7 +68,7 @@ export function FeatureGrid() {
                 {pool.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="rounded-full border border-[hsl(var(--border-strong))] px-3 py-1 text-xs font-semibold text-[hsl(var(--text-secondary))]"
+                    className="rounded-full border border-[hsl(var(--ds-line-strong))] px-3 py-1 text-xs font-semibold text-[hsl(var(--ds-ink-600))]"
                   >
                     {tag}
                   </span>

@@ -1,0 +1,57 @@
+/* =========================================================================
+   PROVA DESIGN SYSTEM · COMPONENT
+   -------------------------------------------------------------------------
+   Per-component contracts composed from semantic tokens only. Mirrors
+   src/design-system/tokens/component/*. Reference these in component CSS,
+   e.g. `background: var(--button-primary-bg)`.
+   ========================================================================= */
+:root {
+  /* ── Button ── */
+  --button-primary-bg: var(--color-action-primary);
+  --button-primary-bg-hover: var(--color-action-hover);
+  --button-primary-bg-active: var(--color-action-active);
+  --button-primary-text: var(--color-action-fg);
+  --button-secondary-bg: transparent;
+  --button-secondary-bg-hover: var(--color-surface-hover);
+  --button-secondary-text: var(--color-text-primary);
+  --button-secondary-border: var(--color-border-default);
+  --button-radius: var(--radius-button);
+
+  /* ── Input ── */
+  --input-bg: var(--color-surface);
+  --input-text: var(--color-text-primary);
+  --input-placeholder: var(--color-text-tertiary);
+  --input-border: var(--color-border-default);
+  --input-border-focus: var(--color-action-primary);
+  --input-radius: var(--radius-input, 10px);
+
+  /* ── Card ── */
+  --card-bg: var(--color-card);
+  --card-border: var(--color-card-border);
+  --card-shadow: var(--shadow-card);
+  --card-radius: var(--radius-block);
+
+  /* ── Table ── */
+  --table-header-bg: var(--color-bg-section);
+  --table-header-text: var(--color-text-secondary);
+  --table-row-bg: var(--color-surface);
+  --table-row-hover: var(--color-surface-hover);
+  --table-row-border: var(--color-border-light);
+  --table-cell-text: var(--color-text-primary);
+
+  /* ── Navigation ── */
+  --nav-bg: var(--color-surface);
+  --nav-border: var(--color-border-light);
+  --nav-item-text: var(--color-text-secondary);
+  --nav-item-text-hover: var(--color-text-primary);
+  --nav-item-active-text: var(--color-action-primary);
+  --nav-item-active-bg: var(--color-action-subtle);
+
+  /* ── Modal ── */
+  --modal-bg: var(--color-surface);
+  --modal-border: var(--color-border-light);
+  --modal-scrim: rgba(10, 25, 41, 0.48);
+  --modal-shadow: var(--shadow-xl);
+  --modal-radius: var(--radius-lg);
+  --modal-z: var(--z-modal);
+}

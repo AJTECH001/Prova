@@ -53,17 +53,17 @@ export function AuthPage() {
       <div className="absolute left-6 top-6 sm:left-10 sm:top-8">
         <Link href="/" className="group flex items-center gap-2.5">
           <img src="/prova_logo.png" alt="Prova" className="h-7 w-7 rounded-md object-contain transition-transform group-hover:scale-110" />
-          <span className="text-base font-black tracking-tighter text-[hsl(var(--text-primary))]">Prova</span>
+          <span className="text-base font-black tracking-tighter text-[hsl(var(--ds-ink-900))]">Prova</span>
         </Link>
       </div>
 
       {/* Centered card */}
       <div className="w-full max-w-sm">
           <div className="mb-8 space-y-1.5">
-            <h1 className="text-2xl font-black text-[hsl(var(--text-primary))]">
+            <h1 className="text-2xl font-black text-[hsl(var(--ds-ink-900))]">
               {mode === 'login' ? 'Sign in to your account' : 'Create your account'}
             </h1>
-            <p className="text-sm text-[hsl(var(--text-secondary))]">
+            <p className="text-sm text-[hsl(var(--ds-ink-600))]">
               {mode === 'login'
                 ? 'Use your passkey to sign in securely.'
                 : 'Choose a username and create a passkey.'}
@@ -73,7 +73,7 @@ export function AuthPage() {
           <div className="space-y-4">
             {mode === 'register' && (
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold uppercase tracking-wide text-[hsl(var(--text-muted))]">
+                <label className="text-xs font-semibold uppercase tracking-wide text-[hsl(var(--ds-ink-400))]">
                   Username
                 </label>
                 <input
@@ -83,7 +83,7 @@ export function AuthPage() {
                   placeholder="e.g. john_trade"
                   disabled={loading}
                   onKeyDown={(e) => e.key === 'Enter' && handleRegister()}
-                  className="w-full rounded-xl border border-[hsl(var(--border-strong))] bg-white px-4 py-3 text-sm text-[hsl(var(--text-primary))] outline-none transition-colors placeholder:text-[hsl(var(--text-muted))] focus:border-[hsl(var(--brand-primary))] focus:ring-2 focus:ring-[hsl(var(--brand-primary)/0.1)]"
+                  className="w-full rounded-xl border border-[hsl(var(--ds-line-strong))] bg-white px-4 py-3 text-sm text-[hsl(var(--ds-ink-900))] outline-none transition-colors placeholder:text-[hsl(var(--ds-ink-400))] focus:border-[hsl(var(--ds-teal-600))] focus:ring-2 focus:ring-[hsl(var(--ds-teal-600)/0.1)]"
                 />
               </div>
             )}
@@ -92,7 +92,7 @@ export function AuthPage() {
             <button
               onClick={mode === 'login' ? handleLogin : handleRegister}
               disabled={loading}
-              className="flex w-full items-center justify-center gap-3 rounded-xl bg-[hsl(var(--brand-primary))] px-4 py-3 text-sm font-bold text-[hsl(var(--text-on-brand))] shadow-md shadow-[hsl(var(--brand-primary)/0.2)] transition-all hover:bg-[hsl(var(--brand-primary-hover))] disabled:opacity-60"
+              className="flex w-full items-center justify-center gap-3 rounded-xl bg-[hsl(var(--ds-teal-600))] px-4 py-3 text-sm font-bold text-[hsl(var(--ds-surface-white))] shadow-md shadow-[hsl(var(--ds-teal-600)/0.2)] transition-all hover:bg-[hsl(var(--ds-teal-700))] disabled:opacity-60"
             >
               {loading ? (
                 <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -110,23 +110,23 @@ export function AuthPage() {
             </button>
 
             {error && (
-              <p className="rounded-lg bg-[hsl(var(--danger-bg))] border border-[hsl(var(--danger-border))] px-4 py-3 text-sm text-[hsl(var(--danger-text))]">
+              <p className="rounded-lg bg-[hsl(var(--ds-red-bg))] border border-[hsl(var(--ds-red-border))] px-4 py-3 text-sm text-[hsl(var(--ds-red-text))]">
                 {error}
               </p>
             )}
           </div>
 
           {/* Mode toggle */}
-          <p className="mt-6 text-center text-sm text-[hsl(var(--text-muted))]">
+          <p className="mt-6 text-center text-sm text-[hsl(var(--ds-ink-400))]">
             {mode === 'login' ? (
               <>New to Prova?{' '}
-                <button onClick={() => switchMode('register')} className="font-semibold text-[hsl(var(--brand-primary))] hover:underline underline-offset-2">
+                <button onClick={() => switchMode('register')} className="font-semibold text-[hsl(var(--ds-teal-600))] hover:underline underline-offset-2">
                   Create account
                 </button>
               </>
             ) : (
               <>Already have an account?{' '}
-                <button onClick={() => switchMode('login')} className="font-semibold text-[hsl(var(--brand-primary))] hover:underline underline-offset-2">
+                <button onClick={() => switchMode('login')} className="font-semibold text-[hsl(var(--ds-teal-600))] hover:underline underline-offset-2">
                   Sign in
                 </button>
               </>
@@ -135,10 +135,10 @@ export function AuthPage() {
         </div>
 
       {/* Bottom legal */}
-      <div className="absolute bottom-6 flex items-center gap-6 text-xs text-[hsl(var(--text-faint))]">
+      <div className="absolute bottom-6 flex items-center gap-6 text-xs text-[hsl(var(--ds-ink-300))]">
         <span>© 2026 Prova Protocol</span>
-        <Link href="/privacy" className="hover:text-[hsl(var(--text-primary))]">Privacy</Link>
-        <Link href="/terms" className="hover:text-[hsl(var(--text-primary))]">Terms</Link>
+        <Link href="/privacy" className="hover:text-[hsl(var(--ds-ink-900))]">Privacy</Link>
+        <Link href="/terms" className="hover:text-[hsl(var(--ds-ink-900))]">Terms</Link>
       </div>
     </div>
   );

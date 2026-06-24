@@ -9,11 +9,11 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary:
-          'bg-[var(--accent-blue)] text-white hover:bg-[var(--accent-blue-hover)] focus:ring-[var(--accent-blue)]/50',
+          'bg-[var(--color-brand-primary)] text-white hover:bg-[var(--color-brand-hover)] focus:ring-[var(--color-brand-primary)]/50',
         secondary:
-          'bg-[var(--background-secondary)] text-[var(--text-primary)] border border-[var(--border-dark)] hover:bg-[var(--border-dark)]',
-        danger: 'bg-[var(--status-error)] text-white hover:bg-red-600 focus:ring-[var(--status-error)]/50',
-        ghost: 'bg-transparent text-[var(--text-secondary)] hover:bg-[var(--background-secondary)]',
+          'bg-[var(--color-bg-section)] text-[var(--color-text-primary)] border border-[var(--color-border-default)] hover:bg-[var(--color-border-default)]',
+        danger: 'bg-[var(--color-error)] text-white hover:bg-red-600 focus:ring-[var(--color-error)]/50',
+        ghost: 'bg-transparent text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-section)]',
       },
       size: {
         sm: 'px-3 py-1.5 text-sm',

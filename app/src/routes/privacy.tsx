@@ -100,15 +100,15 @@ export function PrivacyPage() {
       <LandingNavbar />
       <main>
 
-        <section className="border-b border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-surface-alt))] px-4 pb-16 pt-[120px] sm:px-6 lg:px-8">
+        <section className="border-b border-[hsl(var(--ds-line-light))] bg-[hsl(var(--ds-surface-section))] px-4 pb-16 pt-[120px] sm:px-6 lg:px-8">
           <div className="mx-auto max-w-3xl">
-            <p className="mb-4 text-xs font-bold uppercase tracking-[0.2em] text-[hsl(var(--text-muted))]">
+            <p className="mb-4 text-xs font-bold uppercase tracking-[0.2em] text-[hsl(var(--ds-ink-400))]">
               Legal
             </p>
-            <h1 className="text-5xl font-black tracking-tight text-[hsl(var(--text-primary))]">
+            <h1 className="text-5xl font-black tracking-tight text-[hsl(var(--ds-ink-900))]">
               Privacy Policy
             </h1>
-            <p className="mt-4 text-sm text-[hsl(var(--text-muted))]">
+            <p className="mt-4 text-sm text-[hsl(var(--ds-ink-400))]">
               Last updated: 1 May 2026
             </p>
           </div>
@@ -119,12 +119,12 @@ export function PrivacyPage() {
             <div className="space-y-12">
               {SECTIONS.map((section) => (
                 <div key={section.title}>
-                  <h2 className="mb-4 text-xl font-black text-[hsl(var(--text-primary))]">
+                  <h2 className="mb-4 text-xl font-black text-[hsl(var(--ds-ink-900))]">
                     {section.title}
                   </h2>
                   <div className="space-y-4">
                     {section.body.split('\n\n').map((para, i) => (
-                      <p key={i} className="whitespace-pre-line text-base leading-relaxed text-[hsl(var(--text-secondary))]">
+                      <p key={i} className="whitespace-pre-line text-base leading-relaxed text-[hsl(var(--ds-ink-600))]">
                         {para}
                       </p>
                     ))}
@@ -133,11 +133,11 @@ export function PrivacyPage() {
               ))}
             </div>
 
-            <div className="mt-16 rounded-2xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface-alt))] p-8 text-sm text-[hsl(var(--text-secondary))]">
-              <p className="font-semibold text-[hsl(var(--text-primary))]">Questions about this policy?</p>
+            <div className="mt-16 rounded-2xl border border-[hsl(var(--ds-line-light))] bg-[hsl(var(--ds-surface-section))] p-8 text-sm text-[hsl(var(--ds-ink-600))]">
+              <p className="font-semibold text-[hsl(var(--ds-ink-900))]">Questions about this policy?</p>
               <p className="mt-2">
                 Email us at{' '}
-                <a href="mailto:privacy@getprova.trade" className="font-medium text-[hsl(var(--brand-primary))] underline-offset-2 hover:underline">
+                <a href="mailto:privacy@getprova.trade" className="font-medium text-[hsl(var(--ds-teal-600))] underline-offset-2 hover:underline">
                   privacy@getprova.trade
                 </a>
                 {' '}and we'll respond within 30 days.

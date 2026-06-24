@@ -70,17 +70,17 @@ export function OnboardingPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[hsl(var(--bg-base))] px-4">
+    <div className="flex min-h-screen items-center justify-center bg-[hsl(var(--ds-surface-page))] px-4">
       <div className="w-full max-w-2xl">
         {/* Header */}
         <div className="mb-10 text-center">
-          <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-[var(--radius-subtle)] bg-[var(--accent-blue)]">
+          <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-[var(--radius-subtle)] bg-[var(--color-brand-primary)]">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="white">
               <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
             </svg>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-[var(--text-primary)]">Welcome to Prova</h1>
-          <p className="mt-2 text-[var(--text-secondary)]">How will you use Prova? Pick the role that fits best.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-[var(--color-text-primary)]">Welcome to Prova</h1>
+          <p className="mt-2 text-[var(--color-text-secondary)]">How will you use Prova? Pick the role that fits best.</p>
         </div>
 
         {/* Role cards */}
@@ -94,21 +94,21 @@ export function OnboardingPage() {
                 className={[
                   'flex flex-col gap-4 rounded-[var(--radius-block)] border-2 p-6 text-left transition-all',
                   isSelected
-                    ? 'border-[var(--accent-blue)] bg-[var(--accent-blue-bg)] shadow-md'
-                    : 'border-[var(--border-dark)] bg-white hover:border-[var(--accent-blue)] hover:shadow-sm',
+                    ? 'border-[var(--color-brand-primary)] bg-[var(--color-brand-subtle)] shadow-md'
+                    : 'border-[var(--color-border-default)] bg-white hover:border-[var(--color-brand-primary)] hover:shadow-sm',
                 ].join(' ')}
               >
-                <span className={isSelected ? 'text-[var(--accent-blue)]' : 'text-[var(--text-muted)]'}>
+                <span className={isSelected ? 'text-[var(--color-brand-primary)]' : 'text-[var(--color-text-tertiary)]'}>
                   {option.icon}
                 </span>
                 <div>
-                  <p className={`font-semibold ${isSelected ? 'text-[var(--accent-blue)]' : 'text-[var(--text-primary)]'}`}>
+                  <p className={`font-semibold ${isSelected ? 'text-[var(--color-brand-primary)]' : 'text-[var(--color-text-primary)]'}`}>
                     {option.title}
                   </p>
-                  <p className="mt-1 text-xs leading-relaxed text-[var(--text-secondary)]">{option.description}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-[var(--color-text-secondary)]">{option.description}</p>
                 </div>
                 {isSelected && (
-                  <span className="inline-flex w-fit items-center gap-1 rounded-full bg-[var(--accent-blue)] px-2 py-0.5 text-xs font-semibold text-white">
+                  <span className="inline-flex w-fit items-center gap-1 rounded-full bg-[var(--color-brand-primary)] px-2 py-0.5 text-xs font-semibold text-white">
                     Selected
                   </span>
                 )}
@@ -118,8 +118,8 @@ export function OnboardingPage() {
         </div>
 
         {error && (
-          <div className="mt-4 rounded-[var(--radius-subtle)] border border-[hsl(var(--danger-border))] bg-[hsl(var(--danger-bg))] px-4 py-3">
-            <p className="text-sm text-[var(--status-error)]">{error}</p>
+          <div className="mt-4 rounded-[var(--radius-subtle)] border border-[hsl(var(--ds-red-border))] bg-[hsl(var(--ds-red-bg))] px-4 py-3">
+            <p className="text-sm text-[var(--color-error)]">{error}</p>
           </div>
         )}
 
@@ -135,7 +135,7 @@ export function OnboardingPage() {
           </Button>
         </div>
 
-        <p className="mt-4 text-center text-xs text-[var(--text-muted)]">
+        <p className="mt-4 text-center text-xs text-[var(--color-text-tertiary)]">
           You can change your role later in Profile settings.
         </p>
       </div>

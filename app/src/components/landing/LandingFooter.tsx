@@ -41,7 +41,7 @@ const SOCIAL = [
 
 export function LandingFooter() {
   return (
-    <footer className="border-t border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-surface-alt))] py-20">
+    <footer className="border-t border-[hsl(var(--ds-line-light))] bg-[hsl(var(--ds-surface-section))] py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 
         <div className="mb-14 grid grid-cols-1 gap-10 md:grid-cols-[2fr_1fr_1fr_1fr]">
@@ -50,9 +50,9 @@ export function LandingFooter() {
           <div className="space-y-5">
             <div className="flex items-center gap-2">
               <img src="/prova_logo.png" alt="Prova" className="h-6 w-6 rounded-md object-contain" />
-              <span className="text-xl font-black tracking-tighter text-[hsl(var(--text-primary))]">Prova</span>
+              <span className="text-xl font-black tracking-tighter text-[hsl(var(--ds-ink-900))]">Prova</span>
             </div>
-            <p className="max-w-xs text-sm leading-relaxed text-[hsl(var(--text-muted))]">
+            <p className="max-w-xs text-sm leading-relaxed text-[hsl(var(--ds-ink-400))]">
               On-chain trade credit insurance. FHE-encrypted underwriting, escrow settlement, and USDC liquidity pools — built on Arbitrum.
             </p>
             <div className="flex gap-2.5">
@@ -61,7 +61,7 @@ export function LandingFooter() {
                   key={s.label}
                   href={s.href}
                   aria-label={s.label}
-                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-[hsl(var(--border-subtle))] bg-white text-[hsl(var(--text-muted))] transition-all hover:border-[hsl(var(--brand-primary)/0.4)] hover:text-[hsl(var(--brand-primary))]"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-[hsl(var(--ds-line-light))] bg-white text-[hsl(var(--ds-ink-400))] transition-all hover:border-[hsl(var(--ds-teal-600)/0.4)] hover:text-[hsl(var(--ds-teal-600))]"
                 >
                   {s.icon}
                 </a>
@@ -70,41 +70,41 @@ export function LandingFooter() {
           </div>
 
           <div>
-            <h4 className="mb-5 text-xs font-bold uppercase tracking-widest text-[hsl(var(--text-primary))]">Protocol</h4>
-            <ul className="space-y-3.5 text-sm text-[hsl(var(--text-secondary))]">
-              <li><a href="#" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Documentation</a></li>
-              <li><a href="#" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Premium Pools</a></li>
-              <li><a href="#" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Security Audit</a></li>
-              <li><a href="#" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Governance</a></li>
+            <h4 className="mb-5 text-xs font-bold uppercase tracking-widest text-[hsl(var(--ds-ink-900))]">Protocol</h4>
+            <ul className="space-y-3.5 text-sm text-[hsl(var(--ds-ink-600))]">
+              <li><a href="#" className="transition-colors hover:text-[hsl(var(--ds-teal-600))]">Documentation</a></li>
+              <li><a href="#" className="transition-colors hover:text-[hsl(var(--ds-teal-600))]">Premium Pools</a></li>
+              <li><a href="#" className="transition-colors hover:text-[hsl(var(--ds-teal-600))]">Security Audit</a></li>
+              <li><a href="#" className="transition-colors hover:text-[hsl(var(--ds-teal-600))]">Governance</a></li>
             </ul>
           </div>
 
           <div>
-            <h4 className="mb-5 text-xs font-bold uppercase tracking-widest text-[hsl(var(--text-primary))]">Developers</h4>
-            <ul className="space-y-3.5 text-sm text-[hsl(var(--text-secondary))]">
-              <li><a href="#" className="transition-colors hover:text-[hsl(var(--brand-primary))]">API Reference</a></li>
-              <li><a href="#" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Prova SDK</a></li>
-              <li><a href="#" className="transition-colors hover:text-[hsl(var(--brand-primary))]">FHE Plugins</a></li>
-              <li><a href="#" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Subgraphs</a></li>
+            <h4 className="mb-5 text-xs font-bold uppercase tracking-widest text-[hsl(var(--ds-ink-900))]">Developers</h4>
+            <ul className="space-y-3.5 text-sm text-[hsl(var(--ds-ink-600))]">
+              <li><a href="#" className="transition-colors hover:text-[hsl(var(--ds-teal-600))]">API Reference</a></li>
+              <li><a href="#" className="transition-colors hover:text-[hsl(var(--ds-teal-600))]">Prova SDK</a></li>
+              <li><a href="#" className="transition-colors hover:text-[hsl(var(--ds-teal-600))]">FHE Plugins</a></li>
+              <li><a href="#" className="transition-colors hover:text-[hsl(var(--ds-teal-600))]">Subgraphs</a></li>
             </ul>
           </div>
 
           <div>
-            <h4 className="mb-5 text-xs font-bold uppercase tracking-widest text-[hsl(var(--text-primary))]">Company</h4>
-            <ul className="space-y-3.5 text-sm text-[hsl(var(--text-secondary))]">
-              <li><Link href="/blog" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Blog</Link></li>
-              <li><Link href="/pricing" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Pricing</Link></li>
-              <li><Link href="/contact" className="transition-colors hover:text-[hsl(var(--brand-primary))]">Contact</Link></li>
+            <h4 className="mb-5 text-xs font-bold uppercase tracking-widest text-[hsl(var(--ds-ink-900))]">Company</h4>
+            <ul className="space-y-3.5 text-sm text-[hsl(var(--ds-ink-600))]">
+              <li><Link href="/blog" className="transition-colors hover:text-[hsl(var(--ds-teal-600))]">Blog</Link></li>
+              <li><Link href="/pricing" className="transition-colors hover:text-[hsl(var(--ds-teal-600))]">Pricing</Link></li>
+              <li><Link href="/contact" className="transition-colors hover:text-[hsl(var(--ds-teal-600))]">Contact</Link></li>
             </ul>
           </div>
         </div>
 
-        <div className="flex flex-col items-center justify-between gap-4 border-t border-[hsl(var(--border-subtle))] pt-8 text-xs text-[hsl(var(--text-faint))] md:flex-row">
+        <div className="flex flex-col items-center justify-between gap-4 border-t border-[hsl(var(--ds-line-light))] pt-8 text-xs text-[hsl(var(--ds-ink-300))] md:flex-row">
           <p>© 2026 Prova Protocol Foundation. All rights reserved.</p>
           <div className="flex gap-6">
-            <Link href="/privacy" className="transition-colors hover:text-[hsl(var(--text-primary))]">Privacy Policy</Link>
-            <Link href="/terms" className="transition-colors hover:text-[hsl(var(--text-primary))]">Terms of Service</Link>
-            <Link href="/contact" className="transition-colors hover:text-[hsl(var(--text-primary))]">Contact</Link>
+            <Link href="/privacy" className="transition-colors hover:text-[hsl(var(--ds-ink-900))]">Privacy Policy</Link>
+            <Link href="/terms" className="transition-colors hover:text-[hsl(var(--ds-ink-900))]">Terms of Service</Link>
+            <Link href="/contact" className="transition-colors hover:text-[hsl(var(--ds-ink-900))]">Contact</Link>
           </div>
         </div>
 

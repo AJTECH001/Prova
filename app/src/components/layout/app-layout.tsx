@@ -7,7 +7,7 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   return (
-    <div className="flex min-h-screen bg-[hsl(var(--bg-surface-alt))]">
+    <div className="flex min-h-screen bg-[hsl(var(--ds-surface-section))]">
       <AppSidebar />
       <div className="flex flex-1 flex-col min-w-0">
         <main className="flex-1 px-4 pt-[72px] pb-10 sm:px-6 sm:pt-8 lg:px-10 lg:pt-10">
