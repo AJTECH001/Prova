@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/auth-store';
 describe('useAuthStore', () => {
   beforeEach(() => {
     localStorage.clear();
+    sessionStorage.clear();
     useAuthStore.getState().logout();
   });
 
@@ -23,8 +24,9 @@ describe('useAuthStore', () => {
       const state = useAuthStore.getState();
       expect(state.accessToken).toBe('access-123');
       expect(state.refreshToken).toBe('refresh-456');
-      expect(localStorage.getItem('access_token')).toBe('access-123');
-      expect(localStorage.getItem('refresh_token')).toBe('refresh-456');
+      // Tokens are intentionally persisted to sessionStorage (XSS hardening), not localStorage.
+      expect(sessionStorage.getItem('access_token')).toBe('access-123');
+      expect(sessionStorage.getItem('refresh_token')).toBe('refresh-456');
     });
   });
 
@@ -52,8 +54,8 @@ describe('useAuthStore', () => {
       expect(state.refreshToken).toBeNull();
       expect(state.walletAddress).toBeNull();
       expect(state.walletProvider).toBeNull();
-      expect(localStorage.getItem('access_token')).toBeNull();
-      expect(localStorage.getItem('refresh_token')).toBeNull();
+      expect(sessionStorage.getItem('access_token')).toBeNull();
+      expect(sessionStorage.getItem('refresh_token')).toBeNull();
       expect(localStorage.getItem('wallet_address')).toBeNull();
       expect(localStorage.getItem('wallet_provider')).toBeNull();
     });

@@ -1,0 +1,19 @@
+name: Setup
+description: Checkout-aware Node + pnpm setup with dependency caching and a frozen install.
+
+runs:
+  using: composite
+  steps:
+    - name: Install pnpm
+      # Version is read from the root package.json "packageManager" field.
+      uses: pnpm/action-setup@v4
+
+    - name: Install Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: pnpm
+
+    - name: Install dependencies
+      shell: bash
+      run: pnpm install --frozen-lockfile

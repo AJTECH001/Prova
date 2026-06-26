@@ -1,0 +1,6 @@
+{
+  "filter_paths": "node_modules|src/mocks|artifacts|cache|fhe-assistant",
+  "exclude_informational": false,
+  "exclude_low": false,
+  "solc_remaps": []
+}

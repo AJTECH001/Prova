@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same ref to save CI minutes.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ---- Blocking gates (currently green) -------------------------------------
+
+  typecheck:
+    name: Typecheck (app + backend)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Backend typecheck
+        run: pnpm --filter @reineira-os/modules-backend run typecheck
+      - name: App typecheck
+        run: pnpm --filter @reineira-os/modules-app run typecheck
+
+  test:
+    name: Unit tests (app + backend)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Backend tests
+        run: pnpm --filter @reineira-os/modules-backend run test
+      - name: App tests
+        run: pnpm --filter @reineira-os/modules-app run test
+
+  build:
+    name: Build (backend)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Backend build (+ OpenAPI spec)
+        run: pnpm --filter @reineira-os/modules-backend run build
+
+  contracts:
+    name: Contracts compile + tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Compile contracts
+        working-directory: contracts
+        run: pnpm run compile
+      - name: Run contract tests
+        working-directory: contracts
+        run: pnpm run test
+
+  # ---- Advisory gates (non-blocking until pre-existing debt is cleared) ------
+
+  lint:
+    name: Lint (advisory)
+    runs-on: ubuntu-latest
+    # TODO(M-lint): make blocking once the ~9 ESLint errors and warnings are resolved.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: ESLint
+        run: pnpm exec eslint .
+      - name: Solhint
+        working-directory: contracts
+        run: pnpm run lint
+
+  security:
+    name: Smart contract static analysis (advisory)
+    runs-on: ubuntu-latest
+    # TODO(M-sec): make blocking once Slither findings are triaged.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Slither
+        uses: crytic/slither-action@v0.4.1
+        with:
+          target: contracts/
+          slither-config: contracts/slither.config.json
+          fail-on: none

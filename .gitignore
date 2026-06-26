@@ -40,6 +40,7 @@ Thumbs.db
 # Internal ops / strategy (not for public release)
 .claude/
 brief.md
+prova-knowledge-base/
 
 # Tooling
 .qodo/
