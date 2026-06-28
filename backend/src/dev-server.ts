@@ -162,6 +162,14 @@ async function main() {
       return;
     }
 
+    // Health probes at root, mirroring production api/index.ts paths.
+    if (pathname === '/health' || pathname === '/health/ready') {
+      const file = join(API_DIR, 'health', pathname === '/health/ready' ? 'ready.ts' : 'index.ts');
+      const mod = await import(file);
+      await mod.default(rawReq as never, createVercelResponse(rawRes));
+      return;
+    }
+
     const matched = routes.find((r) => r.pattern.test(pathname));
 
     if (!matched) {

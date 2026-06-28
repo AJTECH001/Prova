@@ -11,6 +11,8 @@ import balanceHandler from '../src/handlers/balance/index.js';
 import businessProfilesHandler from '../src/handlers/business-profiles/index.js';
 import creditScoreHandler from '../src/handlers/credit-score/[buyerAddress].js';
 import openApiHandler from '../src/handlers/docs/openapi.json.js';
+import healthHandler from '../src/handlers/health/index.js';
+import healthReadyHandler from '../src/handlers/health/ready.js';
 import escrowPayableHandler from '../src/handlers/escrows/payable.js';
 import escrowCoverageHandler from '../src/handlers/escrows/[publicId]/coverage.js';
 import escrowByIdHandler from '../src/handlers/escrows/[publicId].js';
@@ -50,8 +52,9 @@ interface Route {
 
 // Order matters: specific static routes before dynamic ones.
 const ROUTES: Route[] = [
-  // Health — unauthenticated, used by Railway healthcheck
-  { pattern: /^\/health$/, paramNames: [], handler: async (_req, res) => { res.status(200).json({ ok: true }); } },
+  // Health — unauthenticated. Liveness is cheap; readiness verifies dependencies (DB).
+  { pattern: /^\/health\/ready$/, paramNames: [], handler: healthReadyHandler },
+  { pattern: /^\/health$/,        paramNames: [], handler: healthHandler },
   // Auth
   { pattern: /^\/api\/v1\/auth\/wallet\/nonce$/,    paramNames: [],           handler: authNonceHandler },
   { pattern: /^\/api\/v1\/auth\/wallet\/verify$/,   paramNames: [],           handler: authVerifyHandler },
