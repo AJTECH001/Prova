@@ -2,6 +2,7 @@ import '@nomicfoundation/hardhat-toolbox-viem';
 import '@nomicfoundation/hardhat-ethers';
 import '@nomicfoundation/hardhat-chai-matchers';
 import '@cofhe/hardhat-plugin';
+import 'solidity-coverage';
 import 'dotenv/config';
 
 import type { HardhatUserConfig } from 'hardhat/config';

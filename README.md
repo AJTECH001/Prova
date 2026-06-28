@@ -37,32 +37,38 @@ Our GTM relies on bootstrapping permissionless USDC insurance pools. Liquidity P
 
 ## 💻 Developer Setup Guide
 
-The underlying standard utilized for these packages complies strictly with the official ReineiraOS development toolkit and the Fhenix CoFHE hooks.
+This repository is a **pnpm workspace monorepo** with three packages — `app/` (Next.js dashboard),
+`backend/` (API + FHE worker client), and `contracts/` (Hardhat + Fhenix CoFHE plugins). It follows
+the official ReineiraOS development toolkit and the Fhenix CoFHE hooks.
+
+### Prerequisites
+
+- Node.js ≥ 18 (CI uses Node 22)
+- pnpm ≥ 10 (`corepack enable` will provision the pinned version)
 
 ### Running the Environment
 
-**1. Install Dependencies**
+**1. Install all workspace dependencies (from the repo root)**
 ```bash
-# Frontend UI (Client-Side Encryption)
-cd frontend
-npm install
-
-# Backend Smart Contracts (FHE Mocks)
-cd ../contracts
-npm install
+pnpm install
 ```
 
-**2. Test the Actuarial FHE Math in Hardhat**
+**2. Test the actuarial FHE math and plugin contracts**
 ```bash
-cd contracts
-npx hardhat test
+pnpm --filter reineira-code test          # or: cd contracts && pnpm test
 ```
-*This verifies the `ProvaUnderwriterPolicy.sol` mock algorithms run correctly via `hre.cofhe.initializeLocalFHE()`.*
+*Runs the full Hardhat suite (resolver, policy, registry, and adapter tests) against the CoFHE
+mock coprocessor, which the `@cofhe/hardhat-plugin` deploys automatically. Add coverage with
+`pnpm --filter reineira-code test:coverage`.*
 
-**3. Run the Frontend Dashboard**
+**3. Run the frontend dashboard**
 ```bash
-cd frontend
-npm run dev
+pnpm dev:app
 ```
-*Navigate to localhost to test the in-browser FHE ciphertext generation before submitting to Arbitrum Sepolia.*
+*Test in-browser FHE ciphertext generation before submitting to Arbitrum Sepolia.*
+
+**4. Run the backend API locally**
+```bash
+pnpm dev:backend
+```
 # Prova

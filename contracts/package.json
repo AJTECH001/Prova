@@ -12,6 +12,7 @@
     "test": "hardhat test",
     "test:resolvers": "hardhat test test/resolvers/",
     "test:policies": "hardhat test test/policies/",
+    "test:coverage": "SOLIDITY_COVERAGE=true hardhat coverage",
     "clean": "hardhat clean",
     "deploy": "hardhat run scripts/deploy.ts --network arb-sepolia",
     "deploy:local": "hardhat run scripts/deploy.ts --network localhost",
