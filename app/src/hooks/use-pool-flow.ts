@@ -209,7 +209,11 @@ export function useUnstakeFlow() {
         // Backend lost the record after an in-memory restart — fall back to localStorage.
         if (backendErr?.response?.status === 404) {
           const local = usePoolStore.getState().stakes.find((s) => s.public_id === stakePublicId);
-          if (!local) throw new Error('Stake not found in backend or locally. Please re-stake.');
+          if (!local) {
+            throw new Error('Stake not found in backend or locally. Please re-stake.', {
+              cause: backendErr,
+            });
+          }
           poolAddress = local.pool_address;
           stakeIdRaw = local.on_chain_stake_id ?? null;
         } else {

@@ -14,6 +14,9 @@ export default function AppGroupLayout({ children }: { children: React.ReactNode
   const isAuthorized = useAuthStore((s) => s.isAuthorized)
 
   useEffect(() => {
+    // One-time client mount flag: sessionStorage-based auth is unavailable during SSR,
+    // so we gate rendering until mount to avoid a hydration mismatch. Single, intentional setState.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true)
     if (!isAuthorized()) {
       router.replace('/')

@@ -4,7 +4,11 @@ export function usePolling(callback: () => Promise<void>, intervalMs = 3000) {
   const [isPolling, setIsPolling] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const callbackRef = useRef(callback);
-  callbackRef.current = callback;
+  // Keep the latest callback without re-creating the interval. Updating the ref in
+  // an effect (not during render) keeps render pure per react-hooks/refs.
+  useEffect(() => {
+    callbackRef.current = callback;
+  }, [callback]);
 
   const stop = useCallback(() => {
     setIsPolling(false);

@@ -53,6 +53,7 @@ export function useAuth() {
     try {
       await AuthService.logout();
     } catch {
+      // Logout is best-effort — local/wallet cleanup in `finally` must run regardless.
     } finally {
       authLogout();
       await walletDisconnect();

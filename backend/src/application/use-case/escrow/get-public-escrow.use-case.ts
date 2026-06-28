@@ -18,7 +18,7 @@ export class GetPublicEscrowUseCase {
       on_chain_id: escrow.onChainEscrowId,
       type: escrow.type,
       counterparty: escrow.counterparty,
-      deadline: escrow.deadline?.toISOString().split('T')[0]!,
+      deadline: escrow.deadline ? escrow.deadline.toISOString().split('T')[0] : undefined,
       external_reference: escrow.externalReference,
       amount: escrow.amount,
       currency: { type: escrow.currency.type, code: escrow.currency.code },

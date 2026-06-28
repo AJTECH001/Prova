@@ -173,7 +173,7 @@ class FheService {
       this.initPromise = null;
       this.hasRealWalletClient = false;
       const message = error?.message || error?.toString() || 'Unknown error';
-      throw new Error(`FHE initialization failed: ${message}`);
+      throw new Error(`FHE initialization failed: ${message}`, { cause: error });
     }
   }
 

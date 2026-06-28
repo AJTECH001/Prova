@@ -80,7 +80,9 @@ async function main() {
             console.log(`   poolId=${poolId}  address=${poolAddress}`);
             break;
           }
-        } catch {}
+        } catch {
+          // Not the PoolCreated event (or an unparseable log) — skip it.
+        }
       }
       if (poolAddress) break;
     } catch (e: any) {

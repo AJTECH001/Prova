@@ -4,58 +4,23 @@ pragma solidity ^0.8.24;
 import {FHE, Common, euint64, euint32, euint16, ebool} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 
 /// @title  FHERiskMath
-/// @notice Shared library for FHE-based risk calculation patterns used across insurance policies.
+/// @notice Shared library for FHE-based risk calculation patterns used by insurance policies.
 ///
-///         Centralizes common FHE operations like risk curve evaluation, add-on calculations,
-///         and conditional premium adjustments. All functions operate on encrypted values
-///         and maintain privacy throughout the computation.
+///         Centralizes the FHE operations used to price coverage: risk-curve evaluation,
+///         add-on combination, and conditional premium finalization. All functions operate
+///         on encrypted values and maintain privacy throughout the computation.
 ///
-/// @dev    This library standardizes FHE risk evaluation patterns to improve auditability,
-///         reduce code duplication, and ensure consistent behavior across different
-///         insurance product implementations.
+/// @dev    Only the functions exercised by the active policy flow are kept here. Prior
+///         speculative helpers (unoptimized curve, validators, encrypted-constant factories,
+///         3-input add-on) were removed to minimize the audited FHE surface.
 library FHERiskMath {
-
-    // ─── Constants ───────────────────────────────────────────────────────────
-
-    /// @notice Number of buckets in the standard risk curve.
-    uint8 internal constant NUM_BUCKETS = 6;
-
-    // ─── Errors ──────────────────────────────────────────────────────────────
-
-    error InvalidCurveLength();
-    error InvalidScore();
 
     // ─── Risk Curve Evaluation ───────────────────────────────────────────────
 
     /// @notice Evaluates an encrypted credit score against a 6-bucket risk curve.
-    /// @dev    Implements the standard "climb toward better rates" pattern where
-    ///         higher scores get lower premiums. Starts at floor and selects
-    ///         progressively better rates for higher scores.
-    /// @param  score Encrypted credit score to evaluate.
-    /// @param  thresholds Array of 6 encrypted score thresholds (descending order).
-    /// @param  premiums Array of 6 encrypted premium rates corresponding to thresholds.
-    /// @return Encrypted premium rate in basis points for the given score.
-    function evaluateRiskCurve(
-        euint32 score,
-        euint32[6] memory thresholds,
-        euint32[6] memory premiums
-    ) internal returns (euint32) {
-        // Start at the floor bucket (highest premium for lowest scores)
-        euint32 premium = premiums[5];
-
-        // Climb toward better rates as score increases
-        for (int8 i = 4; i >= 0; i--) {
-            ebool meetsThreshold = FHE.gte(score, thresholds[uint8(i)]);
-            premium = FHE.select(meetsThreshold, premiums[uint8(i)], premium);
-        }
-
-        FHE.allowThis(premium);
-        return premium;
-    }
-
-    /// @notice Evaluates an encrypted credit score against a 6-bucket risk curve (optimized).
-    /// @dev    Unrolled loop version for gas optimization. Functionally identical to
-    ///         evaluateRiskCurve but avoids loop overhead.
+    /// @dev    Unrolled "climb toward better rates" pattern: starts at the floor premium
+    ///         (highest, for the lowest scores) and selects a lower premium for each
+    ///         threshold the score meets. Thresholds are in descending order.
     /// @param  score Encrypted credit score to evaluate.
     /// @param  thresholds Array of 6 encrypted score thresholds (descending order).
     /// @param  premiums Array of 6 encrypted premium rates corresponding to thresholds.
@@ -106,26 +71,6 @@ library FHERiskMath {
         return combined;
     }
 
-    /// @notice Adds multiple encrypted risk add-ons safely.
-    /// @dev    Extends addRiskAddons for three add-on values. Useful for
-    ///         country + industry + sector risk combinations.
-    /// @param  addon1 First encrypted add-on value.
-    /// @param  addon2 Second encrypted add-on value.
-    /// @param  addon3 Third encrypted add-on value.
-    /// @return Combined encrypted add-on value.
-    function addRiskAddons(
-        euint16 addon1,
-        euint16 addon2,
-        euint16 addon3
-    ) internal returns (euint32) {
-        euint32 firstTwo = addRiskAddons(addon1, addon2);
-
-        if (!Common.isInitialized(addon3)) addon3 = FHE.asEuint16(0);
-        euint32 total = FHE.add(firstTwo, FHE.asEuint32(addon3));
-        FHE.allowThis(total);
-        return total;
-    }
-
     // ─── Premium Finalization ────────────────────────────────────────────────
 
     /// @notice Combines base premium with risk add-ons and applies conditional adjustments.
@@ -149,9 +94,9 @@ library FHERiskMath {
         return totalPremium;
     }
 
-    /// @notice Converts finalized euint32 premium to euint64 for external use.
-    /// @dev    Many policy interfaces expect euint64 return types. This function
-    ///         handles the conversion and ACL permissions.
+    /// @notice Converts a finalized euint32 premium to euint64 for external use.
+    /// @dev    Policy interfaces expect euint64 return types. Handles the conversion
+    ///         and ACL permissions for the caller.
     /// @param  premium32 Finalized euint32 premium value.
     /// @param  caller Address to grant read permission to.
     /// @return Premium converted to euint64 with proper ACL permissions.
@@ -160,66 +105,5 @@ library FHERiskMath {
         FHE.allowThis(premium64);
         FHE.allow(premium64, caller);
         return premium64;
-    }
-
-    // ─── Validation Helpers ───────────────────────────────────────────────────
-
-    /// @notice Validates that encrypted score is within reasonable bounds.
-    /// @dev    Checks score against maximum reasonable value to catch
-    ///         invalid inputs or computation errors.
-    /// @param  score Encrypted score to validate.
-    /// @param  maxScore Maximum allowed score value.
-    /// @return Encrypted boolean indicating if score is valid.
-    function validateScore(euint32 score, uint32 maxScore) internal returns (ebool) {
-        euint32 maxScoreEnc = FHE.asEuint32(maxScore);
-        FHE.allowThis(maxScoreEnc);
-        return FHE.lte(score, maxScoreEnc);
-    }
-
-    /// @notice Validates that premium is within reasonable bounds.
-    /// @dev    Prevents unreasonable premium calculations that could indicate
-    ///         computation errors or malicious inputs.
-    /// @param  premium Encrypted premium to validate.
-    /// @param  maxPremiumBps Maximum allowed premium in basis points.
-    /// @return Encrypted boolean indicating if premium is valid.
-    function validatePremium(euint32 premium, uint32 maxPremiumBps) internal returns (ebool) {
-        euint32 maxPremiumEnc = FHE.asEuint32(maxPremiumBps);
-        FHE.allowThis(maxPremiumEnc);
-        return FHE.lte(premium, maxPremiumEnc);
-    }
-
-    // ─── Utility Functions ────────────────────────────────────────────────────
-
-    /// @notice Creates an encrypted zero value of specified type with proper ACL.
-    /// @dev    Utility for creating initialized zero values in FHE computations.
-    /// @return Encrypted zero value as euint32.
-    function encryptedZero32() internal returns (euint32) {
-        euint32 zero = FHE.asEuint32(0);
-        FHE.allowThis(zero);
-        return zero;
-    }
-
-    /// @notice Creates an encrypted zero value as euint16 with proper ACL.
-    /// @return Encrypted zero value as euint16.
-    function encryptedZero16() internal returns (euint16) {
-        euint16 zero = FHE.asEuint16(0);
-        FHE.allowThis(zero);
-        return zero;
-    }
-
-    /// @notice Creates an encrypted boolean true value with proper ACL.
-    /// @return Encrypted true value.
-    function encryptedTrue() internal returns (ebool) {
-        ebool trueVal = FHE.asEbool(true);
-        FHE.allowThis(trueVal);
-        return trueVal;
-    }
-
-    /// @notice Creates an encrypted boolean false value with proper ACL.
-    /// @return Encrypted false value.
-    function encryptedFalse() internal returns (ebool) {
-        ebool falseVal = FHE.asEbool(false);
-        FHE.allowThis(falseVal);
-        return falseVal;
     }
 }

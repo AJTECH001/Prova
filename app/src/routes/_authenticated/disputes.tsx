@@ -25,9 +25,9 @@ function shortAddr(addr: string) {
 
 function DisputeRow({ tx, onView }: { tx: TransactionResponse; onView: () => void }) {
   const hasCoverage = !!tx.coverage_id;
-  const daysPast = tx.deadline
-    ? Math.max(0, Math.floor((Date.now() - new Date(tx.deadline).getTime()) / 86_400_000))
-    : 0;
+  // Display-only "days overdue" badge; reading the current clock during render is intentional.
+  // eslint-disable-next-line react-hooks/purity
+  const daysPast = tx.deadline ? Math.max(0, Math.floor((Date.now() - new Date(tx.deadline).getTime()) / 86_400_000)) : 0;
 
   return (
     <div className="flex flex-col gap-3 border-b border-[var(--color-border-default)] py-4 last:border-0 sm:flex-row sm:items-center sm:justify-between">

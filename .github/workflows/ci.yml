@@ -64,13 +64,13 @@ jobs:
   # ---- Advisory gates (non-blocking until pre-existing debt is cleared) ------
 
   lint:
-    name: Lint (advisory)
+    name: Lint
     runs-on: ubuntu-latest
-    # TODO(M-lint): make blocking once the ~9 ESLint errors and warnings are resolved.
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
+      # Blocking: ESLint errors fail the build. Pre-existing warnings remain as
+      # tracked debt (eslint exits 0 on warnings) and are driven down incrementally.
       - name: ESLint
         run: pnpm exec eslint .
       - name: Solhint
