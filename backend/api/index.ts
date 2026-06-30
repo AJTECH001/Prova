@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { applySecurityHeaders } from '../src/interface/security-headers.js';
 
 import authNonceHandler from '../src/handlers/auth/wallet/nonce.js';
 import authVerifyHandler from '../src/handlers/auth/wallet/verify.js';
@@ -111,6 +112,8 @@ const ROUTES: Route[] = [
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   const pathname = (req.url ?? '/').split('?')[0];
+
+  applySecurityHeaders(res);
 
   if (req.method === 'OPTIONS') {
     res.status(204).end();

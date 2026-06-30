@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {ConditionResolverBase} from "../shared/extensions/ConditionResolverBase.sol";
+import {IPaymentOracle} from "../interfaces/IPaymentOracle.sol";
 
 /// @title  TradeInvoiceResolver
 /// @notice Condition resolver implementing trade credit insurance protracted-default rules.
@@ -12,13 +13,15 @@ import {ConditionResolverBase} from "../shared/extensions/ConditionResolverBase.
 ///         but are never stored on-chain.
 ///
 /// @dev    Inherits caller-binding, ERC-165, ERC-7201 storage, and ERC-2771 from
-///         ConditionResolverBase and TestnetCoreBase.
+///         ConditionResolverBase and CoreBase.
 contract TradeInvoiceResolver is ConditionResolverBase {
 
     // ─── Constants ───────────────────────────────────────────────────────────
 
-    /// @notice Minimum waiting period for trade credit insurance (industry standard).
-    uint256 public constant MIN_WAITING_PERIOD = 30 days;
+    /// @notice Absolute floor for the configurable minimum waiting period (anti-gaming).
+    /// @dev    The owner can tune `minWaitingPeriod` (e.g. a 7-day pilot grace) but can
+    ///         never set it below this floor, so a claim window can't be collapsed to ~0.
+    uint256 public constant MIN_WAITING_PERIOD_FLOOR = 1 days;
 
     /// @notice Maximum waiting period for trade credit insurance (industry standard).
     uint256 public constant MAX_WAITING_PERIOD = 180 days;
@@ -59,6 +62,13 @@ contract TradeInvoiceResolver is ConditionResolverBase {
         uint16 conditionFeeBps;
         /// @notice Address that receives the condition fee.
         address conditionFeeRecipient;
+        /// @notice Optional payment-truth oracle. When set, a claim is suppressed if the
+        ///         invoice is attested paid. When address(0), the resolver is time-only
+        ///         (backward-compatible behaviour).
+        address paymentOracle;
+        /// @notice Owner-configurable minimum waiting period enforced on new conditions.
+        ///         Bounded by [MIN_WAITING_PERIOD_FLOOR, MAX_WAITING_PERIOD]; defaults to 30 days.
+        uint256 minWaitingPeriod;
     }
 
     function _resolverStorage() private pure returns (ResolverStorage storage $) {
@@ -85,6 +95,14 @@ contract TradeInvoiceResolver is ConditionResolverBase {
     /// @param  recipient New fee recipient address.
     event ConditionFeeSet(uint16 bps, address indexed recipient);
 
+    /// @notice Emitted when the payment-truth oracle is updated.
+    /// @param  paymentOracle New oracle address (address(0) disables the gate).
+    event PaymentOracleSet(address indexed paymentOracle);
+
+    /// @notice Emitted when the owner updates the minimum waiting period.
+    /// @param  minWaitingPeriod New minimum waiting period, in seconds.
+    event MinWaitingPeriodSet(uint256 minWaitingPeriod);
+
     // ─── Constructor ─────────────────────────────────────────────────────────
 
     constructor() {
@@ -104,7 +122,11 @@ contract TradeInvoiceResolver is ConditionResolverBase {
     ) external initializer {
         __ConditionResolverBase_init(initialOwner, trustedForwarder);
         if (_escrowContract == address(0)) revert ZeroAddress();
-        _resolverStorage().escrowContract = _escrowContract;
+        ResolverStorage storage $ = _resolverStorage();
+        $.escrowContract = _escrowContract;
+        // Default minimum grace; the owner can lower it (e.g. to 7 days for a pilot)
+        // down to MIN_WAITING_PERIOD_FLOOR via setMinWaitingPeriod.
+        $.minWaitingPeriod = 30 days;
         emit EscrowContractSet(_escrowContract);
     }
 
@@ -130,11 +152,42 @@ contract TradeInvoiceResolver is ConditionResolverBase {
         emit ConditionFeeSet(bps, recipient);
     }
 
+    /// @notice Set (or clear) the payment-truth oracle consulted during claim resolution.
+    /// @dev    When set, `isConditionMet` suppresses a claim for any escrow the oracle
+    ///         reports as paid. Pass address(0) to disable the gate (time-only behaviour).
+    ///         Only an owner-controlled address is ever consulted — never user-supplied.
+    /// @param  _paymentOracle Address of an IPaymentOracle implementation, or address(0).
+    function setPaymentOracle(address _paymentOracle) external onlyOwner {
+        _resolverStorage().paymentOracle = _paymentOracle;
+        emit PaymentOracleSet(_paymentOracle);
+    }
+
+    /// @notice Update the minimum waiting period accepted on new conditions.
+    /// @dev    Lets the owner express e.g. a 7-day pilot grace. Bounded to
+    ///         [MIN_WAITING_PERIOD_FLOOR, MAX_WAITING_PERIOD] so it cannot be gamed to ~0.
+    /// @param  newMinWaitingPeriod New minimum waiting period, in seconds.
+    function setMinWaitingPeriod(uint256 newMinWaitingPeriod) external onlyOwner {
+        if (newMinWaitingPeriod < MIN_WAITING_PERIOD_FLOOR ||
+            newMinWaitingPeriod > MAX_WAITING_PERIOD) revert InvalidWaitingPeriod();
+        _resolverStorage().minWaitingPeriod = newMinWaitingPeriod;
+        emit MinWaitingPeriodSet(newMinWaitingPeriod);
+    }
+
     // ─── View helpers ─────────────────────────────────────────────────────────
 
     /// @notice Returns the authorised escrow contract address.
     function escrowContract() external view returns (address) {
         return _resolverStorage().escrowContract;
+    }
+
+    /// @notice Returns the configured payment-truth oracle (address(0) if disabled).
+    function paymentOracle() external view returns (address) {
+        return _resolverStorage().paymentOracle;
+    }
+
+    /// @notice Returns the current owner-configured minimum waiting period (seconds).
+    function minWaitingPeriod() external view returns (uint256) {
+        return _resolverStorage().minWaitingPeriod;
     }
 
     // ─── IConditionResolver ──────────────────────────────────────────────────
@@ -147,7 +200,7 @@ contract TradeInvoiceResolver is ConditionResolverBase {
     ///         and are not retained in storage.
     /// @param  escrowId Unique identifier of the escrow being registered.
     /// @param  data     ABI-encoded invoice terms — buyer, seller, amount, dueDate, waitingPeriod.
-    function onConditionSet(uint256 escrowId, bytes calldata data) external override {
+    function onConditionSet(uint256 escrowId, bytes calldata data) external override whenNotPaused {
         ResolverStorage storage $ = _resolverStorage();
         if (msg.sender != $.escrowContract) revert UnauthorizedCaller(escrowId);
         // Binds the caller as the only authorised address for this escrowId.
@@ -166,7 +219,7 @@ contract TradeInvoiceResolver is ConditionResolverBase {
         if (seller == address(0) || seller == buyer) revert InvalidSeller();
         if (invoiceAmount == 0)                      revert InvalidAmount();
         if (dueDate <= block.timestamp)              revert InvalidDueDate();
-        if (waitingPeriod < MIN_WAITING_PERIOD ||
+        if (waitingPeriod < $.minWaitingPeriod ||
             waitingPeriod > MAX_WAITING_PERIOD)      revert InvalidWaitingPeriod();
 
         // Prevent the same invoice from being registered under two different escrows.
@@ -198,9 +251,20 @@ contract TradeInvoiceResolver is ConditionResolverBase {
         onlyBoundEscrow(escrowId)
         returns (bool)
     {
-        InvoiceCondition memory c = _resolverStorage().conditions[escrowId];
+        ResolverStorage storage $ = _resolverStorage();
+        InvoiceCondition memory c = $.conditions[escrowId];
         if (!c.set) return false;
-        return block.timestamp >= c.dueDate + c.waitingPeriod;
+
+        // The protracted-default window must have elapsed.
+        if (block.timestamp < c.dueDate + c.waitingPeriod) return false;
+
+        // Payment-truth gate: if a payment oracle is configured and reports the invoice
+        // as paid, no claim opens (the buyer paid off-chain). When no oracle is set, the
+        // resolver remains time-only — production deployments MUST configure an oracle.
+        address oracle = $.paymentOracle;
+        if (oracle != address(0) && IPaymentOracle(oracle).isPaid(escrowId)) return false;
+
+        return true;
     }
 
     /// @notice Return the condition fee charged at escrow creation.

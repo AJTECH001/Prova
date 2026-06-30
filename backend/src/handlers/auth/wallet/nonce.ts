@@ -3,6 +3,7 @@ import { RequestNonceUseCase } from '../../../application/use-case/auth/request-
 import { container } from '../../../infrastructure/container.js';
 import { createHandler } from '../../../interface/handler-factory.js';
 import { withCors } from '../../../interface/middleware/with-cors.js';
+import { withRateLimit } from '../../../interface/middleware/with-rate-limit.js';
 import { Response } from '../../../interface/response.js';
 
 const useCase = new RequestNonceUseCase(container.nonceService);
@@ -16,4 +17,5 @@ const handler = createHandler({
   },
 });
 
-export default withCors(handler);
+// Pre-auth endpoint — throttle per IP to blunt nonce-harvesting / brute force.
+export default withCors(withRateLimit({ name: 'auth-nonce', limit: 20, windowMs: 60_000 })(handler));

@@ -3,6 +3,7 @@ import { RefreshTokenUseCase } from '../../../application/use-case/auth/refresh-
 import { container } from '../../../infrastructure/container.js';
 import { createHandler } from '../../../interface/handler-factory.js';
 import { withCors } from '../../../interface/middleware/with-cors.js';
+import { withRateLimit } from '../../../interface/middleware/with-rate-limit.js';
 import { Response } from '../../../interface/response.js';
 
 const useCase = new RefreshTokenUseCase(container.jwtService, container.sessionRepo, container.userRepo);
@@ -16,4 +17,4 @@ const handler = createHandler({
   },
 });
 
-export default withCors(handler);
+export default withCors(withRateLimit({ name: 'auth-refresh', limit: 60, windowMs: 60_000 })(handler));

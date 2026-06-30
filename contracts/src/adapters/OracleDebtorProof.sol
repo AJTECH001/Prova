@@ -83,6 +83,7 @@ contract OracleDebtorProof is IDebtorProof, Ownable {
     /// @param  initialOwner   Address that will own this contract (can rotate oracle).
     /// @param  initialOracle  Address authorized to call setScore (PROVA backend wallet).
     constructor(address initialOwner, address initialOracle) Ownable(initialOwner) {
+        if (initialOracle == address(0)) revert InvalidCiphertextZeroHash(); // reuse zero check
         oracle = initialOracle;
         emit OracleUpdated(initialOracle);
     }

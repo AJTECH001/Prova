@@ -293,4 +293,68 @@ describe('TradeCreditInsurancePolicy', () => {
       );
     });
   });
+
+  describe('emergency pause (new-business only)', () => {
+    it('blocks onPolicySet (new business) while paused', async () => {
+      const { policy, harness } = await loadFixture(deployFixture);
+      await policy.write.pause();
+      await expectRevert(
+        harness.write.onPolicySet([policy.address, COVERAGE_ID, encodePolicyData()]),
+        'EnforcedPause()',
+      );
+    });
+
+    it('does NOT trap claim settlement: judge stays live while paused', async () => {
+      const { policy, harness, signers, setUpCoverage } = await loadFixture(deployFixture);
+      // Coverage is issued before the incident; then the protocol is paused.
+      await setUpCoverage(800);
+      await policy.write.pause();
+      const enc = await encryptUint64(signers[0], 10_000, harness.address); // within credit limit
+      await harness.write.judge([policy.address, COVERAGE_ID, encodeDisputeProof(enc)]);
+      await hre.cofhe.mocks.expectPlaintext(await harness.read.lastValid(), 1n);
+    });
+  });
+
+  describe('judge — disputed-debt exclusion', () => {
+    async function withDisputeOracle() {
+      const ctx = await loadFixture(deployFixture);
+      const [owner] = await hre.viem.getWalletClients();
+      const disputeOracle = await hre.viem.deployContract('DisputeAttestation', [
+        owner.account.address,
+        owner.account.address,
+      ]);
+      await ctx.policy.write.setDisputeOracle([disputeOracle.address]);
+      return { ...ctx, disputeOracle };
+    }
+
+    it('rejects an otherwise-valid claim when the coverage is disputed', async () => {
+      const { policy, harness, signers, setUpCoverage, disputeOracle } = await withDisputeOracle();
+      await setUpCoverage(800);
+      await disputeOracle.write.attestDispute([COVERAGE_ID, true]);
+      // Within the credit limit, but the debt is disputed → excluded.
+      const enc = await encryptUint64(signers[0], 10_000, harness.address);
+      await harness.write.judge([policy.address, COVERAGE_ID, encodeDisputeProof(enc)]);
+      await hre.cofhe.mocks.expectPlaintext(await harness.read.lastValid(), 0n);
+    });
+
+    it('approves the same claim once the dispute is cleared', async () => {
+      const { policy, harness, signers, setUpCoverage, disputeOracle } = await withDisputeOracle();
+      await setUpCoverage(800);
+      await disputeOracle.write.attestDispute([COVERAGE_ID, true]);
+      await disputeOracle.write.attestDispute([COVERAGE_ID, false]);
+      const enc = await encryptUint64(signers[0], 10_000, harness.address);
+      await harness.write.judge([policy.address, COVERAGE_ID, encodeDisputeProof(enc)]);
+      await hre.cofhe.mocks.expectPlaintext(await harness.read.lastValid(), 1n);
+    });
+
+    it('only lets the owner set the dispute oracle', async () => {
+      const { policy, disputeOracle, signers } = await withDisputeOracle();
+      const [, stranger] = await hre.viem.getWalletClients();
+      await expectRevert(
+        policy.write.setDisputeOracle([disputeOracle.address], { account: stranger.account }),
+        'OwnableUnauthorizedAccount',
+      );
+      void signers;
+    });
+  });
 });

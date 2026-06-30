@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {TestnetCoreBase} from "../shared/TestnetCoreBase.sol";
+import {CoreBase} from "../shared/CoreBase.sol";
 import {FHE, Common, euint64, ebool} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 
 /// @title  DebtorExposureRegistry
@@ -12,11 +12,14 @@ import {FHE, Common, euint64, ebool} from "@fhenixprotocol/cofhe-contracts/FHE.s
 ///         an encrypted boolean that callers use with FHE.select for branching.
 ///
 ///         The cap is enforced against the aggregate per-debtor total across all pools,
-///         preventing bypass via pool-splitting. Per-pool buckets are maintained for analytics.
+///         preventing bypass via pool-splitting. Per-pool analytics are reconstructed off-chain
+///         by the backend from its own coverage records — no per-pool buckets are written on-chain
+///         (they were never used for cap enforcement; removing the writes trims gas, FHE ops, and
+///         attack surface). The deprecated bucket storage slot is retained for upgrade safety.
 ///
 ///         Write access is restricted to contracts whitelisted by the owner, preventing
 ///         unauthorised mutation of exposure state.
-contract DebtorExposureRegistry is TestnetCoreBase {
+contract DebtorExposureRegistry is CoreBase {
 
     // ─── Errors ──────────────────────────────────────────────────────────────
 
@@ -35,11 +38,14 @@ contract DebtorExposureRegistry is TestnetCoreBase {
     // ─── ERC-7201 namespaced storage ─────────────────────────────────────────
 
     struct ExposureStorage {
-        /// @dev Per-pool exposure buckets for analytics segregation (keyed by debtor + pool).
-        ///      Not used for cap enforcement — see exposureTotal.
-        mapping(bytes32 => mapping(address => euint64)) exposure;
+        /// @dev DEPRECATED (2026-06-30): former per-pool analytics buckets. No longer written or
+        ///      read — per-pool analytics now live off-chain. The slot is RETAINED (not deleted)
+        ///      so `exposureTotal` keeps its storage offset, preserving upgrade safety for the
+        ///      already-deployed UUPS proxy. Do not reuse.
+        mapping(bytes32 => mapping(address => euint64)) deprecatedExposureBuckets;
         /// @dev Aggregate per-debtor exposure total used for cap enforcement across all pools.
-        ///      Enforcing caps on this aggregate prevents bypass via pool-splitting.
+        ///      Enforcing caps on this aggregate prevents bypass via pool-splitting. This is the
+        ///      ONLY exposure state kept on-chain.
         mapping(bytes32 => euint64) exposureTotal;
     }
 
@@ -63,7 +69,7 @@ contract DebtorExposureRegistry is TestnetCoreBase {
     /// @param  initialOwner     Address that will own this contract.
     /// @param  trustedForwarder ERC-2771 forwarder address (address(0) to disable).
     function initialize(address initialOwner, address trustedForwarder) external initializer {
-        __TestnetCoreBase_init(initialOwner, trustedForwarder);
+        __CoreBase_init(initialOwner, trustedForwarder);
     }
 
     // ─── Owner administration ─────────────────────────────────────────────────
@@ -89,11 +95,13 @@ contract DebtorExposureRegistry is TestnetCoreBase {
     ///         across all pools — not just the individual pool bucket — preventing
     ///         bypass via pool-splitting. The cap check is performed entirely within FHE.
     /// @param  debtorId       Canonical debtor identifier.
-    /// @param  poolId         Pool address used to segregate exposure per currency pool.
+    /// @dev    The second parameter (caller's pool context) is intentionally unused on-chain —
+    ///         per-pool analytics are reconstructed off-chain. It is retained positionally for
+    ///         ABI stability so existing callers (policy, harness, tests) need no change.
     /// @param  amount         Invoice amount as an encrypted euint64 handle.
     /// @param  globalCapPlain Plaintext maximum allowable exposure for this debtor.
     /// @return ok             Encrypted boolean — true if the new exposure is within cap.
-    function addExposure(bytes32 debtorId, address poolId, euint64 amount, uint64 globalCapPlain)
+    function addExposure(bytes32 debtorId, address /* poolId */, euint64 amount, uint64 globalCapPlain)
         external
         returns (ebool ok)
     {
@@ -115,15 +123,6 @@ contract DebtorExposureRegistry is TestnetCoreBase {
         euint64 nextTotal = FHE.select(ok, candidate, currentTotal);
         $.exposureTotal[debtorId] = nextTotal;
         FHE.allowThis(nextTotal);
-
-        // Maintain per-pool bucket for analytics (updated only when cap passes).
-        euint64 currentPool = $.exposure[debtorId][poolId];
-        if (!Common.isInitialized(currentPool)) {
-            currentPool = FHE.asEuint64(0);
-        }
-        euint64 nextPool = FHE.select(ok, FHE.add(currentPool, amount), currentPool);
-        $.exposure[debtorId][poolId] = nextPool;
-        FHE.allowThis(nextPool);
 
         FHE.allowTransient(ok, msg.sender);
     }

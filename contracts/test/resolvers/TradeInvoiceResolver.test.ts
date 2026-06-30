@@ -11,6 +11,8 @@ import {
 import { deployBehindProxy } from '../helpers/proxy';
 import { expectRevert } from '../helpers/assertions';
 
+const ONE_DAY = 24n * 60n * 60n;
+const SEVEN_DAYS = 7n * 24n * 60n * 60n;
 const THIRTY_DAYS = 30n * 24n * 60n * 60n;
 const NINETY_DAYS = 90n * 24n * 60n * 60n;
 const ONE_HUNDRED_EIGHTY_DAYS = 180n * 24n * 60n * 60n;
@@ -76,10 +78,11 @@ describe('TradeInvoiceResolver', () => {
       );
     });
 
-    it('exposes the industry-standard waiting-period bounds', async () => {
+    it('exposes the waiting-period bounds and the default minimum', async () => {
       const { resolver } = await loadFixture(deployFixture);
-      expect(await resolver.read.MIN_WAITING_PERIOD()).to.equal(THIRTY_DAYS);
+      expect(await resolver.read.MIN_WAITING_PERIOD_FLOOR()).to.equal(ONE_DAY);
       expect(await resolver.read.MAX_WAITING_PERIOD()).to.equal(ONE_HUNDRED_EIGHTY_DAYS);
+      expect(await resolver.read.minWaitingPeriod()).to.equal(THIRTY_DAYS);
     });
 
     it('supports the IConditionResolver and ERC-165 interfaces', async () => {
@@ -352,6 +355,66 @@ describe('TradeInvoiceResolver', () => {
         resolver.write.setEscrowContract([stranger.account.address], {
           account: stranger.account,
         }),
+        'OwnableUnauthorizedAccount',
+      );
+    });
+  });
+
+  describe('configurable minimum waiting period (pilot grace)', () => {
+    it('lets the owner lower the minimum to a 7-day pilot grace', async () => {
+      const { resolver } = await loadFixture(deployFixture);
+      await resolver.write.setMinWaitingPeriod([SEVEN_DAYS]);
+      expect(await resolver.read.minWaitingPeriod()).to.equal(SEVEN_DAYS);
+    });
+
+    it('accepts a 7-day invoice waiting period after the minimum is lowered', async () => {
+      const { resolver, escrow, defaultInvoice } = await loadFixture(deployFixture);
+      // Default minimum (30d) rejects a 7-day grace...
+      await expectRevert(
+        resolver.write.onConditionSet(
+          [1n, encodeInvoice({ ...defaultInvoice, waitingPeriod: SEVEN_DAYS })],
+          { account: escrow.account },
+        ),
+        'InvalidWaitingPeriod',
+      );
+      // ...but once the owner lowers it to 7 days, the pilot invoice is accepted.
+      await resolver.write.setMinWaitingPeriod([SEVEN_DAYS]);
+      await resolver.write.onConditionSet(
+        [2n, encodeInvoice({ ...defaultInvoice, waitingPeriod: SEVEN_DAYS, invoiceAmount: 1n })],
+        { account: escrow.account },
+      );
+    });
+
+    it('opens the claim 7 days after due date under the pilot grace', async () => {
+      const { resolver, escrow, defaultInvoice } = await loadFixture(deployFixture);
+      await resolver.write.setMinWaitingPeriod([SEVEN_DAYS]);
+      await resolver.write.onConditionSet(
+        [1n, encodeInvoice({ ...defaultInvoice, waitingPeriod: SEVEN_DAYS })],
+        { account: escrow.account },
+      );
+      await time.increaseTo(defaultInvoice.dueDate + SEVEN_DAYS - 2n);
+      expect(await resolver.read.isConditionMet([1n], { account: escrow.account.address })).to.equal(false);
+      await time.increaseTo(defaultInvoice.dueDate + SEVEN_DAYS);
+      expect(await resolver.read.isConditionMet([1n], { account: escrow.account.address })).to.equal(true);
+    });
+
+    it('cannot be set below the hard floor (anti-gaming)', async () => {
+      const { resolver } = await loadFixture(deployFixture);
+      await expectRevert(resolver.write.setMinWaitingPeriod([ONE_DAY - 1n]), 'InvalidWaitingPeriod');
+    });
+
+    it('cannot be set above the maximum', async () => {
+      const { resolver } = await loadFixture(deployFixture);
+      await expectRevert(
+        resolver.write.setMinWaitingPeriod([ONE_HUNDRED_EIGHTY_DAYS + 1n]),
+        'InvalidWaitingPeriod',
+      );
+    });
+
+    it('reverts when a non-owner sets the minimum', async () => {
+      const { resolver, stranger } = await loadFixture(deployFixture);
+      await expectRevert(
+        resolver.write.setMinWaitingPeriod([SEVEN_DAYS], { account: stranger.account }),
         'OwnableUnauthorizedAccount',
       );
     });

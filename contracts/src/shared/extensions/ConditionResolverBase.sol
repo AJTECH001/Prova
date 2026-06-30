@@ -3,14 +3,14 @@ pragma solidity ^0.8.24;
 
 import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import {IConditionResolver} from "../../interfaces/IConditionResolver.sol";
-import {TestnetCoreBase} from "../TestnetCoreBase.sol";
+import {CoreBase} from "../CoreBase.sol";
 
 /// @title  ConditionResolverBase
 /// @notice Abstract base for IConditionResolver implementations.
 ///         Provides caller-binding (T4): the first address that calls `onConditionSet`
 ///         for a given escrowId is bound as the only authorised caller for that id.
 ///         Inheriting contracts call `_bindEscrow` once, then use `onlyBoundEscrow`.
-abstract contract ConditionResolverBase is IConditionResolver, ERC165, TestnetCoreBase {
+abstract contract ConditionResolverBase is IConditionResolver, ERC165, CoreBase {
 
     // ─── Errors ──────────────────────────────────────────────────────────────
 
@@ -46,7 +46,7 @@ abstract contract ConditionResolverBase is IConditionResolver, ERC165, TestnetCo
         address initialOwner,
         address trustedForwarder
     ) internal onlyInitializing {
-        __TestnetCoreBase_init(initialOwner, trustedForwarder);
+        __CoreBase_init(initialOwner, trustedForwarder);
     }
 
     // ─── Internal helpers ─────────────────────────────────────────────────────

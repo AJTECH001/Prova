@@ -129,6 +129,14 @@ export const Response = {
     };
   },
 
+  tooManyRequests(retryAfterSeconds: number, detail?: string): HttpResponse {
+    return {
+      statusCode: 429,
+      headers: { ...defaultHeaders(), 'Retry-After': String(retryAfterSeconds) },
+      body: JSON.stringify(ErrorResponseDtoFactory.create(429, 'Too many requests', detail)),
+    };
+  },
+
   internalServerError(title = 'Internal server error', detail?: string): HttpResponse {
     return {
       statusCode: 500,

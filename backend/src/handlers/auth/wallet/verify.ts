@@ -3,6 +3,7 @@ import { VerifyWalletUseCase } from '../../../application/use-case/auth/verify-w
 import { container } from '../../../infrastructure/container.js';
 import { createHandler } from '../../../interface/handler-factory.js';
 import { withCors } from '../../../interface/middleware/with-cors.js';
+import { withRateLimit } from '../../../interface/middleware/with-rate-limit.js';
 import { Response } from '../../../interface/response.js';
 
 const useCase = new VerifyWalletUseCase(
@@ -22,4 +23,5 @@ const handler = createHandler({
   },
 });
 
-export default withCors(handler);
+// Pre-auth signature verification — throttle per IP against credential stuffing.
+export default withCors(withRateLimit({ name: 'auth-verify', limit: 20, windowMs: 60_000 })(handler));

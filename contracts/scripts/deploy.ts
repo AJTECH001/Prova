@@ -13,6 +13,20 @@ const REINEIRA = {
     USDC:                        "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
 };
 
+// ERC-2771 trusted forwarder. Default disabled (address(0)) — no gasless meta-tx.
+// To enable gasless flows, set TRUSTED_FORWARDER to Reineira's forwarder (query via MCP).
+const TRUSTED_FORWARDER = process.env.TRUSTED_FORWARDER ?? ethers.ZeroAddress;
+
+// Oracle signer authorised to submit encrypted credit scores to OracleDebtorProof.
+// Defaults to the deployer; in production set ORACLE_ADDRESS to the backend signer.
+const ORACLE_ADDRESS = process.env.ORACLE_ADDRESS;
+
+// Optional production ownership target. When set to a valid address, ownership of every
+// deployed contract is handed to it AFTER wiring. CoreBase contracts use Ownable2Step, so
+// the multisig must call acceptOwnership() to finalise; OracleDebtorProof (plain Ownable)
+// transfers immediately. Leave unset to keep the deployer as owner (e.g. on testnet).
+const MULTISIG_OWNER = process.env.MULTISIG_OWNER;
+
 async function deployProxy(factory: any, initData: string): Promise<{ proxy: any; implAddress: string; proxyAddress: string }> {
     const impl = await factory.deploy();
     await impl.waitForDeployment();
@@ -27,25 +41,35 @@ async function deployProxy(factory: any, initData: string): Promise<{ proxy: any
 }
 
 async function main() {
-    console.log("\n=== PROVA Contract Deployment ===");
+    console.log("\n=== PROVA Contract Deployment (production profile) ===");
     console.log("Network:", network.name);
 
     const [deployer] = await ethers.getSigners();
     console.log("Deployer:", deployer.address);
-    console.log("Balance:", ethers.formatEther(await ethers.provider.getBalance(deployer.address)), "ETH\n");
+    console.log("Balance:", ethers.formatEther(await ethers.provider.getBalance(deployer.address)), "ETH");
 
-    // ── 1. MockDebtorProof (testnet adapter — replace with real oracle on mainnet) ──
-    console.log("1/5  Deploying MockDebtorProof...");
-    const MockDebtorProof = await ethers.getContractFactory("MockDebtorProof");
-    const mockDebtorProof = await MockDebtorProof.deploy();
-    await mockDebtorProof.waitForDeployment();
-    const mockDebtorProofAddress = await mockDebtorProof.getAddress();
-    console.log("     MockDebtorProof        :", mockDebtorProofAddress);
+    const oracleSigner = ORACLE_ADDRESS && ethers.isAddress(ORACLE_ADDRESS) ? ORACLE_ADDRESS : deployer.address;
+    console.log("Trusted forwarder:", TRUSTED_FORWARDER, TRUSTED_FORWARDER === ethers.ZeroAddress ? "(meta-tx disabled)" : "");
+    console.log("Oracle signer    :", oracleSigner, oracleSigner === deployer.address ? "(deployer — set ORACLE_ADDRESS in production)" : "");
+    console.log("");
+
+    // ── 1. OracleDebtorProof (production IDebtorProof adapter; plain Ownable) ─────
+    //    Replaces the testnet-only MockDebtorProof. The oracle signer submits CoFHE-
+    //    encrypted credit scores; the policy reads them as FHE handles via getScore().
+    console.log("1/5  Deploying OracleDebtorProof...");
+    const OracleDebtorProof = await ethers.getContractFactory("OracleDebtorProof");
+    const oracleDebtorProof = await OracleDebtorProof.deploy(deployer.address, oracleSigner);
+    await oracleDebtorProof.waitForDeployment();
+    const debtorProofAddress = await oracleDebtorProof.getAddress();
+    console.log("     OracleDebtorProof      :", debtorProofAddress);
 
     // ── 2. DebtorExposureRegistry (UUPS proxy) ───────────────────────────────────
     console.log("2/5  Deploying DebtorExposureRegistry...");
     const DebtorExposureRegistry = await ethers.getContractFactory("DebtorExposureRegistry");
-    const exposureInitData = DebtorExposureRegistry.interface.encodeFunctionData("initialize", [deployer.address]);
+    const exposureInitData = DebtorExposureRegistry.interface.encodeFunctionData("initialize", [
+        deployer.address,
+        TRUSTED_FORWARDER,
+    ]);
     const { proxyAddress: exposureRegistryAddress } = await deployProxy(DebtorExposureRegistry, exposureInitData);
     const exposureRegistry = DebtorExposureRegistry.attach(exposureRegistryAddress);
     console.log("     DebtorExposureRegistry :", exposureRegistryAddress);
@@ -53,7 +77,10 @@ async function main() {
     // ── 3. InsuranceClaimsRegistry (UUPS proxy) ──────────────────────────────────
     console.log("3/5  Deploying InsuranceClaimsRegistry...");
     const InsuranceClaimsRegistry = await ethers.getContractFactory("InsuranceClaimsRegistry");
-    const claimsInitData = InsuranceClaimsRegistry.interface.encodeFunctionData("initialize", [deployer.address]);
+    const claimsInitData = InsuranceClaimsRegistry.interface.encodeFunctionData("initialize", [
+        deployer.address,
+        TRUSTED_FORWARDER,
+    ]);
     const { proxyAddress: claimsRegistryAddress } = await deployProxy(InsuranceClaimsRegistry, claimsInitData);
     const claimsRegistry = InsuranceClaimsRegistry.attach(claimsRegistryAddress);
     console.log("     InsuranceClaimsRegistry:", claimsRegistryAddress);
@@ -64,8 +91,10 @@ async function main() {
     const resolverInitData = TradeInvoiceResolver.interface.encodeFunctionData("initialize", [
         deployer.address,
         REINEIRA.ConfidentialEscrow,
+        TRUSTED_FORWARDER,
     ]);
     const { proxyAddress: resolverAddress } = await deployProxy(TradeInvoiceResolver, resolverInitData);
+    const resolver = TradeInvoiceResolver.attach(resolverAddress);
     console.log("     TradeInvoiceResolver   :", resolverAddress);
 
     // ── 5. TradeCreditInsurancePolicy (UUPS proxy) ───────────────────────────────
@@ -73,20 +102,41 @@ async function main() {
     const TradeCreditInsurancePolicy = await ethers.getContractFactory("TradeCreditInsurancePolicy");
     const policyInitData = TradeCreditInsurancePolicy.interface.encodeFunctionData("initialize", [
         deployer.address,
-        mockDebtorProofAddress,
+        debtorProofAddress,
         exposureRegistryAddress,
         claimsRegistryAddress,
-        REINEIRA.ConfidentialCoverageManager,
+        TRUSTED_FORWARDER, // NOTE: the ERC-2771 forwarder — NOT the coverage manager.
     ]);
     const { proxyAddress: policyAddress } = await deployProxy(TradeCreditInsurancePolicy, policyInitData);
+    const policy = TradeCreditInsurancePolicy.attach(policyAddress);
     console.log("     TradeCreditInsurancePolicy:", policyAddress);
 
-    // ── Wire registry contracts ───────────────────────────────────────────────────
-    console.log("\nWiring registry contracts...");
+    // ── Wiring ─────────────────────────────────────────────────────────────────────
+    console.log("\nWiring contracts...");
     await (await exposureRegistry.registerContract(policyAddress)).wait();
-    console.log("     exposureRegistry.registerContract(policy) ✓");
+    console.log("     exposureRegistry.registerContract(policy)            ✓");
     await (await claimsRegistry.registerPolicy(policyAddress)).wait();
-    console.log("     claimsRegistry.registerPolicy(policy)     ✓");
+    console.log("     claimsRegistry.registerPolicy(policy)                ✓");
+    // The coverage manager calls onPolicySet/evaluateRisk (onlyProvaContract), so it must be
+    // whitelisted in the policy's Moat registry — without this, coverage issuance reverts.
+    await (await policy.setAllowedContract(REINEIRA.ConfidentialCoverageManager, true)).wait();
+    console.log("     policy.setAllowedContract(coverageManager, true)     ✓");
+
+    // ── Optional: hand ownership to a production multisig/timelock ───────────────────
+    if (MULTISIG_OWNER && ethers.isAddress(MULTISIG_OWNER)) {
+        console.log("\nTransferring ownership to", MULTISIG_OWNER, "...");
+        // CoreBase contracts (Ownable2Step): nominates pending owner — multisig must acceptOwnership().
+        await (await exposureRegistry.transferOwnership(MULTISIG_OWNER)).wait();
+        await (await claimsRegistry.transferOwnership(MULTISIG_OWNER)).wait();
+        await (await resolver.transferOwnership(MULTISIG_OWNER)).wait();
+        await (await policy.transferOwnership(MULTISIG_OWNER)).wait();
+        console.log("     4 CoreBase contracts: pending owner set — multisig must call acceptOwnership()");
+        // OracleDebtorProof (plain Ownable): immediate transfer.
+        await (await oracleDebtorProof.transferOwnership(MULTISIG_OWNER)).wait();
+        console.log("     OracleDebtorProof: ownership transferred (immediate)");
+    } else {
+        console.log("\nOwnership retained by deployer (set MULTISIG_OWNER to hand off in production).");
+    }
 
     // ── Save deployment record ────────────────────────────────────────────────────
     const chainId = (await ethers.provider.getNetwork()).chainId;
@@ -95,10 +145,13 @@ async function main() {
         chainId:    Number(chainId),
         deployedAt: new Date().toISOString().split("T")[0],
         deployer:   deployer.address,
+        owner:      MULTISIG_OWNER && ethers.isAddress(MULTISIG_OWNER) ? MULTISIG_OWNER : deployer.address,
+        trustedForwarder: TRUSTED_FORWARDER,
         contracts: {
-            MockDebtorProof: {
-                address: mockDebtorProofAddress,
-                note:    "Testnet-only IDebtorProof adapter — replace with real oracle on mainnet",
+            OracleDebtorProof: {
+                address: debtorProofAddress,
+                note:    "Production IDebtorProof adapter — oracle submits CoFHE-encrypted credit scores",
+                oracle:  oracleSigner,
             },
             DebtorExposureRegistry: {
                 address: exposureRegistryAddress,
@@ -110,7 +163,7 @@ async function main() {
             },
             TradeInvoiceResolver: {
                 address: resolverAddress,
-                note:    "IConditionResolver — time-based protracted default gate (UUPS proxy)",
+                note:    "IConditionResolver — protracted-default gate + payment-truth oracle (UUPS proxy)",
             },
             TradeCreditInsurancePolicy: {
                 address: policyAddress,
@@ -128,23 +181,22 @@ async function main() {
 
     // ── Summary ───────────────────────────────────────────────────────────────────
     console.log("\n=== Deployment Summary ===");
-    console.log("MockDebtorProof            :", mockDebtorProofAddress);
+    console.log("OracleDebtorProof          :", debtorProofAddress);
     console.log("DebtorExposureRegistry     :", exposureRegistryAddress);
     console.log("InsuranceClaimsRegistry    :", claimsRegistryAddress);
     console.log("TradeInvoiceResolver       :", resolverAddress);
     console.log("TradeCreditInsurancePolicy :", policyAddress);
-    console.log("\n=== Reineira Platform (pre-deployed) ===");
-    console.log("ConfidentialEscrow         :", REINEIRA.ConfidentialEscrow);
-    console.log("ConfidentialCoverageManager:", REINEIRA.ConfidentialCoverageManager);
-    console.log("PoolFactory                :", REINEIRA.PoolFactory);
-    console.log("PolicyRegistry             :", REINEIRA.PolicyRegistry);
+
     console.log("\n=== Next Steps ===");
-    console.log("1. Register TradeCreditInsurancePolicy in Reineira PolicyRegistry");
-    console.log("   → PolicyRegistry.registerPolicy(", policyAddress, ")");
+    console.log("1. Register the policy in Reineira PolicyRegistry → PolicyRegistry.registerPolicy(", policyAddress, ")");
     console.log("2. Create an insurance pool via PoolFactory");
     console.log("3. Create an escrow via ConfidentialEscrow with resolver =", resolverAddress);
     console.log("4. Purchase coverage via ConfidentialCoverageManager with policy =", policyAddress);
-    console.log("5. Replace MockDebtorProof with a real oracle before mainnet");
+    console.log("5. Configure runtime params: setConcentrationCap(debtor, cap), setCurve(...), setPaymentOracle(...)");
+    console.log("6. Oracle backend submits scores via OracleDebtorProof.setScore(debtorId, encScore)");
+    if (MULTISIG_OWNER && ethers.isAddress(MULTISIG_OWNER)) {
+        console.log("7. Multisig must call acceptOwnership() on the 4 CoreBase contracts to finalise handoff");
+    }
 }
 
 main()

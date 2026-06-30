@@ -3,14 +3,14 @@ pragma solidity ^0.8.24;
 
 import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import {IUnderwriterPolicy} from "../../interfaces/IUnderwriterPolicy.sol";
-import {TestnetCoreBase} from "../TestnetCoreBase.sol";
+import {CoreBase} from "../CoreBase.sol";
 
 /// @title  UnderwriterPolicyBase
 /// @notice Abstract base for IUnderwriterPolicy implementations.
 ///         Provides:
 ///           - Caller binding (T4): first caller of `onPolicySet` is bound per coverageId.
 ///           - Ownable: owner can update curve parameters and risk tables (R6).
-abstract contract UnderwriterPolicyBase is IUnderwriterPolicy, ERC165, TestnetCoreBase {
+abstract contract UnderwriterPolicyBase is IUnderwriterPolicy, ERC165, CoreBase {
 
     // ─── Errors ──────────────────────────────────────────────────────────────
 
@@ -49,7 +49,7 @@ abstract contract UnderwriterPolicyBase is IUnderwriterPolicy, ERC165, TestnetCo
         address initialOwner,
         address trustedForwarder
     ) internal onlyInitializing {
-        __TestnetCoreBase_init(initialOwner, trustedForwarder);
+        __CoreBase_init(initialOwner, trustedForwarder);
     }
 
     // ─── Internal helpers ─────────────────────────────────────────────────────

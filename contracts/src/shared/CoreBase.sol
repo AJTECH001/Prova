@@ -3,12 +3,23 @@ pragma solidity ^0.8.24;
 
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
-/// @title TestnetCoreBase
+/// @title CoreBase
 /// @notice Base contract providing upgradeability, ERC-7201 namespaced storage, ERC-2771
 ///         meta-transaction support, and a centralised Moat registry for all Prova plugins.
-abstract contract TestnetCoreBase is Initializable, UUPSUpgradeable, OwnableUpgradeable {
+/// @dev    Ownership uses the two-step (`Ownable2Step`) handover: `transferOwnership` only
+///         nominates a pending owner; the nominee must call `acceptOwnership` to take control.
+///         This prevents a fat-fingered transfer from permanently bricking every owner-gated
+///         config and the UUPS upgrade authority — a production-grade safeguard given how
+///         much authority `onlyOwner` concentrates across the Prova plugin set.
+abstract contract CoreBase is
+    Initializable,
+    UUPSUpgradeable,
+    Ownable2StepUpgradeable,
+    PausableUpgradeable
+{
 
     // ─── ERC-7201 namespaced storage ─────────────────────────────────────────
 
@@ -18,6 +29,9 @@ abstract contract TestnetCoreBase is Initializable, UUPSUpgradeable, OwnableUpgr
     }
 
     function _coreStorage() private pure returns (CoreStorage storage $) {
+        // NOTE: the storage-namespace string is intentionally kept as the original
+        // "TestnetCoreBase" literal after the contract was renamed to CoreBase, so the
+        // ERC-7201 slot is unchanged and already-deployed UUPS proxies upgrade safely.
         bytes32 slot = keccak256(abi.encode(uint256(keccak256("reineira.storage.TestnetCoreBase")) - 1))
             & ~bytes32(uint256(0xff));
         assembly {
@@ -98,13 +112,30 @@ abstract contract TestnetCoreBase is Initializable, UUPSUpgradeable, OwnableUpgr
 
     // ─── Core init ────────────────────────────────────────────────────────────
 
-    function __TestnetCoreBase_init(
+    function __CoreBase_init(
         address initialOwner,
         address trustedForwarder
     ) internal onlyInitializing {
         __Ownable_init(initialOwner);
+        __Pausable_init();
         _coreStorage().trustedForwarder = trustedForwarder;
         emit CoreInitialized();
+    }
+
+    // ─── Emergency stop (new-business only) ───────────────────────────────────
+
+    /// @notice Emergency stop affecting NEW business only. While paused, new coverage /
+    ///         condition registration and risk pricing revert (`whenNotPaused` entrypoints).
+    ///         Claim resolution (`judge` / `isConditionMet`) is intentionally NOT gated, so a
+    ///         pause can never trap a pending claim or a buyer's refund.
+    /// @dev    Owner-gated. A dedicated PAUSER role is a possible future refinement.
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    /// @notice Lift the emergency stop.
+    function unpause() external onlyOwner {
+        _unpause();
     }
 
     function _authorizeUpgrade(address newImplementation) internal virtual override onlyOwner {}

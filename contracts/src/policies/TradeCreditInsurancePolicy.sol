@@ -5,6 +5,7 @@ import {FHE, Common, euint64, euint32, euint16, ebool, InEuint64} from "@fhenixp
 import {UnderwriterPolicyBase} from "../shared/extensions/UnderwriterPolicyBase.sol";
 import {FHEMeta} from "../shared/lib/FHEMeta.sol";
 import {IDebtorProof} from "../interfaces/IDebtorProof.sol";
+import {IDisputeOracle} from "../interfaces/IDisputeOracle.sol";
 import {DebtorExposureRegistry} from "../registries/DebtorExposureRegistry.sol";
 import {InsuranceClaimsRegistry} from "../registries/InsuranceClaimsRegistry.sol";
 import {RiskMathLib} from "../lib/RiskMathLib.sol";
@@ -72,6 +73,10 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
         /// @dev Policy indexed by escrowId for evaluateRisk(escrowId).
         ///      CCM calls evaluateRisk(escrowId) but onPolicySet receives coverageId.
         mapping(uint256 => Policy) policyByEscrow;
+        /// @notice Optional dispute-truth oracle. When set, a claim on a coverage the
+        ///         oracle reports as disputed is rejected in judge() — disputed debt is
+        ///         excluded from cover. address(0) disables the gate.
+        IDisputeOracle disputeOracle;
     }
 
     function _policyStorage() private pure returns (PolicyStorage storage $) {
@@ -102,6 +107,10 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
     /// @param  industryCode NACE or SIC industry classification code.
     /// @param  bps          Add-on value in basis points.
     event IndustryRiskSet(bytes4 indexed industryCode, uint16 bps);
+
+    /// @notice Emitted when the dispute-truth oracle is updated.
+    /// @param  disputeOracle New oracle address (address(0) disables the gate).
+    event DisputeOracleSet(address indexed disputeOracle);
 
     /// @notice Emitted when the loss history log call fails, so monitoring can detect it.
     /// @param  coverageId Coverage whose claim could not be logged.
@@ -226,6 +235,21 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
         _policyStorage().debtorProofAdapter = IDebtorProof(newAdapter);
     }
 
+    /// @notice Set (or clear) the dispute-truth oracle consulted during claim judging.
+    /// @dev    When set, judge() rejects a claim for any coverage the oracle reports as
+    ///         disputed — disputed debt is excluded from cover. Pass address(0) to disable.
+    ///         Only an owner-controlled address is ever consulted — never user-supplied.
+    /// @param  newDisputeOracle Address of an IDisputeOracle implementation, or address(0).
+    function setDisputeOracle(address newDisputeOracle) external onlyOwner {
+        _policyStorage().disputeOracle = IDisputeOracle(newDisputeOracle);
+        emit DisputeOracleSet(newDisputeOracle);
+    }
+
+    /// @notice Returns the configured dispute-truth oracle (address(0) if disabled).
+    function disputeOracle() external view returns (IDisputeOracle) {
+        return _policyStorage().disputeOracle;
+    }
+
     // ─── IUnderwriterPolicy ──────────────────────────────────────────────────
 
     /// @notice Stores coverage policy parameters, registers debtor exposure, and
@@ -237,7 +261,7 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
     ///         escrowId is appended at the end so older 7-field decoders ignore it gracefully.
     /// @param  coverageId Unique identifier assigned by the coverage manager.
     /// @param  data       ABI-encoded policy configuration parameters.
-    function onPolicySet(uint256 coverageId, bytes calldata data) external override onlyProvaContract {
+    function onPolicySet(uint256 coverageId, bytes calldata data) external override onlyProvaContract whenNotPaused {
         _bindManager(coverageId);
 
         (
@@ -251,7 +275,8 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
         ) = abi.decode(data, (bytes32, address, uint64, uint16, bytes2, bytes4, uint64));
 
         // Decode escrowId from byte 224 onward separately to avoid stack-too-deep.
-        uint256 escrowId;
+        // Defaults to 0 ("no escrow id provided"), which is handled explicitly below.
+        uint256 escrowId = 0;
         if (data.length >= 256) {
             (escrowId) = abi.decode(data[224:], (uint256));
         }
@@ -301,6 +326,7 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
         external
         override
         onlyProvaContract
+        whenNotPaused
         returns (euint64 riskScore)
     {
         PolicyStorage storage $ = _policyStorage();
@@ -356,6 +382,15 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
         // Claim is valid only if within the credit limit AND the cap was not breached.
         ebool withinLimit = FHE.lte(claimAmount, p.buyerCreditLimitEnc);
         valid = FHE.and(withinLimit, p.validCapEnc);
+
+        // Disputed-debt exclusion: the insurable object is *undisputed* indebtedness.
+        // If a dispute oracle is configured and reports this coverage as disputed, the
+        // claim is rejected outright. Only the owner-set oracle is ever consulted.
+        IDisputeOracle oracle = $.disputeOracle;
+        if (address(oracle) != address(0) && oracle.isDisputed(coverageId)) {
+            valid = FHE.asEbool(false);
+        }
+
         FHE.allowThis(valid);
         FHE.allow(valid, msg.sender);
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {TestnetCoreBase} from "../shared/TestnetCoreBase.sol";
+import {CoreBase} from "../shared/CoreBase.sol";
 import {FHE, euint64} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 
 /// @title  InsuranceClaimsRegistry
@@ -21,7 +21,7 @@ import {FHE, euint64} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 /// @dev    TODO: Enhance with zkTLS off-chain loss history integration (see TECH_DEBT.md)
 ///         Future: Build PROVA's proprietary loss data verification system combining
 ///         on-chain claims with verified off-chain business data for comprehensive risk assessment.
-contract InsuranceClaimsRegistry is TestnetCoreBase {
+contract InsuranceClaimsRegistry is CoreBase {
 
     // ─── Events ──────────────────────────────────────────────────────────────
 
@@ -66,7 +66,7 @@ contract InsuranceClaimsRegistry is TestnetCoreBase {
     /// @param  initialOwner     Address that will own this contract.
     /// @param  trustedForwarder ERC-2771 forwarder address (address(0) to disable).
     function initialize(address initialOwner, address trustedForwarder) external initializer {
-        __TestnetCoreBase_init(initialOwner, trustedForwarder);
+        __CoreBase_init(initialOwner, trustedForwarder);
     }
 
     // ─── Owner administration ─────────────────────────────────────────────────

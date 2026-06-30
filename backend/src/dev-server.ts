@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { applySecurityHeaders } from './interface/security-headers.js';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 // Handlers live in src/handlers/ and are served under /api/v1/
@@ -149,6 +150,8 @@ async function main() {
     const parsed = new URL(rawReq.url ?? '/', `http://localhost:${port}`);
     const pathname = parsed.pathname;
     const searchParams = parsed.searchParams;
+
+    applySecurityHeaders(rawRes);
 
     // Apply CORS headers to every response so preflight always works in local dev
     rawRes.setHeader('Access-Control-Allow-Origin', '*');
