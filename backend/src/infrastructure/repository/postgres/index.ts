@@ -7,3 +7,4 @@ export { PgBusinessProfileRepository } from './pg-business-profile.repository.js
 export { PgApiCredentialRepository } from './pg-api-credential.repository.js';
 export { PgEscrowEventRepository } from './pg-escrow-event.repository.js';
 export { PgPoolStakeRepository } from './pg-pool-stake.repository.js';
+export { PgDisputeRepository } from './pg-dispute.repository.js';

@@ -1,4 +1,5 @@
 import { ApplicationHttpError } from '../../../core/errors.js';
+import { getEnv } from '../../../core/config.js';
 import type { IEscrowRepository } from '../../../domain/escrow/repository/escrow.repository.js';
 import type { IUserRepository } from '../../../domain/auth/repository/user.repository.js';
 import type { ComputeCreditScoreUseCase } from '../credit-score/compute-credit-score.use-case.js';
@@ -24,6 +25,12 @@ export interface CoverageQuoteResponse {
   premium_rate_bps: number;
   premium_rate_pct: string;
   premium_cost: number;
+  /** Prova's platform take-rate (condition fee) in bps, charged at escrow creation. */
+  platform_fee_bps: number;
+  /** Platform fee in currency units = invoice_amount * platform_fee_bps / 10000. */
+  platform_fee: number;
+  /** Total cost to the business = premium_cost + platform_fee. */
+  total_cost: number;
   expiry_ts: number;
 }
 
@@ -58,6 +65,13 @@ export class GetCoverageQuoteUseCase {
     const premiumBps = lookupPremiumBps(rawScore);
     const coverageAmount = escrow.amount;
     const premiumCost = Math.round((coverageAmount * premiumBps) / 100) / 100;
+
+    // Prova platform revenue: the condition fee charged on the invoice at escrow creation.
+    // Mirrors the on-chain TradeInvoiceResolver.setConditionFee value (0 = disabled).
+    const platformFeeBps = getEnv().CONDITION_FEE_BPS;
+    const platformFee = Math.round((escrow.amount * platformFeeBps) / 100) / 100;
+    const totalCost = Math.round((premiumCost + platformFee) * 100) / 100;
+
     const expiryTs = Math.floor(Date.now() / 1000) + DEFAULT_COVERAGE_DAYS * 24 * 60 * 60;
 
     return {
@@ -68,6 +82,9 @@ export class GetCoverageQuoteUseCase {
       premium_rate_bps: premiumBps,
       premium_rate_pct: (premiumBps / 100).toFixed(2),
       premium_cost: premiumCost,
+      platform_fee_bps: platformFeeBps,
+      platform_fee: platformFee,
+      total_cost: totalCost,
       expiry_ts: expiryTs,
     };
   }

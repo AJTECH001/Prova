@@ -68,7 +68,9 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
         IDebtorProof debtorProofAdapter;
         /// @notice Registry that tracks and enforces per-debtor concentration limits.
         DebtorExposureRegistry exposureRegistry;
-        /// @notice Encrypted append-only log of all judged claims.
+        /// @notice Loss-commitment registry reference. The policy no longer writes claims here —
+        ///         loss history is off-chain, reconstructed from ClaimJudged events (SCR §124).
+        ///         Retained for storage-layout and initializer compatibility.
         InsuranceClaimsRegistry lossHistory;
         /// @dev Policy indexed by escrowId for evaluateRisk(escrowId).
         ///      CCM calls evaluateRisk(escrowId) but onPolicySet receives coverageId.
@@ -112,9 +114,12 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
     /// @param  disputeOracle New oracle address (address(0) disables the gate).
     event DisputeOracleSet(address indexed disputeOracle);
 
-    /// @notice Emitted when the loss history log call fails, so monitoring can detect it.
-    /// @param  coverageId Coverage whose claim could not be logged.
-    event ClaimLogFailed(uint256 indexed coverageId);
+    /// @notice Emitted when a claim is judged, so the off-chain loss store can be reconstructed.
+    /// @dev    Carries no encrypted amount — loss values stay off-chain (SCR §124). The backend
+    ///         indexes this event and anchors a Merkle root via InsuranceClaimsRegistry.
+    /// @param  coverageId   Coverage that was judged.
+    /// @param  curveVersion Premium curve version active at judgment time.
+    event ClaimJudged(uint256 indexed coverageId, uint16 curveVersion);
 
     // ─── Constructor ─────────────────────────────────────────────────────────
 
@@ -394,13 +399,11 @@ contract TradeCreditInsurancePolicy is UnderwriterPolicyBase {
         FHE.allowThis(valid);
         FHE.allow(valid, msg.sender);
 
-        if (address($.lossHistory) != address(0)) {
-            // Grant the loss history contract ACL permission before the cross-contract call.
-            FHE.allow(claimAmount, address($.lossHistory));
-            try $.lossHistory.logClaim(coverageId, uint32(p.curveVersion), claimAmount) {} catch {
-                emit ClaimLogFailed(coverageId);
-            }
-        }
+        // Loss history is recorded OFF-CHAIN from this event (SCR §124): no encrypted per-claim
+        // data is written on-chain. The backend reconstructs the encrypted loss store from
+        // ClaimJudged events and periodically anchors a Merkle root of it via
+        // InsuranceClaimsRegistry.commitLossRoot for tamper-evidence.
+        emit ClaimJudged(coverageId, p.curveVersion);
 
         // Release aggregate exposure proportional to the validated claim only.
         // FHE.select yields claimAmount for a valid claim, 0 for an invalid one.

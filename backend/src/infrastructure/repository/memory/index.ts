@@ -7,3 +7,4 @@ export { MemoryApiCredentialRepository } from './memory-api-credential.repositor
 export { MemoryEscrowEventRepository } from './memory-escrow-event.repository.js';
 export { MemoryNonceRepository } from './memory-nonce.repository.js';
 export { MemoryPoolStakeRepository } from './memory-pool-stake.repository.js';
+export { MemoryDisputeRepository } from './memory-dispute.repository.js';

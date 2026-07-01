@@ -48,6 +48,59 @@ describe('InsuranceClaimsRegistry', () => {
     })) as LossEntry[];
   }
 
+  describe('loss-history commitment (SCR §124)', () => {
+    const ROOT_A = `0x${'11'.repeat(32)}` as const;
+    const ROOT_B = `0x${'22'.repeat(32)}` as const;
+
+    it('starts with an empty commitment', async () => {
+      const { registry } = await loadFixture(deployFixture);
+      const [root, epoch, committedAt, entryCount] = await registry.read.latestCommitment();
+      expect(root).to.equal(`0x${'0'.repeat(64)}`);
+      expect(epoch).to.equal(0n);
+      expect(committedAt).to.equal(0n);
+      expect(entryCount).to.equal(0n);
+    });
+
+    it('records a commitment and advances the epoch monotonically', async () => {
+      const { registry } = await loadFixture(deployFixture);
+      await registry.write.commitLossRoot([ROOT_A, 3n]);
+      const [root, epoch, committedAt, entryCount] = await registry.read.latestCommitment();
+      expect(root).to.equal(ROOT_A);
+      expect(epoch).to.equal(1n);
+      expect(committedAt > 0n).to.equal(true);
+      expect(entryCount).to.equal(3n);
+
+      await registry.write.commitLossRoot([ROOT_B, 5n]);
+      const [root2, epoch2, , entryCount2] = await registry.read.latestCommitment();
+      expect(root2).to.equal(ROOT_B);
+      expect(epoch2).to.equal(2n);
+      expect(entryCount2).to.equal(5n);
+    });
+
+    it('reverts a zero Merkle root', async () => {
+      const { registry } = await loadFixture(deployFixture);
+      await expectRevert(registry.write.commitLossRoot([ZERO_HANDLE, 1n]), 'InvalidRoot');
+    });
+
+    it('rejects a non-monotonic entry count but allows an equal count (re-commit)', async () => {
+      const { registry } = await loadFixture(deployFixture);
+      await registry.write.commitLossRoot([ROOT_A, 10n]);
+      await expectRevert(registry.write.commitLossRoot([ROOT_B, 9n]), 'NonMonotonicCount');
+      await registry.write.commitLossRoot([ROOT_B, 10n]); // equal count OK
+      const [root, epoch] = await registry.read.latestCommitment();
+      expect(root).to.equal(ROOT_B);
+      expect(epoch).to.equal(2n);
+    });
+
+    it('only the owner may commit', async () => {
+      const { registry, stranger } = await loadFixture(deployFixture);
+      await expectRevert(
+        registry.write.commitLossRoot([ROOT_A, 1n], { account: stranger.account }),
+        'OwnableUnauthorizedAccount',
+      );
+    });
+  });
+
   describe('access control', () => {
     it('reverts when a non-owner registers a policy', async () => {
       const { registry, stranger } = await loadFixture(deployFixture);

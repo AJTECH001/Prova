@@ -5,22 +5,17 @@ import {CoreBase} from "../shared/CoreBase.sol";
 import {FHE, euint64} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 
 /// @title  InsuranceClaimsRegistry
-/// @notice Encrypted append-only log of all judged insurance claims.
+/// @notice Loss-history commitment anchor for the off-chain encrypted loss store (SCR §124).
 ///
-///         Each entry records the coverage ID, encrypted claim amount as a euint64 handle,
-///         block timestamp, and the premium curve version active at the time of judgment.
-///         Encrypted amounts are never decrypted on-chain — they are accessible only to
-///         FHE-authorised parties via CoFHE.
+///         Primary role: the backend keeps the encrypted loss store OFF-CHAIN (reconstructed
+///         from the policy's `ClaimJudged` events) and periodically commits a Merkle root of it
+///         here via `commitLossRoot`, giving cheap on-chain tamper-evidence without writing
+///         per-claim encrypted data on-chain.
 ///
-///         Entries are indexed by an opaque keccak256 key derived from the coverage ID,
-///         curve version, and insertion position. This prevents external observers from
-///         inferring claim volume or growth rate through sequential ID enumeration.
-///
-///         Only owner-whitelisted policy contracts may append or query entries.
-///
-/// @dev    TODO: Enhance with zkTLS off-chain loss history integration (see TECH_DEBT.md)
-///         Future: Build PROVA's proprietary loss data verification system combining
-///         on-chain claims with verified off-chain business data for comprehensive risk assessment.
+///         The former encrypted append-only log (`logClaim` / `recordsForCurve`) is DEPRECATED
+///         and no longer written by the policy. It is retained — functions and storage slots —
+///         only for upgrade compatibility of the already-deployed proxy, and is scheduled for
+///         removal at the next breaking deploy.
 contract InsuranceClaimsRegistry is CoreBase {
 
     // ─── Events ──────────────────────────────────────────────────────────────
@@ -40,10 +35,17 @@ contract InsuranceClaimsRegistry is CoreBase {
     }
 
     struct ClaimsStorage {
-        /// @dev Entry store keyed by opaque keccak256 hashes — never sequential integers.
+        /// @dev DEPRECATED encrypted append-only log (entries + entryKeys). The policy no longer
+        ///      writes here; loss history is off-chain (SCR §124). Retained for upgrade safety —
+        ///      do not reuse these two slots.
         mapping(bytes32 => LossEntry) entries;
-        /// @dev Ordered list of entry keys for cursor-based iteration in recordsForCurve.
         bytes32[] entryKeys;
+        /// @dev Loss-history commitment: a Merkle root of the off-chain encrypted loss store,
+        ///      committed periodically by the owner/backend for tamper-evidence.
+        bytes32 latestLossRoot;
+        uint64  lossEpoch;
+        uint64  lastCommittedAt;
+        uint64  lossEntryCount;
     }
 
     function _claimsStorage() private pure returns (ClaimsStorage storage $) {
@@ -78,10 +80,59 @@ contract InsuranceClaimsRegistry is CoreBase {
         emit PolicyRegistered(policy);
     }
 
-    // ─── Writer API ───────────────────────────────────────────────────────────
+    // ─── Loss-history commitment (SCR §124) ───────────────────────────────────
+
+    /// @dev Raised when a zero Merkle root is committed.
+    error InvalidRoot();
+    /// @dev Raised when a commitment reports fewer entries than a prior one (the store only grows).
+    error NonMonotonicCount();
+
+    /// @notice Emitted when a new loss-history Merkle-root commitment is recorded.
+    /// @param  epoch      Monotonic commitment sequence number.
+    /// @param  root       Merkle root of the off-chain encrypted loss store.
+    /// @param  entryCount Number of losses represented by this root.
+    event LossRootCommitted(uint64 indexed epoch, bytes32 root, uint64 entryCount);
+
+    /// @notice Anchor a Merkle root of the off-chain encrypted loss store on-chain.
+    /// @dev    Owner-gated (the backend/committer). The loss store only grows, so `entryCount`
+    ///         must be monotonically non-decreasing. Gives tamper-evidence without writing any
+    ///         per-claim encrypted data on-chain.
+    /// @param  root       Non-zero Merkle root of the current off-chain loss store.
+    /// @param  entryCount Total number of losses represented by `root`.
+    function commitLossRoot(bytes32 root, uint64 entryCount) external onlyOwner {
+        if (root == bytes32(0)) revert InvalidRoot();
+        ClaimsStorage storage $ = _claimsStorage();
+        if (entryCount < $.lossEntryCount) revert NonMonotonicCount();
+
+        uint64 epoch = $.lossEpoch + 1;
+        $.lossEpoch       = epoch;
+        $.latestLossRoot  = root;
+        $.lastCommittedAt = uint64(block.timestamp);
+        $.lossEntryCount  = entryCount;
+
+        emit LossRootCommitted(epoch, root, entryCount);
+    }
+
+    /// @notice Returns the latest loss-history commitment.
+    /// @return root        Latest committed Merkle root (bytes32(0) if none yet).
+    /// @return epoch       Number of commitments made so far.
+    /// @return committedAt Block timestamp of the latest commitment.
+    /// @return entryCount  Losses represented by the latest root.
+    function latestCommitment()
+        external
+        view
+        returns (bytes32 root, uint64 epoch, uint64 committedAt, uint64 entryCount)
+    {
+        ClaimsStorage storage $ = _claimsStorage();
+        return ($.latestLossRoot, $.lossEpoch, $.lastCommittedAt, $.lossEntryCount);
+    }
+
+    // ─── Writer API (DEPRECATED — see §124; retained for upgrade compatibility) ──
 
     /// @notice Append an encrypted claim to the loss log.
-    /// @dev    No event is emitted on write to prevent transaction-matching by external observers.
+    /// @dev    DEPRECATED (SCR §124): the policy no longer calls this — loss history is off-chain.
+    ///         Retained for upgrade compatibility only.
+    ///         No event is emitted on write to prevent transaction-matching by external observers.
     ///         The entry key is an opaque hash — position is not externally derivable.
     /// @param  coverageId      Coverage identifier associated with this claim.
     /// @param  version         Premium curve version active when the claim was judged.

@@ -34,6 +34,12 @@ const EnvSchema = z.object({
   ADMIN_PRIVATE_KEY: z.string().optional(),
   DEFAULT_CONCENTRATION_CAP_USDC: z.coerce.number().default(1000000),
   POLICY_REGISTRY_ADDRESS: z.string().optional(),
+  // Platform revenue: Prova's condition fee in basis points (100 = 1%), charged to the
+  // escrow creator at ConfidentialEscrow.create() and routed to FEE_RECIPIENT. MUST mirror
+  // the on-chain value set via TradeInvoiceResolver.setConditionFee (scripts/set-condition-fee.ts).
+  // Default 0 = disabled. Surfaced in coverage quotes for total-cost transparency.
+  CONDITION_FEE_BPS: z.coerce.number().min(0).max(10000).default(0),
+  FEE_RECIPIENT: z.string().optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

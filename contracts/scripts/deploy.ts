@@ -27,6 +27,13 @@ const ORACLE_ADDRESS = process.env.ORACLE_ADDRESS;
 // transfers immediately. Leave unset to keep the deployer as owner (e.g. on testnet).
 const MULTISIG_OWNER = process.env.MULTISIG_OWNER;
 
+// Prova's platform revenue lever: the condition fee charged to the escrow creator at
+// ConfidentialEscrow.create() (protocol stamps it from the resolver — RSS §5.5.1).
+// Defaults to 0 (disabled) so deploys are revenue-safe by default; set both to activate.
+// bps: basis points (100 = 1%, max 10000). FEE_RECIPIENT: Prova treasury (required if bps > 0).
+const CONDITION_FEE_BPS = Number(process.env.CONDITION_FEE_BPS ?? "0");
+const FEE_RECIPIENT = process.env.FEE_RECIPIENT;
+
 async function deployProxy(factory: any, initData: string): Promise<{ proxy: any; implAddress: string; proxyAddress: string }> {
     const impl = await factory.deploy();
     await impl.waitForDeployment();
@@ -121,6 +128,20 @@ async function main() {
     // whitelisted in the policy's Moat registry — without this, coverage issuance reverts.
     await (await policy.setAllowedContract(REINEIRA.ConfidentialCoverageManager, true)).wait();
     console.log("     policy.setAllowedContract(coverageManager, true)     ✓");
+
+    // ── Activate platform revenue: condition fee (must run while deployer is still owner) ──
+    if (CONDITION_FEE_BPS > 0) {
+        if (CONDITION_FEE_BPS > 10000) {
+            throw new Error(`CONDITION_FEE_BPS must be <= 10000 (got ${CONDITION_FEE_BPS})`);
+        }
+        if (!FEE_RECIPIENT || !ethers.isAddress(FEE_RECIPIENT)) {
+            throw new Error("Set FEE_RECIPIENT to a valid Prova treasury address when CONDITION_FEE_BPS > 0");
+        }
+        await (await resolver.setConditionFee(CONDITION_FEE_BPS, FEE_RECIPIENT)).wait();
+        console.log(`     resolver.setConditionFee(${CONDITION_FEE_BPS} bps, ${FEE_RECIPIENT}) ✓`);
+    } else {
+        console.log("     condition fee: 0 bps (disabled — set CONDITION_FEE_BPS + FEE_RECIPIENT to activate)");
+    }
 
     // ── Optional: hand ownership to a production multisig/timelock ───────────────────
     if (MULTISIG_OWNER && ethers.isAddress(MULTISIG_OWNER)) {

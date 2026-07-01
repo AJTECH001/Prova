@@ -8,6 +8,7 @@ import {
   MemoryApiCredentialRepository,
   MemoryEscrowEventRepository,
   MemoryPoolStakeRepository,
+  MemoryDisputeRepository,
 } from './repository/memory/index.js';
 import {
   PgNonceRepository,
@@ -19,6 +20,7 @@ import {
   PgApiCredentialRepository,
   PgEscrowEventRepository,
   PgPoolStakeRepository,
+  PgDisputeRepository,
 } from './repository/postgres/index.js';
 import { getDb } from './repository/postgres/db.js';
 import { JwtService } from './auth/jwt.service.js';
@@ -38,6 +40,7 @@ import type { IBusinessProfileRepository } from '../domain/business-profile/repo
 import type { IApiCredentialRepository } from '../domain/api-credential/repository/api-credential.repository.js';
 import type { IEscrowEventRepository } from '../domain/escrow/events/repository/escrow-event.repository.js';
 import type { IPoolStakeRepository } from '../domain/pool/repository/pool-stake.repository.js';
+import type { IDisputeRepository } from '../domain/dispute/repository/dispute.repository.js';
 
 interface Repositories {
   nonceRepo: INonceRepository;
@@ -49,6 +52,7 @@ interface Repositories {
   apiCredentialRepo: IApiCredentialRepository;
   escrowEventRepo: IEscrowEventRepository;
   poolStakeRepo: IPoolStakeRepository;
+  disputeRepo: IDisputeRepository;
 }
 
 function createMemoryRepos(): Repositories {
@@ -62,6 +66,7 @@ function createMemoryRepos(): Repositories {
     apiCredentialRepo: new MemoryApiCredentialRepository(),
     escrowEventRepo: new MemoryEscrowEventRepository(),
     poolStakeRepo: new MemoryPoolStakeRepository(),
+    disputeRepo: new MemoryDisputeRepository(),
   };
 }
 
@@ -77,6 +82,7 @@ function createPostgresRepos(): Repositories {
     apiCredentialRepo: new PgApiCredentialRepository(db),
     escrowEventRepo: new PgEscrowEventRepository(db),
     poolStakeRepo: new PgPoolStakeRepository(db),
+    disputeRepo: new PgDisputeRepository(db),
   };
 }
 
@@ -130,6 +136,9 @@ export const container = {
   },
   get poolStakeRepo() {
     return getRepos().poolStakeRepo;
+  },
+  get disputeRepo() {
+    return getRepos().disputeRepo;
   },
   get nonceService() {
     return new NonceService(getRepos().nonceRepo);
